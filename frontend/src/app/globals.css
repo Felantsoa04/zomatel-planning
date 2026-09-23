@@ -1,0 +1,731 @@
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  background: #f4f5f7;
+  color: #1f2430;
+}
+
+a { color: inherit; }
+
+.container {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.navbar {
+  background: #1f2430;
+  color: #fff;
+  padding: 14px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.navbar a { text-decoration: none; color: #fff; margin-right: 16px; font-weight: 500; }
+.navbar .brand { font-weight: 700; font-size: 18px; }
+
+.card {
+  background: #fff;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  margin-bottom: 16px;
+}
+
+.btn {
+  display: inline-block;
+  padding: 8px 16px;
+  border-radius: 6px;
+  border: none;
+  background: #2f6fed;
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 14px;
+}
+.btn:hover { background: #2559c4; }
+.btn.secondary { background: #6b7280; }
+.btn.danger { background: #dc2626; }
+.btn.success { background: #16a34a; }
+.btn:disabled { background: #9ca3af; cursor: not-allowed; }
+
+input, select, textarea {
+  padding: 8px 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 14px;
+  width: 100%;
+}
+
+label { font-size: 13px; font-weight: 600; color: #374151; display: block; margin-bottom: 4px; }
+
+.form-row { margin-bottom: 14px; }
+
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th, td { border: 1px solid #e5e7eb; padding: 6px 8px; text-align: left; }
+th { background: #f0f1f4; }
+
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.badge.BROUILLON { background: #e5e7eb; color: #374151; }
+.badge.SOUMIS { background: #fef3c7; color: #92400e; }
+.badge.VALIDE { background: #dcfce7; color: #166534; }
+.badge.REJETE { background: #fee2e2; color: #991b1b; }
+.badge.TRAVAIL { background: #dbeafe; color: #1e40af; }
+.badge.REPOS { background: #dcfce7; color: #166534; }
+.badge.ABSENCE { background: #fee2e2; color: #991b1b; }
+.badge.CONGE { background: #ffedd5; color: #9a3412; }
+
+.error { color: #dc2626; font-size: 13px; margin-top: 8px; }
+.muted { color: #6b7280; font-size: 13px; }
+
+.ahl-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
+  }
+  
+  .ahl-horaire-edit {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    background: white;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    padding: 0.2rem 0.4rem;
+  }
+  
+  .ahl-horaire-edit input {
+    border: none;
+    font-size: 0.8rem;
+    width: 70px;
+  }
+  
+  .ahl-suppr {
+    border: none;
+    background: transparent;
+    color: var(--color-danger);
+    font-weight: 700;
+    cursor: pointer;
+    font-size: 1rem;
+  }
+  
+  .ahl-select-conteneur {
+    position: relative;
+  }
+  
+  .ahl-select-bouton {
+    width: 100%;
+    min-height: 32px;
+    border: 1px solid var(--color-border);
+    border-radius: 4px;
+    background: white;
+    font-size: 0.78rem;
+    cursor: pointer;
+    padding: 0.2rem 0.3rem;
+  }
+  
+  .ahl-select-liste {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    z-index: 20;
+    background: white;
+    border: 1px solid var(--color-border);
+    border-radius: 4px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    min-width: 150px;
+    max-height: 200px;
+    overflow-y: auto;
+    padding: 0.3rem;
+  }
+  
+  .ahl-select-item {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.8rem;
+    padding: 0.2rem 0.3rem;
+    white-space: nowrap;
+  }
+  
+  .ahl-obs-input {
+    width: 100%;
+    border: 1px solid var(--color-border);
+    border-radius: 4px;
+    font-size: 0.75rem;
+    padding: 0.2rem;
+  }
+
+  .badge-edt {
+    display: inline-block;
+    padding: 0.15rem 0.5rem;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 700;
+  }
+  
+  .badge-edt-travail {
+    background: #dbeafe;
+    color: #1d4ed8;
+  }
+  
+  .badge-edt-repos {
+    background: #dcfce7;
+    color: #166534;
+  }
+  
+  .badge-edt-absence {
+    background: #fee2e2;
+    color: #b91c1c;
+  }
+
+  .badge-edt-conge {
+    background: #ffedd5;
+    color: #9a3412;
+  }
+
+  .badge-edt-recuperation {
+    background: #dbeafe;
+    color: #1e40af;
+  }
+
+  .badge-edt-formation {
+    background: #ede9fe;
+    color: #6b21a8;
+  }
+
+  .badge-edt-non_planifie {
+    background: #f3f4f6;
+    color: #6b7280;
+  }
+
+  /* Fond de CELLULE selon le statut (emploi du temps) : teintes claires,
+     texte intact — aucun changement de structure ni de donnees. */
+  .edt-statut-REPOS { background: #dcfce7; }
+  .edt-statut-ABSENCE, .edt-statut-ABSENT { background: #fee2e2; }
+  .edt-statut-CONGE { background: #ffedd5; }
+  .edt-statut-RECUPERATION, .edt-statut-RECUP { background: #dbeafe; }
+  .edt-statut-FORMATION { background: #ede9fe; }
+  .edt-statut-NON_PLANIFIE { background: #f3f4f6; }
+
+  /* Legende des statuts (au-dessus des tableaux de planning) */
+  .legende-statuts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 16px;
+    align-items: center;
+    font-size: 12.5px;
+    color: #374151;
+    margin: 2px 0 8px;
+  }
+  .legende-item { display: inline-flex; align-items: center; gap: 5px; }
+
+  /* ===== CONTROLE DES HEURES HEBDO : badges discrets (aucune popup) =====
+     Regle metier : Administration min 44 h, autres services min 48 h ;
+     rouge uniquement pour un depassement important (seuil + 8 h). */
+  .alerte-heures {
+    display: inline-block;
+    margin-left: 8px;
+    padding: 1px 8px;
+    border-radius: 999px;
+    font-size: 11.5px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .alerte-manque { background: #ffedd5; color: #9a3412; }
+  .alerte-ok { background: #dcfce7; color: #166534; }
+  .alerte-exces { background: #fee2e2; color: #991b1b; }
+
+  .edt-table th, .edt-table td {
+    border: 1px solid #ccc;
+    padding: 4px 6px;
+    text-align: center;
+    font-size: 0.8rem;
+  }
+
+  .edt-cellule-periode { min-width: 75px; }
+  .edt-total-jour, .edt-total-hebdo { font-weight: 700; }
+  .edt-depassement td { background: #fff5f5; }
+  .edt-total-depassement { color: #b91c1c; }
+
+  /* ================= NOTIFICATIONS 🔔 ================= */
+  .notif-wrap { position: relative; display: inline-block; }
+
+  .notif-btn {
+    position: relative;
+    background: transparent;
+    border: none;
+    font-size: 20px;
+    line-height: 1;
+    cursor: pointer;
+    padding: 6px 8px;
+    border-radius: 6px;
+  }
+  .notif-btn:hover { background: rgba(255, 255, 255, 0.12); }
+
+  .notif-badge {
+    position: absolute;
+    top: -2px;
+    right: -4px;
+    background: #dc2626;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    min-width: 18px;
+    height: 18px;
+    line-height: 18px;
+    text-align: center;
+    border-radius: 999px;
+    padding: 0 4px;
+    box-shadow: 0 0 0 2px #1f2430;
+  }
+
+  .notif-dropdown {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 8px);
+    width: 360px;
+    max-width: calc(100vw - 24px);
+    background: #fff;
+    color: #1f2430;
+    border-radius: 10px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.18);
+    overflow: hidden;
+    z-index: 100;
+  }
+
+  .notif-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 14px;
+    border-bottom: 1px solid #e5e7eb;
+    background: #f9fafb;
+    font-size: 14px;
+  }
+
+  .notif-tout-lu {
+    background: transparent;
+    border: none;
+    color: #2f6fed;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 4px 6px;
+    border-radius: 6px;
+  }
+  .notif-tout-lu:hover { background: #eef4ff; }
+
+  .notif-liste { max-height: 400px; overflow-y: auto; }
+
+  .notif-item {
+    display: block;
+    width: 100%;
+    text-align: left;
+    background: #fff;
+    border: none;
+    border-bottom: 1px solid #f0f1f4;
+    padding: 10px 14px;
+    cursor: pointer;
+    font-size: 13px;
+  }
+  .notif-item:hover { background: #f6f8fb; }
+  .notif-item.notif-non-lue { background: #eef4ff; }
+  .notif-item.notif-non-lue:hover { background: #e3edff; }
+
+  .notif-item-haut { display: flex; align-items: center; gap: 8px; }
+
+  .notif-dot {
+    width: 8px;
+    height: 8px;
+    min-width: 8px;
+    background: #2f6fed;
+    border-radius: 50%;
+  }
+
+  .notif-titre { font-weight: 600; }
+
+  .notif-message {
+    color: #4b5563;
+    font-size: 12.5px;
+    margin-top: 3px;
+  }
+
+  .notif-date {
+    display: flex;
+    justify-content: space-between;
+    color: #9ca3af;
+    font-size: 11.5px;
+    margin-top: 5px;
+  }
+
+  .notif-lien { color: #2f6fed; font-weight: 600; }
+
+  .notif-empty {
+    text-align: center;
+    color: #6b7280;
+    font-size: 13px;
+    padding: 28px 14px;
+  }
+
+  /* ================= MOTIF DE REJET ================= */
+  .motif-rejet-box {
+    background: #fee2e2;
+    border: 1px solid #fca5a5;
+    border-left: 4px solid #dc2626;
+    color: #7f1d1d;
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin: 12px 0;
+    font-size: 14px;
+  }
+  .motif-rejet-titre { font-weight: 700; margin-bottom: 4px; }
+
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.55);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 200;
+    padding: 16px;
+  }
+
+  .motif-modal {
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
+    width: 100%;
+    max-width: 480px;
+    padding: 20px 22px;
+  }
+  .motif-modal textarea {
+    width: 100%;
+    resize: vertical;
+    min-height: 90px;
+  }
+
+  /* ================= IMPRESSION DES PLANNINGS =================
+     Seuls les plannings VALIDES par le RH sont imprimables :
+     - bouton imprimer affiche uniquement en statut VALIDE ;
+     - pour les autres statuts, la classe .impression-bloquee desactive
+       toute sortie imprimable (bouton absent + Ctrl+P bloque ci-dessous). */
+  /* A4 paysage : format adapte au tableau hebdomadaire large */
+  @page {
+    size: A4 landscape;
+  }
+
+  /* A l'ecran rien ne change ; a l'impression on supprime les limites de
+     largeur et les conteneurs defilants qui TRONQUENT le tableau :
+     .container (max-width: 1100px) et les .card en overflow-x: auto
+     coupaient les colonnes droites du tableau et forcaient un scroll
+     invisible sur papier. */
+  @media print {
+    /* Les couleurs de statut (repos/absence/conge...) doivent sortir
+       identiques sur papier ; certains navigateurs les suppriment par defaut. */
+    body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .container {
+      max-width: none !important;
+      width: 100% !important;
+      padding: 0 !important;
+      margin: 0 !important;
+    }
+    .card {
+      overflow: visible !important;
+      box-shadow: none !important;
+      padding: 8px !important;
+      margin-bottom: 8px !important;
+    }
+    .navbar,
+    .btn-retour,
+    .btn { display: none !important; }
+
+    /* Multi-pages : le tableau continue sur les pages suivantes,
+       les lignes ne sont jamais coupees en deux, et l'en-tete du tableau
+       se repete automatiquement sur chaque page. */
+    table { page-break-inside: auto; }
+    tr, td, th { page-break-inside: avoid; }
+    thead { display: table-header-group; }
+    tfoot { display: table-footer-group; }
+  }
+
+  @media print {
+    .impression-bloquee > * { display: none !important; }
+    .impression-bloquee::after {
+      content: "Impression non autorisee : seuls les plannings valides par la RH peuvent etre imprimes.";
+      display: block;
+      padding: 48px 24px;
+      font-size: 16px;
+      font-weight: 700;
+      color: #991b1b;
+      text-align: center;
+    }
+  }
+
+  /* ================= BOUTON RETOUR ================= */
+  .btn-retour {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: transparent;
+    border: 1px solid #d1d5db;
+    color: #374151;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 6px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    margin-bottom: 12px;
+  }
+  .btn-retour:hover { background: #eef1f5; border-color: #9ca3af; }
+  .btn-retour span { font-size: 15px; line-height: 1; }
+
+  @media (max-width: 640px) {
+    .notif-dropdown { width: calc(100vw - 16px); right: -60px; }
+    .navbar { flex-wrap: wrap; gap: 8px; }
+    .navbar a { margin-right: 10px; }
+    .btn-retour { padding: 8px 14px; }
+  }
+/* ======================================================================
+   DASHBOARDS ZOMATEL (Administrateur / RH / Chef de service)
+   Sidebar + topbar + cartes stats + graphiques CSS. L'Employe n'a pas
+   d'espace dans l'application (donnees uniquement, affectations planning).
+   ====================================================================== */
+
+.dash-layout { display: flex; min-height: 100vh; }
+
+/* ---------- Sidebar ---------- */
+.dash-sidebar {
+  width: 240px;
+  background: #111827;
+  color: #e5e7eb;
+  display: flex;
+  flex-direction: column;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  flex-shrink: 0;
+}
+
+.dash-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 18px 16px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+.dash-logo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px; height: 38px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #2f6fed, #1e3a8a);
+  color: #fff;
+  font-weight: 800;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+.dash-brand-texte { display: flex; flex-direction: column; line-height: 1.2; }
+.dash-brand-texte strong { font-size: 15px; color: #fff; }
+.dash-brand-texte small { font-size: 11px; color: #9ca3af; }
+
+.dash-nav { flex: 1; padding: 14px 10px; display: flex; flex-direction: column; gap: 2px; }
+
+.dash-lien {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border-radius: 8px;
+  text-decoration: none;
+  color: #cbd5e1;
+  font-size: 14px;
+  font-weight: 500;
+  transition: background 0.15s, color 0.15s;
+}
+.dash-lien:hover { background: rgba(255,255,255,0.07); color: #fff; }
+.dash-lien.actif { background: #2f6fed; color: #fff; font-weight: 600; }
+.dash-icone { width: 20px; text-align: center; flex-shrink: 0; }
+
+.dash-sidebar-pied { padding: 12px 10px; border-top: 1px solid rgba(255,255,255,0.08); display: flex; flex-direction: column; gap: 6px; }
+.dash-deconnexion {
+  display: flex; align-items: center; gap: 8px;
+  width: 100%;
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.15);
+  color: #fca5a5;
+  padding: 8px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+}
+.dash-deconnexion:hover { background: rgba(220,38,38,0.15); border-color: #dc2626; color: #fff; }
+
+/* ---------- Contenu / topbar ---------- */
+.dash-contenu { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+
+.dash-topbar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: #fff;
+  border-bottom: 1px solid #e5e7eb;
+  padding: 12px 24px;
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+.dash-burger { display: none; background: none; border: 1px solid #e5e7eb; border-radius: 8px; font-size: 16px; padding: 6px 10px; cursor: pointer; }
+.dash-topbar-titre { font-size: 15px; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dash-topbar-droite { display: flex; align-items: center; gap: 12px; }
+
+.dash-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  background: #1e3a8a;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.dash-main { padding: 24px; background: #f4f5f7; flex: 1; }
+.dash-titre { margin: 0 0 4px; font-size: 22px; }
+.dash-soustitre { margin: 0 0 20px; color: #6b7280; font-size: 14px; }
+
+/* ---------- Cartes statistiques ---------- */
+.dash-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 14px;
+  margin-bottom: 22px;
+}
+.dash-stat {
+  background: #fff;
+  border-radius: 12px;
+  padding: 16px 18px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.07);
+  border-left: 4px solid #2f6fed;
+}
+.dash-stat .valeur { font-size: 26px; font-weight: 800; line-height: 1.1; }
+.dash-stat .libelle { font-size: 13px; color: #6b7280; margin-top: 2px; }
+.dash-stat-bleu { border-left-color: #2f6fed; }
+.dash-stat-vert { border-left-color: #16a34a; }
+.dash-stat-orange { border-left-color: #f59e0b; }
+.dash-stat-rouge { border-left-color: #dc2626; }
+.dash-stat-violet { border-left-color: #7c3aed; }
+.dash-stat-gris { border-left-color: #9ca3af; }
+
+/* ---------- Sections & graphiques ---------- */
+.dash-grille {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 16px;
+  margin-bottom: 22px;
+}
+.dash-carte {
+  background: #fff;
+  border-radius: 12px;
+  padding: 18px 20px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.07);
+}
+.dash-carte h3 { margin: 0 0 14px; font-size: 15px; color: #111827; }
+
+.dash-bars { display: flex; flex-direction: column; gap: 10px; }
+.dash-bar-row { display: flex; align-items: center; gap: 10px; font-size: 13px; }
+.dash-bar-label { width: 110px; flex-shrink: 0; color: #374151; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dash-bar-track { flex: 1; height: 14px; background: #eef1f5; border-radius: 999px; overflow: hidden; }
+.dash-bar-fill { display: block; height: 100%; border-radius: 999px; }
+.dash-bar-value { width: 40px; text-align: right; font-weight: 700; color: #111827; }
+
+.dash-donut-wrap { display: flex; align-items: center; gap: 22px; flex-wrap: wrap; }
+.dash-donut {
+  width: 150px; height: 150px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.dash-donut-trou {
+  width: 96px; height: 96px;
+  background: #fff;
+  border-radius: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.dash-donut-trou strong { font-size: 24px; }
+.dash-donut-trou span { font-size: 11px; color: #6b7280; }
+.dash-donut-legende { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 7px; font-size: 13px; }
+.dash-donut-legende li { display: flex; align-items: center; gap: 8px; }
+.dash-pastille { width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0; }
+
+/* ---------- Tableau derniers plannings ---------- */
+.dash-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.dash-table th {
+  text-align: left;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #6b7280;
+  border-bottom: 2px solid #e5e7eb;
+  padding: 8px 10px;
+}
+.dash-table td { padding: 10px; border-bottom: 1px solid #f0f1f3; }
+.dash-table tr:hover td { background: #f8fafc; }
+
+/* ---------- Responsive ---------- */
+@media (max-width: 900px) {
+  .dash-sidebar {
+    position: fixed;
+    left: -260px;
+    transition: left 0.2s ease;
+    z-index: 50;
+    box-shadow: 0 0 30px rgba(0,0,0,0.25);
+  }
+  .dash-sidebar.ouverte { left: 0; }
+  .dash-voile { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 40; }
+  .dash-burger { display: block; }
+  .dash-main { padding: 16px; }
+}
+
+/* Impression : le dashboard reste a l'ecran, sortie propre */
+@media print {
+  .dash-sidebar, .dash-topbar, .dash-burger { display: none !important; }
+  .dash-main { padding: 0; background: #fff; }
+}
+
+/* Tuiles d'acces rapide du dashboard */
+.dash-acces { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; }
+.dash-acces-lien {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 14px;
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  text-decoration: none;
+  color: #1f2430;
+  font-size: 14px;
+  font-weight: 500;
+  transition: background 0.15s, border-color 0.15s;
+}
+.dash-acces-lien:hover { background: #eef4ff; border-color: #2f6fed; }
+.dash-acces-icone { font-size: 18px; }
