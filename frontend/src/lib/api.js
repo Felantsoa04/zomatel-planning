@@ -1,7 +1,7 @@
 // Petit wrapper fetch : ajoute automatiquement l'URL de base de l'API
 // et le token JWT (si present) dans l'en-tete Authorization.
 
-import { logout } from './auth';
+import { logout, getToken } from './auth';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
 
@@ -43,10 +43,108 @@ async function request(path, { method = 'GET', body, token } = {}) {
   return data;
 }
 
+// Extrait { blob, nomFichier } d'une réponse de téléchargement : le nom est
+// lu dans l'en-tête Content-Disposition renvoyé par le backend.
+async function reponseFichier(res) {
+  const cd = res.headers.get('Content-Disposition') || '';
+  const m = cd.match(/filename="?([^";]+)"?/i);
+  let nomFichier = 'emploi-du-temps.xlsx';
+  if (m) {
+    try { nomFichier = decodeURIComponent(m[1]); } catch { nomFichier = m[1]; }
+  }
+  return { blob: await res.blob(), nomFichier };
+}
+
+// Téléchargement binaire authentifié (ex. export Excel de l'emploi du temps).
+// Même authentification que request() : JWT dans l'en-tête Authorization
+// (token explicite, sinon token stocké par l'application).
+// Retourne { blob, nomFichier }.
+async function telecharger(path, token) {
+  const t = token || getToken();
+  const headers = {};
+  if (t) headers.Authorization = `Bearer ${t}`;
+
+  const res = await fetch(`${API_URL}${path}`, { headers });
+
+  // Même traitement de session expirée que request()
+  if (res.status === 401 && !path.startsWith('/auth/')) {
+    logout();
+    if (typeof window !== 'undefined') window.location.replace('/login');
+    throw new Error('Session expiree, veuillez vous reconnecter.');
+  }
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.message || `Erreur ${res.status}`);
+  }
+
+  return reponseFichier(res);
+}
+
+// Téléchargement binaire d'un POST avec body JSON (ex. export groupé :
+// plusieurs plannings sélectionnés -> un seul classeur Excel). Même
+// authentification et même retour { blob, nomFichier } que telecharger().
+async function telechargerPost(path, body, token) {
+  const t = token || getToken();
+  const headers = { 'Content-Type': 'application/json' };
+  if (t) headers.Authorization = `Bearer ${t}`;
+
+  const res = await fetch(`${API_URL}${path}`, { method: 'POST', headers, body: JSON.stringify(body || {}) });
+
+  if (res.status === 401 && !path.startsWith('/auth/')) {
+    logout();
+    if (typeof window !== 'undefined') window.location.replace('/login');
+    throw new Error('Session expiree, veuillez vous reconnecter.');
+  }
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.message || `Erreur ${res.status}`);
+  }
+
+  return reponseFichier(res);
+}
+
+// Envoi de FICHIER (multipart/form-data) : meme authentification JWT que
+// request(), mais sans Content-Type JSON (le navigateur fixe la frontiere
+// multipart). Utilise pour la photo de profil (champ "photo", PUT) et pour
+// les pieces jointes du Messenger (champ parametrable, POST).
+async function envoyerFichier(path, fichier, token, { champ = 'photo', methode = 'PUT', champsSup = null } = {}) {
+  const t = token || getToken();
+  const body = new FormData();
+  body.append(champ, fichier, fichier.name);
+  // Champs textuels additionnels (ex. legende d'une piece jointe Messenger).
+  if (champsSup) {
+    for (const [cle, valeur] of Object.entries(champsSup)) {
+      if (valeur !== undefined && valeur !== null) body.append(cle, String(valeur));
+    }
+  }
+
+  const headers = {};
+  if (t) headers.Authorization = `Bearer ${t}`;
+
+  const res = await fetch(`${API_URL}${path}`, { method: methode, headers, body });
+
+  if (res.status === 401 && !path.startsWith('/auth/')) {
+    logout();
+    if (typeof window !== 'undefined') window.location.replace('/login');
+    throw new Error('Session expiree, veuillez vous reconnecter.');
+  }
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data.message || `Erreur ${res.status}`);
+  }
+  return data;
+}
+
 export const api = {
   get: (path, token) => request(path, { token }),
+  getBrut: (path, token) => telecharger(path, token),
   post: (path, body, token) => request(path, { method: 'POST', body, token }),
+  postBrut: (path, body, token) => telechargerPost(path, body, token),
   put: (path, body, token) => request(path, { method: 'PUT', body, token }),
   patch: (path, body, token) => request(path, { method: 'PATCH', body, token }),
   delete: (path, token) => request(path, { method: 'DELETE', token }),
+  uploadPhoto: (path, fichier, token) => envoyerFichier(path, fichier, token),
+  // Piece jointe Messenger : POST multipart, champ "fichier", + champs textuels.
+  envoyerPieceJointe: (path, fichier, token, champsSup) =>
+    envoyerFichier(path, fichier, token, { champ: 'fichier', methode: 'POST', champsSup }),
 };

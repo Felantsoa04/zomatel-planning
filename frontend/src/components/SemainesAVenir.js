@@ -1,0 +1,149 @@
+'use client';
+
+// WIDGET « PROCHAINES SEMAINES » du dashboard Zomatel.
+// Grille compacte : lignes = services, colonnes = les 6 prochaines semaines
+// (calcul ISO dynamique — aucune date en dur). Chaque cellule montre l'ETAT
+// du planning du service pour cette semaine, à partir des données réelles
+// /plannings (statuts) : Aucun · Brouillon · Soumis · Validé · Rejeté.
+// Clic sur une cellule : ouvre la grille de planning pour ce service/semaine
+// (page /planning/gestion existante, paramètres ?service=&semaine= déjà gérés).
+
+import { useMemo } from 'react';
+import { useRouter } from 'next/navigation';
+import { LABELS_STATUT, semainesAVenir } from '@/lib/dash';
+
+// Statuts sur lesquels le Chef peut encore agir (modifier/préparer) : un
+// planning SOUMIS ou VALIDE est dans le circuit RH (workflow Chef -> RH,
+// non modifiable directement). AUCUN (pas de planning) est géré à part.
+const ACTIF_POSSIBLE = ['BROUILLON', 'REJETE'];
+
+export default function SemainesAVenir({ plannings = [], services = [], estChef = false, idServiceChef = null }) {
+  const router = useRouter();
+
+  // Les 6 semaines à venir (courante incluse), dynamiques.
+  const semaines = useMemo(() => semainesAVenir(6), []);
+
+  // Services à afficher (chef → le sien uniquement ; le filtrage réel reste
+  // côté backend : /plannings ne renvoie déjà que les siens).
+  const servicesAffiches = useMemo(() => {
+    if (estChef && idServiceChef != null) {
+      return services.filter((s) => Number(s.id_service) === Number(idServiceChef));
+    }
+    return services;
+  }, [services, estChef, idServiceChef]);
+
+  // Index : "serviceId|annee|numero" → planning (le plus récent si doublon).
+  const indexPlannings = useMemo(() => {
+    const m = {};
+    for (const p of plannings) {
+      if (p.id_service == null) continue;
+      const cle = `${p.id_service}|${p.annee}|${p.numero_semaine}`;
+      const cur = m[cle];
+      if (!cur || p.updated_at >= cur.updated_at || !cur.updated_at) m[cle] = p;
+    }
+    return m;
+  }, [plannings]);
+
+  // Compteurs d'en-tête : combien de services ont un planning validé / à faire.
+  const totaux = useMemo(() => {
+    let valides = 0;
+    let aFaire = 0;
+    let cases = 0;
+    for (const s of servicesAffiches) {
+      for (const w of semaines) {
+        const p = indexPlannings[`${s.id_service}|${w.annee}|${w.numero}`];
+        if (p) {
+          if (p.statut === 'VALIDE') valides++;
+          else if (ACTIF_POSSIBLE.includes(p.statut)) aFaire++;
+        }
+        cases++;
+      }
+    }
+    return { valides, aFaire, cases, aucun: cases - valides - aFaire };
+  }, [servicesAffiches, semaines, indexPlannings]);
+
+  // Format date court : "07/09".
+  const fmt = (d) =>
+    `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`;
+
+  function allerPlanning(serviceId, semaine) {
+    router.push(`/planning/gestion?service=${serviceId}&semaine=${semaine.annee}-W${String(semaine.numero).padStart(2, '0')}`);
+  }
+
+  return (
+    <div className="dash-carte">
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexWrap: 'wrap', gap: 8, marginBottom: 10 }}>
+        <h3 style={{ margin: 0 }}>Prochaines semaines</h3>
+        <p className="muted" style={{ margin: 0, fontSize: 12 }}>
+          {totaux.valides} validé(s) · {totaux.aFaire} à préparer · {totaux.aucun} sans planning
+        </p>
+      </div>
+
+      {servicesAffiches.length === 0 ? (
+        <p className="muted">Aucun service à afficher.</p>
+      ) : (
+        <div style={{ overflowX: 'auto' }}>
+          <table className="swv-table">
+            <thead>
+              <tr>
+                <th className="swv-col-service">Service</th>
+                {semaines.map((w) => (
+                  <th key={`${w.annee}-${w.numero}`} className={w.numero === semaines[0].numero ? 'swv-courante' : ''}>
+                    S{w.numero}
+                    <span className="swv-dates">{fmt(w.debut)} → {fmt(w.fin)}</span>
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {servicesAffiches.map((s) => (
+                <tr key={s.id_service}>
+                  <td className="swv-service" title={s.nom || s.nom_service}>
+                    {s.nom || s.nom_service}
+                  </td>
+                  {semaines.map((w) => {
+                    const p = indexPlannings[`${s.id_service}|${w.annee}|${w.numero}`];
+                    const statut = p ? p.statut : 'AUCUN';
+                    // Chef : cliquable si pas de planning (créer) ou modifiable
+                    // (BROUILLON/REJETE). RH/ADMIN : cliquable si un planning
+                    // existe (consultation de la grille).
+                    const cliquable = estChef
+                      ? statut === 'AUCUN' || ACTIF_POSSIBLE.includes(statut)
+                      : !!p;
+                    const libelle =
+                      statut === 'AUCUN' ? '—' : LABELS_STATUT[statut] || statut;
+                    return (
+                      <td key={`${s.id_service}-${w.annee}-${w.numero}`} className={w.numero === semaines[0].numero ? 'swv-courante' : ''}>
+                        {cliquable ? (
+                          <button
+                            type="button"
+                            className={`badge ${statut === 'AUCUN' ? 'swv-aucun' : statut}`}
+                            title={
+                              statut === 'AUCUN'
+                                ? `Créer le planning ${s.nom_service || s.nom} S${w.numero}/${w.annee}`
+                                : `Ouvrir le planning ${LABELS_STATUT[statut] || statut} S${w.numero}/${w.annee}`
+                            }
+                            onClick={() => allerPlanning(s.id_service, w)}
+                          >
+                            {libelle}
+                          </button>
+                        ) : (
+                          <span className={`badge ${statut === 'AUCUN' ? 'swv-aucun' : statut}`}>{libelle}</span>
+                        )}
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      <p className="muted" style={{ fontSize: 12, margin: '10px 0 0' }}>
+        {estChef
+          ? 'Cliquez sur une cellule Brouillon/Rejeté (ou « — ») pour préparer le planning de la semaine.'
+          : "État des plannings à venir par service. Cliquez sur un badge pour consulter la grille."}
+      </p>
+    </div>
+  );
+}

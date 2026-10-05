@@ -21,7 +21,14 @@ export default function Navbar() {
 
   return (
     <div className="navbar">
-      <div>
+      <div style={{ display: 'flex', alignItems: 'center' }}>
+        {/* Monogramme « Z » : couleur principale Zomatel, proportion gardée
+            avec le texte, alignement vertical propre. */}
+        <span
+          className="monogramme-z"
+          style={{ width: 34, height: 34, fontSize: 21, borderRadius: 8, marginRight: 8 }}
+          aria-hidden="true"
+        >Z</span>
         <span className="brand">Zomatel Planning</span>
         {user && (
           <>

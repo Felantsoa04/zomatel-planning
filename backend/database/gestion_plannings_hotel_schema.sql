@@ -2,7 +2,6 @@
 -- GESTION PLANNINGS HOTEL - Schema MariaDB complet
 -- Base : gestion_plannings_hotel
 -- Adapté au backend existant (contrat API conservé) + règles métier :
---   * 8 h de travail maximum par jour et par employé (trigger)
 --   * refus des conflits d'horaires (chevauchement de créneaux, trigger)
 --   * une affectation TRAVAIL exige au moins 1 créneau (trigger)
 --   * dates d'affectation bornées à la semaine du planning (trigger)
@@ -400,7 +399,7 @@ ORDER BY p.id_planning, a.date_jour, e.nom;
 -- =====================================================================
 DELIMITER //
 
--- (a) Créneau : cohérence horaire, borne 8h/jour, conflits d'horaires
+-- (a) Créneau : cohérence horaire, conflits d'horaires
 DROP TRIGGER IF EXISTS trg_creneau_bi//
 CREATE TRIGGER trg_creneau_bi BEFORE INSERT ON creneau_travail
 FOR EACH ROW
@@ -409,7 +408,6 @@ BEGIN
   DECLARE v_statut      VARCHAR(20);
   DECLARE v_date_jour   DATE;
   DECLARE v_employe_id  INT UNSIGNED;
-  DECLARE v_autres      DECIMAL(6,2) DEFAULT 0;
   DECLARE v_chevauche   INT DEFAULT 0;
   DECLARE v_periodes    INT DEFAULT 0;
 
@@ -453,22 +451,6 @@ BEGIN
       SET MESSAGE_TEXT = 'Maximum 3 creneaux (matin, apres-midi, soir) par jour';
   END IF;
 
-  -- Heures deja travaillees ce meme jour sur les autres affectations
-  SELECT COALESCE(SUM(
-    (TIME_TO_SEC(c.heure_sortie) - TIME_TO_SEC(c.heure_entree)) / 3600
-  ), 0) INTO v_autres
-  FROM creneau_travail c
-  JOIN affectation a2 ON a2.id_affectation = c.affectation_id
-  WHERE a2.planning_id = v_planning_id
-    AND a2.employe_id  = v_employe_id
-    AND a2.date_jour   = v_date_jour;
-
-  -- REGLE METIER : maximum 8 heures de travail par jour
-  IF v_autres + (TIME_TO_SEC(NEW.heure_sortie) - TIME_TO_SEC(NEW.heure_entree)) / 3600 > 8 THEN
-    SIGNAL SQLSTATE '45000'
-      SET MESSAGE_TEXT = 'Regle 8h/jour depassee : total du jour superieur a 8 heures';
-  END IF;
-
   -- Conflit d'horaires : chevauchement avec un creneau existant du meme jour
   SELECT COUNT(*) INTO v_chevauche
   FROM creneau_travail c
@@ -493,7 +475,6 @@ BEGIN
   DECLARE v_statut      VARCHAR(20);
   DECLARE v_date_jour   DATE;
   DECLARE v_employe_id  INT UNSIGNED;
-  DECLARE v_autres      DECIMAL(6,2) DEFAULT 0;
   DECLARE v_chevauche   INT DEFAULT 0;
 
   IF NEW.heure_sortie <= NEW.heure_entree THEN
@@ -511,22 +492,7 @@ BEGIN
       SET MESSAGE_TEXT = 'Impossible : affectation non travail (REPOS/ABSENCE/CONGE)';
   END IF;
 
-  -- Heures du jour hors le creneau modifie lui-meme
-  SELECT COALESCE(SUM(
-    (TIME_TO_SEC(c.heure_sortie) - TIME_TO_SEC(c.heure_entree)) / 3600
-  ), 0) INTO v_autres
-  FROM creneau_travail c
-  JOIN affectation a2 ON a2.id_affectation = c.affectation_id
-  WHERE a2.planning_id = v_planning_id
-    AND a2.employe_id  = v_employe_id
-    AND a2.date_jour   = v_date_jour
-    AND c.id_creneau  <> NEW.id_creneau;
-
-  IF v_autres + (TIME_TO_SEC(NEW.heure_sortie) - TIME_TO_SEC(NEW.heure_entree)) / 3600 > 8 THEN
-    SIGNAL SQLSTATE '45000'
-      SET MESSAGE_TEXT = 'Regle 8h/jour depassee : total du jour superieur a 8 heures';
-  END IF;
-
+  -- Conflit d'horaires : chevauchement avec un creneau existant du meme jour
   SELECT COUNT(*) INTO v_chevauche
   FROM creneau_travail c
   JOIN affectation a2 ON a2.id_affectation = c.affectation_id

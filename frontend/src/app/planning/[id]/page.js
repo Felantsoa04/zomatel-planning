@@ -2,11 +2,16 @@
 
 import { useEffect, useState, useCallback, Fragment } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import Navbar from '@/components/Navbar';
+import { Printer, XCircle, Check, TriangleAlert, CircleAlert, CircleCheck } from 'lucide-react';
+import AppShell from '@/components/AppShell';
 import RetourButton from '@/components/RetourButton';
 import LegendeStatuts from '@/components/LegendeStatuts';
 import { api } from '@/lib/api';
 import { getToken, getUser } from '@/lib/auth';
+import SaisieHeureFloat from '@/components/SaisieHeureFloat';
+import PlanningModelEditor from '@/components/PlanningModelEditor';
+import { resoudreModele, MODELE_STANDARD_PAR_DEFAUT } from '@/lib/planningModels';
+import { versInterne } from '@/lib/planningData';
 
 const PERIODES = ['MATIN', 'APRES_MIDI', 'SOIR'];
 const PERIODE_LABEL = { MATIN: 'Matin', APRES_MIDI: 'Apres-midi', SOIR: 'Soir' };
@@ -31,6 +36,16 @@ function enMinutes(h) {
 function dureeMinutes(entree, sortie) {
   if (!entree || !sortie) return 0;
   return Math.abs(enMinutes(sortie) - enMinutes(entree));
+}
+
+// Regle de repartition issue du fichier Excel de reference du projet :
+// une plage horaire est rangee dans la periode de son HEURE DE DEBUT —
+// < 12:00 = matin, 12:00-17:59 = apres-midi, >= 18:00 = soir.
+function periodeDe(entree) {
+  const m = enMinutes(entree);
+  if (m < 12 * 60) return 'MATIN';
+  if (m < 18 * 60) return 'APRES_MIDI';
+  return 'SOIR';
 }
 
 function formatDuree(minutes) {
@@ -81,6 +96,9 @@ export default function PlanningDetailPage() {
   const [motifErreur, setMotifErreur] = useState('');
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(null);
+  // MULTI-MODÈLES : modèle du service + données converties (null = STANDARD)
+  const [modele, setModele] = useState(MODELE_STANDARD_PAR_DEFAUT);
+  const [donneesModele, setDonneesModele] = useState(null);
 
   // Session lue APRES montage uniquement : lire getUser()/getToken() pendant le
   // rendu donnait une UI client differente du HTML serveur (erreur d'hydratation).
@@ -104,6 +122,19 @@ export default function PlanningDetailPage() {
       const idService = planningData.planning.id_service ?? planningData.planning.service_id;
       const emps = await api.get(`/employes?id_service=${idService}`, token);
       setEmployes(emps);
+      // Modèle du service du planning + conversion des données réelles
+      const m = resoudreModele({ nom_service: planningData.planning.service_nom });
+      setModele(m);
+      if (m.code !== 'STANDARD') {
+        const interne = versInterne(m, planningData.affectations || [],
+          (planningData.affectations || []).flatMap((a) => (a.creneaux || []).map((c) => ({ ...c, id_affectation: a.id_affectation }))));
+        if (m.code === 'HORAIRE_LIBRE' && (!interne.horaires || interne.horaires.length === 0)) {
+          interne.horaires = JSON.parse(JSON.stringify(m.horairesDefaut || []));
+        }
+        setDonneesModele({ config: m, donnees: interne });
+      } else {
+        setDonneesModele(null);
+      }
     } catch (err) {
       setError(err.message);
     } finally {
@@ -143,13 +174,34 @@ export default function PlanningDetailPage() {
   }
 
   function majCreneau(periode, champ, valeur) {
-    setForm((f) => ({
-      ...f,
-      creneaux: {
-        ...f.creneaux,
-        [periode]: { ...f.creneaux[periode], [champ]: valeur },
-      },
-    }));
+    setForm((f) => {
+      // Regle Excel : des que l'heure de debut est saisie, le creneau se
+      // place automatiquement dans la bonne periode (matin/apres-midi/soir).
+      if (champ === 'heure_entree' && valeur) {
+        const cible = periodeDe(valeur);
+        if (cible !== periode) {
+          return {
+            ...f,
+            creneaux: {
+              ...f.creneaux,
+              [periode]: { ...f.creneaux[periode], heure_entree: '', heure_sortie: '' },
+              [cible]: {
+                ...(f.creneaux[cible] || { heure_entree: '', heure_sortie: '' }),
+                heure_entree: valeur,
+                heure_sortie: f.creneaux[periode]?.heure_sortie || '',
+              },
+            },
+          };
+        }
+      }
+      return {
+        ...f,
+        creneaux: {
+          ...f.creneaux,
+          [periode]: { ...f.creneaux[periode], [champ]: valeur },
+        },
+      };
+    });
   }
 
   async function enregistrer() {
@@ -168,7 +220,12 @@ export default function PlanningDetailPage() {
           if (c && c.heure_entree && c.heure_sortie) {
             await api.post(
               `/affectations/${id_affectation}/creneaux`,
-              { periode, heure_entree: c.heure_entree, heure_sortie: c.heure_sortie },
+              {
+                // Regle Excel : periode deduite de l'heure de debut.
+                periode: periodeDe(c.heure_entree),
+                heure_entree: c.heure_entree,
+                heure_sortie: c.heure_sortie,
+              },
               token
             );
           }
@@ -228,6 +285,15 @@ export default function PlanningDetailPage() {
 
   return (
     <PageShell bloquerImpression={planning.statut !== 'VALIDE'}>
+      {/* Bandeau + pied d'impression : apparaissent UNIQUEMENT sur papier
+          (@media print) — titre, service, semaine réels, aucun texte technique. */}
+      {planning.statut === 'VALIDE' && (
+        <div className="pied-impression">
+          <span className="pied-gauche">Zomatel Planning — {planning.service_nom}</span>
+          <span>Semaine {planning.numero_semaine} / {planning.annee}</span>
+          <span className="pied-droite">Édité le {new Date().toLocaleDateString('fr-FR')}</span>
+        </div>
+      )}
       {/* Retour : vers la liste d'ou l'utilisateur vient (dashboard, notification,
           grille...). Avertissement si une cellule est en cours d'edition. */}
       <RetourButton fallback="/dashboard" hasUnsaved={!!editCell} />
@@ -249,7 +315,7 @@ export default function PlanningDetailPage() {
               (l'impression navigateur est bloquee par la classe impression-bloquee). */}
           {planning.statut === 'VALIDE' && (
             <button className="btn secondary" onClick={() => window.print()} title="Imprimer le planning valide">
-              🖨️ Imprimer / PDF
+              <Printer size={14} aria-hidden="true" /> Imprimer / PDF
             </button>
           )}
           <span className={`badge ${planning.statut}`}>{planning.statut}</span>
@@ -262,7 +328,7 @@ export default function PlanningDetailPage() {
           Reservé au service concerne (chef du service et RH). */}
       {planning.statut === 'REJETE' && (
         <div className="motif-rejet-box" role="alert">
-          <div className="motif-rejet-titre">❌ Planning REJETÉ</div>
+          <div className="motif-rejet-titre"><XCircle size={15} aria-hidden="true" /> Planning rejeté</div>
           <div>
             <strong>Motif du rejet :</strong>{' '}
             {motifRejet?.commentaire || <span className="muted">(motif non renseigné)</span>}
@@ -275,23 +341,38 @@ export default function PlanningDetailPage() {
         </div>
       )}
 
-      <div style={{ margin: '12px 0' }}>
+      {/* MULTI-MODÈLES : affichage par le modèle du service (lecture seule ici,
+          la saisie se fait dans Gestion du planning). Le modèle STANDARD garde
+          les vues existantes ci-dessous (aucune régression). */}
+      {modele.code !== 'STANDARD' && donneesModele && (
+        <div className="card" style={{ overflowX: 'auto' }}>
+          <PlanningModelEditor
+            modele={modele}
+            jours={jours}
+            employes={employes}
+            valeur={donneesModele}
+            lectureSeule
+          />
+        </div>
+      )}
+
+      <div style={{ margin: '12px 0', display: modele.code !== 'STANDARD' ? 'none' : undefined }}>
         {peutModifier && (
           <button className="btn success" onClick={soumettre}>Soumettre a la RH</button>
         )}
         {planning.statut === 'SOUMIS' && user?.role === 'RH' && (
           <>
             <button className="btn success" onClick={() => validerRH('VALIDE')} style={{ marginRight: 8 }}>
-              ✅ Valider
+              <Check size={14} aria-hidden="true" /> Valider
             </button>
-            <button className="btn danger" onClick={demanderRejet}>❌ Rejeter</button>
+            <button className="btn danger" onClick={demanderRejet}><XCircle size={14} aria-hidden="true" /> Rejeter</button>
           </>
         )}
       </div>
 
       {estRH && vueEmploiDuTemps ? (
-        <VueEmploiDuTemps jours={jours} employes={employes} trouverAffectation={trouverAffectation} totaux={totaux} seuilMin={seuilMin} />
-      ) : (
+        <VueEmploiDuTemps jours={jours} employes={employes} trouverAffectation={trouverAffectation} totaux={totaux} seuilMin={seuilMin} idPlanning={Number(id)} imprimable={planning.statut === 'VALIDE'} />
+      ) : modele.code === 'STANDARD' && (
         <div className="card" style={{ overflowX: 'auto' }}>
           <table>
             <thead>
@@ -355,20 +436,21 @@ export default function PlanningDetailPage() {
 
           {form.statut_jour === 'TRAVAIL' && (
             <div className="form-row">
-              <label>Creneaux (laisser vide si non utilise)</label>
+              <label>
+                Creneaux — saisie décimale (8.5 = 8 h 30) — la période est déduite
+                automatiquement de l&apos;heure de début, comme dans l&apos;Excel
+              </label>
               {PERIODES.map((periode) => (
-                <div key={periode} style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 6 }}>
-                  <span style={{ width: 90 }}>{PERIODE_LABEL[periode]}</span>
-                  <input
-                    type="time"
-                    value={form.creneaux[periode]?.heure_entree || ''}
-                    onChange={(e) => majCreneau(periode, 'heure_entree', e.target.value)}
+                <div key={periode} className="saisie-float-groupe" style={{ marginBottom: 8 }}>
+                  <SaisieHeureFloat
+                    label="Heure début"
+                    valeurHHmm={form.creneaux[periode]?.heure_entree || ''}
+                    onChange={(hhmm) => majCreneau(periode, 'heure_entree', hhmm)}
                   />
-                  <span>-</span>
-                  <input
-                    type="time"
-                    value={form.creneaux[periode]?.heure_sortie || ''}
-                    onChange={(e) => majCreneau(periode, 'heure_sortie', e.target.value)}
+                  <SaisieHeureFloat
+                    label="Heure fin"
+                    valeurHHmm={form.creneaux[periode]?.heure_sortie || ''}
+                    onChange={(hhmm) => majCreneau(periode, 'heure_sortie', hhmm)}
                   />
                 </div>
               ))}
@@ -462,14 +544,35 @@ export default function PlanningDetailPage() {
   );
 }
 
-function VueEmploiDuTemps({ jours, employes, trouverAffectation, totaux, seuilMin = SEUIL_AUTRES_HEURES }) {
+function VueEmploiDuTemps({ jours, employes, trouverAffectation, totaux, seuilMin = SEUIL_AUTRES_HEURES, idPlanning = null, imprimable = false }) {
   function totalDe(id_employe) {
     return totaux.find((t) => t.id_employe === id_employe);
   }
 
+  // Export Excel (fichier généré depuis le modèle de référence du projet,
+  // endpoint existant GET /plannings/:id/emploi-du-temps.xlsx, JWT requis)
+  async function exporterExcel() {
+    try {
+      const flux = await api.getBrut(`/plannings/${idPlanning}/emploi-du-temps.xlsx`);
+      const url = URL.createObjectURL(flux.blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = flux.nomFichier;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      alert('Export impossible : ' + e.message);
+    }
+  }
+
   return (
     <div className="card" style={{ overflowX: 'auto' }}>
-      <LegendeStatuts />
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+        <LegendeStatuts />
+        {imprimable && (
+          <button className="btn secondary" onClick={exporterExcel}>Export Excel</button>
+        )}
+      </div>
       <table className="edt-table">
         <thead>
           <tr>
@@ -568,18 +671,18 @@ function AlerteHeures({ total, seuilMin }) {
   if (alerte.statut === 'MANQUE') {
     return (
       <span className="alerte-heures alerte-manque" title="Heures insuffisantes">
-        🟠 Heures insuffisantes — manque {alerte.manque} h
+        <TriangleAlert size={11} aria-hidden="true" /> Heures insuffisantes — manque {alerte.manque} h
       </span>
     );
   }
   if (alerte.statut === 'EXCES') {
     return (
       <span className="alerte-heures alerte-exces" title="Dépassement important">
-        🔴 Dépassement important — +{alerte.exces} h
+        <CircleAlert size={11} aria-hidden="true" /> Dépassement important — +{alerte.exces} h
       </span>
     );
   }
-  return <span className="alerte-heures alerte-ok" title="Conforme">🟢 Conforme</span>;
+  return <span className="alerte-heures alerte-ok" title="Conforme"><CircleCheck size={11} aria-hidden="true" /> Conforme</span>;
 }
 
 function PageShell({ children, bloquerImpression = false }) {
@@ -587,8 +690,9 @@ function PageShell({ children, bloquerImpression = false }) {
   // par un message — Ctrl+P ne produit aucune copie d'un planning non valide.
   return (
     <div className={bloquerImpression ? 'impression-bloquee' : ''}>
-      <Navbar />
-      <div className="container">{children}</div>
+      <AppShell>
+        <div className="container">{children}</div>
+      </AppShell>
     </div>
   );
 }

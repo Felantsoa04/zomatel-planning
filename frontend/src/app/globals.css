@@ -1,91 +1,280 @@
+/* ======================================================================
+   ZOMATEL PLANNING — THEME GLOBAL
+   Identite visuelle Zomatel : rouge #8B0000 (marque), #B30000 (hover),
+   jaune dore #FFE26F (accent), creme #FFF4C5 (fonds secondaires),
+   blanc pour les grandes surfaces.
+   ====================================================================== */
+
+:root {
+  /* --- Palette Zomatel --- */
+  --zom-rouge: #8B0000;
+  --zom-rouge-hover: #B30000;
+  --zom-rouge-fonce: #6d0000;
+  --zom-or: #FFE26F;
+  --zom-creme: #FFF4C5;
+  --zom-blanc: #ffffff;
+
+  /* --- Surfaces & textes --- */
+  --zom-fond: #f7f5f0;
+  --zom-texte: #292524;
+  --zom-texte-2: #78716c;
+  --zom-bordure: #eae5dc;
+
+  /* --- Couleurs fonctionnelles (conservees) --- */
+  --c-ok: #16a34a;
+  --c-ok-fond: #dcfce7;
+  --c-ok-texte: #166534;
+  --c-warn: #d97706;
+  --c-warn-fond: #fef3c7;
+  --c-warn-texte: #92400e;
+  --c-danger: #dc2626;
+  --c-danger-fond: #fee2e2;
+  --c-danger-texte: #991b1b;
+  --c-info: #1d4ed8;
+  --c-info-fond: #dbeafe;
+  --c-info-texte: #1e40af;
+  --c-violet: #6b21a8;
+  --c-violet-fond: #ede9fe;
+
+  /* --- Divers --- */
+  --radius: 10px;
+  --radius-lg: 14px;
+  --ombre: 0 1px 2px rgba(41, 37, 36, 0.05), 0 1px 3px rgba(41, 37, 36, 0.06);
+  --ombre-hover: 0 4px 14px rgba(41, 37, 36, 0.1);
+  --color-border: var(--zom-bordure);
+  --color-danger: var(--c-danger);
+}
+
 * { box-sizing: border-box; }
 
 body {
   margin: 0;
   font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
-  background: #f4f5f7;
-  color: #1f2430;
+  background: var(--zom-fond);
+  color: var(--zom-texte);
+  font-size: 14px;
 }
 
 a { color: inherit; }
 
+h1 { font-size: 20px; font-weight: 700; margin: 0 0 12px; color: var(--zom-texte); }
+h2 { font-size: 17px; font-weight: 700; margin: 0 0 10px; }
+h3 { font-size: 15px; font-weight: 700; margin: 0 0 10px; }
+h4 { font-size: 14px; font-weight: 700; margin: 0 0 8px; }
+
 .container {
-  max-width: 1100px;
+  max-width: 1160px;
   margin: 0 auto;
-  padding: 24px;
+  /* Padding superieur reduit : les listes/contenus restent proches de la navbar */
+  padding: 14px 24px 20px;
 }
 
+/* ================= NAVBAR (pages hors dashboard) ================= */
 .navbar {
-  background: #1f2430;
+  background: var(--zom-rouge);
   color: #fff;
-  padding: 14px 24px;
+  padding: 10px 20px;
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 12px;
 }
 
-.navbar a { text-decoration: none; color: #fff; margin-right: 16px; font-weight: 500; }
-.navbar .brand { font-weight: 700; font-size: 18px; }
+.navbar a { text-decoration: none; color: #fff; margin-right: 14px; font-weight: 500; opacity: 0.92; }
+.navbar a:hover { opacity: 1; }
 
-.card {
-  background: #fff;
+/* Profil cliquable (Navbar) : avatar + nom, discret et professionnel */
+.navbar-profil {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #fff;
+  opacity: 0.95;
+  margin-right: 6px;
+  padding: 4px 10px 4px 4px;
+  border-radius: 999px;
+  transition: background 0.15s;
+}
+.navbar-profil:hover { background: rgba(255,255,255,0.12); opacity: 1; }
+.navbar-profil small { opacity: 0.8; }
+.navbar-profil-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.18);
+  flex-shrink: 0;
+}
+
+/* Profil cliquable (sidebar DashShell) : bloc avatar + nom au-dessus de Deconnexion */
+.dash-profil {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
   border-radius: 8px;
-  padding: 20px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  color: #fff;
+  text-decoration: none;
+  font-size: 13px;
+  transition: background 0.15s;
+}
+.dash-profil:hover { background: rgba(255,255,255,0.1); }
+.dash-profil-nom {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dash-avatar-lien { text-decoration: none; }
+.dash-avatar-lien:hover { box-shadow: 0 0 0 2px rgba(255,255,255,0.35); }
+.navbar .brand {
+  font-weight: 700; font-size: 16px;
+  display: inline-flex; align-items: center; gap: 8px;
+}
+.navbar .brand img { height: 30px; width: auto; border-radius: 6px; }
+
+/* Monogramme « Z » (lettre seule, couleur principale Zomatel) :
+   pastille blanche carrée arrondie, Z rouge — lisible sur fond rouge. */
+.monogramme-z {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--zom-blanc);
+  color: var(--zom-rouge);
+  border-radius: 9px;
+  font-weight: 800;
+  line-height: 1;
+  flex-shrink: 0;
+  user-select: none;
+}
+
+/* ================= CARTES ================= */
+.card {
+  background: var(--zom-blanc);
+  border: 1px solid var(--zom-bordure);
+  border-radius: var(--radius-lg);
+  padding: 18px 20px;
+  box-shadow: var(--ombre);
   margin-bottom: 16px;
 }
+.card > h3:first-child { color: var(--zom-rouge); }
 
+/* ================= BOUTONS ================= */
 .btn {
-  display: inline-block;
-  padding: 8px 16px;
-  border-radius: 6px;
-  border: none;
-  background: #2f6fed;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: var(--zom-rouge);
   color: #fff;
   font-weight: 600;
   cursor: pointer;
-  font-size: 14px;
+  font-size: 13.5px;
+  line-height: 1.25;
+  text-decoration: none;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
 }
-.btn:hover { background: #2559c4; }
-.btn.secondary { background: #6b7280; }
-.btn.danger { background: #dc2626; }
-.btn.success { background: #16a34a; }
-.btn:disabled { background: #9ca3af; cursor: not-allowed; }
+.btn:hover { background: var(--zom-rouge-hover); }
+.btn.secondary {
+  background: var(--zom-blanc);
+  border-color: var(--zom-rouge);
+  color: var(--zom-rouge);
+}
+.btn.secondary:hover { background: var(--zom-creme); border-color: var(--zom-rouge-hover); color: var(--zom-rouge-hover); }
+.btn.danger { background: var(--zom-blanc); border-color: #fca5a5; color: var(--c-danger-texte); }
+.btn.danger:hover { background: var(--c-danger-fond); border-color: var(--c-danger); }
+.btn.success { background: var(--zom-blanc); border-color: #86efac; color: var(--c-ok-texte); }
+.btn.success:hover { background: var(--c-ok-fond); border-color: var(--c-ok); }
+.btn:disabled { background: #e7e5e4; color: #a8a29e; border-color: #e7e5e4; cursor: not-allowed; }
+.btn.secondary:disabled, .btn.danger:disabled, .btn.success:disabled { background: #fff; color: #d6d3d1; border-color: #e7e5e4; }
 
+/* Boutons-icônes des tableaux (Modifier / Supprimer...) : sobres, carrés */
+.btn-icone {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border-radius: 8px;
+  border: 1px solid var(--zom-bordure);
+  background: var(--zom-blanc);
+  color: var(--zom-texte-2);
+  cursor: pointer;
+  transition: color 0.12s ease, border-color 0.12s ease, background 0.12s ease;
+}
+.btn-icone:hover { color: var(--zom-rouge); border-color: var(--zom-rouge); background: var(--zom-creme); }
+.btn-icone.danger:hover { color: var(--c-danger); border-color: var(--c-danger); background: var(--c-danger-fond); }
+
+/* ================= FORMULAIRES ================= */
 input, select, textarea {
-  padding: 8px 10px;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
-  font-size: 14px;
+  padding: 7px 10px;
+  border: 1px solid #ddd7cc;
+  border-radius: 8px;
+  font-size: 13.5px;
   width: 100%;
+  background: var(--zom-blanc);
+  color: var(--zom-texte);
+  font-family: inherit;
+}
+input:focus, select:focus, textarea:focus {
+  outline: none;
+  border-color: var(--zom-rouge);
+  box-shadow: 0 0 0 3px rgba(139, 0, 0, 0.12);
 }
 
-label { font-size: 13px; font-weight: 600; color: #374151; display: block; margin-bottom: 4px; }
+label { font-size: 12.5px; font-weight: 600; color: #57534e; display: block; margin-bottom: 4px; }
 
 .form-row { margin-bottom: 14px; }
 
-table { width: 100%; border-collapse: collapse; font-size: 14px; }
-th, td { border: 1px solid #e5e7eb; padding: 6px 8px; text-align: left; }
-th { background: #f0f1f4; }
-
-.badge {
-  display: inline-block;
-  padding: 2px 8px;
-  border-radius: 999px;
+/* ================= TABLEAUX ================= */
+table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+th, td { border-bottom: 1px solid var(--zom-bordure); padding: 8px 10px; text-align: left; }
+th {
+  /* En-tete de tableau mate : creme + rouge fonce (au lieu de rouge vif plein) */
+  background: var(--zom-creme);
+  color: var(--zom-rouge-fonce);
   font-size: 12px;
   font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
 }
-.badge.BROUILLON { background: #e5e7eb; color: #374151; }
-.badge.SOUMIS { background: #fef3c7; color: #92400e; }
-.badge.VALIDE { background: #dcfce7; color: #166534; }
-.badge.REJETE { background: #fee2e2; color: #991b1b; }
-.badge.TRAVAIL { background: #dbeafe; color: #1e40af; }
-.badge.REPOS { background: #dcfce7; color: #166534; }
-.badge.ABSENCE { background: #fee2e2; color: #991b1b; }
-.badge.CONGE { background: #ffedd5; color: #9a3412; }
+tbody tr:hover td { background: #fdfbf4; }
 
-.error { color: #dc2626; font-size: 13px; margin-top: 8px; }
-.muted { color: #6b7280; font-size: 13px; }
+/* ================= BADGES (statuts, conservés fonctionnels) ================= */
+.badge {
+  display: inline-block;
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.badge.BROUILLON { background: #f1efe9; color: #57534e; }
+.badge.SOUMIS { background: var(--c-warn-fond); color: var(--c-warn-texte); }
+.badge.VALIDE { background: var(--c-ok-fond); color: var(--c-ok-texte); }
+.badge.REJETE { background: var(--c-danger-fond); color: var(--c-danger-texte); }
+.badge.TRAVAIL { background: var(--c-info-fond); color: var(--c-info-texte); }
+.badge.REPOS { background: var(--c-ok-fond); color: var(--c-ok-texte); }
+.badge.ABSENCE { background: var(--c-danger-fond); color: var(--c-danger-texte); }
+.badge.CONGE { background: #fff1e0; color: #9a3412; }
+
+.error { color: var(--c-danger-texte); font-size: 13px; margin-top: 8px; }
+.muted { color: var(--zom-texte-2); font-size: 12.5px; }
+
+/* Bandeau de succès (messages de confirmation) */
+.bandeau-succes {
+  color: var(--c-ok-texte);
+  background: var(--c-ok-fond);
+  border: 1px solid #bbf7d0;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  margin-bottom: 12px;
+}
 
 .ahl-toolbar {
     display: flex;
@@ -94,7 +283,7 @@ th { background: #f0f1f4; }
     flex-wrap: wrap;
     margin-bottom: 1rem;
   }
-  
+
   .ahl-horaire-edit {
     display: flex;
     align-items: center;
@@ -104,13 +293,13 @@ th { background: #f0f1f4; }
     border-radius: var(--radius);
     padding: 0.2rem 0.4rem;
   }
-  
+
   .ahl-horaire-edit input {
     border: none;
     font-size: 0.8rem;
     width: 70px;
   }
-  
+
   .ahl-suppr {
     border: none;
     background: transparent;
@@ -119,11 +308,11 @@ th { background: #f0f1f4; }
     cursor: pointer;
     font-size: 1rem;
   }
-  
+
   .ahl-select-conteneur {
     position: relative;
   }
-  
+
   .ahl-select-bouton {
     width: 100%;
     min-height: 32px;
@@ -134,7 +323,7 @@ th { background: #f0f1f4; }
     cursor: pointer;
     padding: 0.2rem 0.3rem;
   }
-  
+
   .ahl-select-liste {
     position: absolute;
     top: 100%;
@@ -149,7 +338,7 @@ th { background: #f0f1f4; }
     overflow-y: auto;
     padding: 0.3rem;
   }
-  
+
   .ahl-select-item {
     display: flex;
     align-items: center;
@@ -158,7 +347,7 @@ th { background: #f0f1f4; }
     padding: 0.2rem 0.3rem;
     white-space: nowrap;
   }
-  
+
   .ahl-obs-input {
     width: 100%;
     border: 1px solid var(--color-border);
@@ -174,35 +363,35 @@ th { background: #f0f1f4; }
     font-size: 0.75rem;
     font-weight: 700;
   }
-  
+
   .badge-edt-travail {
-    background: #dbeafe;
-    color: #1d4ed8;
+    background: var(--c-info-fond);
+    color: var(--c-info-texte);
   }
-  
+
   .badge-edt-repos {
-    background: #dcfce7;
-    color: #166534;
+    background: var(--c-ok-fond);
+    color: var(--c-ok-texte);
   }
-  
+
   .badge-edt-absence {
-    background: #fee2e2;
-    color: #b91c1c;
+    background: var(--c-danger-fond);
+    color: var(--c-danger-texte);
   }
 
   .badge-edt-conge {
-    background: #ffedd5;
+    background: #fff1e0;
     color: #9a3412;
   }
 
   .badge-edt-recuperation {
-    background: #dbeafe;
-    color: #1e40af;
+    background: var(--c-info-fond);
+    color: var(--c-info-texte);
   }
 
   .badge-edt-formation {
-    background: #ede9fe;
-    color: #6b21a8;
+    background: var(--c-violet-fond);
+    color: var(--c-violet);
   }
 
   .badge-edt-non_planifie {
@@ -212,12 +401,12 @@ th { background: #f0f1f4; }
 
   /* Fond de CELLULE selon le statut (emploi du temps) : teintes claires,
      texte intact — aucun changement de structure ni de donnees. */
-  .edt-statut-REPOS { background: #dcfce7; }
-  .edt-statut-ABSENCE, .edt-statut-ABSENT { background: #fee2e2; }
-  .edt-statut-CONGE { background: #ffedd5; }
-  .edt-statut-RECUPERATION, .edt-statut-RECUP { background: #dbeafe; }
-  .edt-statut-FORMATION { background: #ede9fe; }
-  .edt-statut-NON_PLANIFIE { background: #f3f4f6; }
+  .edt-statut-REPOS { background: var(--c-ok-fond); }
+  .edt-statut-ABSENCE, .edt-statut-ABSENT { background: var(--c-danger-fond); }
+  .edt-statut-CONGE { background: #fff1e0; }
+  .edt-statut-RECUPERATION, .edt-statut-RECUP { background: var(--c-info-fond); }
+  .edt-statut-FORMATION { background: var(--c-violet-fond); }
+  .edt-statut-NON_PLANIFIE { background: #f5f5f4; }
 
   /* Legende des statuts (au-dessus des tableaux de planning) */
   .legende-statuts {
@@ -226,7 +415,7 @@ th { background: #f0f1f4; }
     gap: 6px 16px;
     align-items: center;
     font-size: 12.5px;
-    color: #374151;
+    color: #57534e;
     margin: 2px 0 8px;
   }
   .legende-item { display: inline-flex; align-items: center; gap: 5px; }
@@ -235,60 +424,68 @@ th { background: #f0f1f4; }
      Regle metier : Administration min 44 h, autres services min 48 h ;
      rouge uniquement pour un depassement important (seuil + 8 h). */
   .alerte-heures {
-    display: inline-block;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
     margin-left: 8px;
     padding: 1px 8px;
     border-radius: 999px;
     font-size: 11.5px;
     font-weight: 600;
     white-space: nowrap;
+    vertical-align: middle;
   }
-  .alerte-manque { background: #ffedd5; color: #9a3412; }
-  .alerte-ok { background: #dcfce7; color: #166534; }
-  .alerte-exces { background: #fee2e2; color: #991b1b; }
+  .alerte-manque { background: #fff1e0; color: #9a3412; }
+  .alerte-ok { background: var(--c-ok-fond); color: var(--c-ok-texte); }
+  .alerte-exces { background: var(--c-danger-fond); color: var(--c-danger-texte); }
 
   .edt-table th, .edt-table td {
-    border: 1px solid #ccc;
+    border: 1px solid #e5e0d6;
     padding: 4px 6px;
     text-align: center;
     font-size: 0.8rem;
   }
+  /* En-tete mate : fond creme + texte rouge fonce (grande surface sans rouge vif) */
+  .edt-table thead th { background: var(--zom-creme); color: var(--zom-rouge-fonce); }
+  .edt-table tbody tr:hover td { background: transparent; }
 
   .edt-cellule-periode { min-width: 75px; }
   .edt-total-jour, .edt-total-hebdo { font-weight: 700; }
   .edt-depassement td { background: #fff5f5; }
-  .edt-total-depassement { color: #b91c1c; }
+  .edt-total-depassement { color: var(--c-danger-texte); }
 
-  /* ================= NOTIFICATIONS 🔔 ================= */
+  /* ================= NOTIFICATIONS ================= */
   .notif-wrap { position: relative; display: inline-block; }
 
   .notif-btn {
     position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     background: transparent;
     border: none;
-    font-size: 20px;
-    line-height: 1;
     cursor: pointer;
-    padding: 6px 8px;
-    border-radius: 6px;
+    padding: 7px;
+    border-radius: 8px;
+    color: inherit;
   }
-  .notif-btn:hover { background: rgba(255, 255, 255, 0.12); }
+  .notif-btn:hover { background: rgba(255, 255, 255, 0.14); }
 
   .notif-badge {
     position: absolute;
-    top: -2px;
-    right: -4px;
-    background: #dc2626;
-    color: #fff;
-    font-size: 11px;
+    top: -1px;
+    right: -3px;
+    background: var(--zom-or);
+    color: #5c4a00;
+    font-size: 10.5px;
     font-weight: 700;
-    min-width: 18px;
-    height: 18px;
-    line-height: 18px;
+    min-width: 17px;
+    height: 17px;
+    line-height: 17px;
     text-align: center;
     border-radius: 999px;
     padding: 0 4px;
-    box-shadow: 0 0 0 2px #1f2430;
+    box-shadow: 0 0 0 2px var(--zom-rouge);
   }
 
   .notif-dropdown {
@@ -298,9 +495,10 @@ th { background: #f0f1f4; }
     width: 360px;
     max-width: calc(100vw - 24px);
     background: #fff;
-    color: #1f2430;
-    border-radius: 10px;
-    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.18);
+    color: var(--zom-texte);
+    border: 1px solid var(--zom-bordure);
+    border-radius: 12px;
+    box-shadow: 0 8px 30px rgba(41, 37, 36, 0.18);
     overflow: hidden;
     z-index: 100;
   }
@@ -309,23 +507,23 @@ th { background: #f0f1f4; }
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 12px 14px;
-    border-bottom: 1px solid #e5e7eb;
-    background: #f9fafb;
-    font-size: 14px;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--zom-bordure);
+    background: #fdfbf4;
+    font-size: 13.5px;
   }
 
   .notif-tout-lu {
     background: transparent;
     border: none;
-    color: #2f6fed;
+    color: var(--zom-rouge);
     font-size: 12px;
     font-weight: 600;
     cursor: pointer;
     padding: 4px 6px;
     border-radius: 6px;
   }
-  .notif-tout-lu:hover { background: #eef4ff; }
+  .notif-tout-lu:hover { background: var(--zom-creme); }
 
   .notif-liste { max-height: 400px; overflow-y: auto; }
 
@@ -335,14 +533,14 @@ th { background: #f0f1f4; }
     text-align: left;
     background: #fff;
     border: none;
-    border-bottom: 1px solid #f0f1f4;
+    border-bottom: 1px solid #f4f1ea;
     padding: 10px 14px;
     cursor: pointer;
     font-size: 13px;
   }
-  .notif-item:hover { background: #f6f8fb; }
-  .notif-item.notif-non-lue { background: #eef4ff; }
-  .notif-item.notif-non-lue:hover { background: #e3edff; }
+  .notif-item:hover { background: #faf7ee; }
+  .notif-item.notif-non-lue { background: var(--zom-creme); }
+  .notif-item.notif-non-lue:hover { background: #fdf0c2; }
 
   .notif-item-haut { display: flex; align-items: center; gap: 8px; }
 
@@ -350,14 +548,14 @@ th { background: #f0f1f4; }
     width: 8px;
     height: 8px;
     min-width: 8px;
-    background: #2f6fed;
+    background: var(--zom-rouge);
     border-radius: 50%;
   }
 
   .notif-titre { font-weight: 600; }
 
   .notif-message {
-    color: #4b5563;
+    color: #57534e;
     font-size: 12.5px;
     margin-top: 3px;
   }
@@ -365,37 +563,37 @@ th { background: #f0f1f4; }
   .notif-date {
     display: flex;
     justify-content: space-between;
-    color: #9ca3af;
+    color: #a8a29e;
     font-size: 11.5px;
     margin-top: 5px;
   }
 
-  .notif-lien { color: #2f6fed; font-weight: 600; }
+  .notif-lien { color: var(--zom-rouge); font-weight: 600; }
 
   .notif-empty {
     text-align: center;
-    color: #6b7280;
+    color: var(--zom-texte-2);
     font-size: 13px;
     padding: 28px 14px;
   }
 
   /* ================= MOTIF DE REJET ================= */
   .motif-rejet-box {
-    background: #fee2e2;
+    background: var(--c-danger-fond);
     border: 1px solid #fca5a5;
-    border-left: 4px solid #dc2626;
+    border-left: 4px solid var(--c-danger);
     color: #7f1d1d;
     border-radius: 8px;
     padding: 12px 16px;
     margin: 12px 0;
     font-size: 14px;
   }
-  .motif-rejet-titre { font-weight: 700; margin-bottom: 4px; }
+  .motif-rejet-titre { font-weight: 700; margin-bottom: 4px; display: flex; align-items: center; gap: 6px; }
 
   .modal-overlay {
     position: fixed;
     inset: 0;
-    background: rgba(15, 23, 42, 0.55);
+    background: rgba(41, 37, 36, 0.5);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -405,8 +603,8 @@ th { background: #f0f1f4; }
 
   .motif-modal {
     background: #fff;
-    border-radius: 10px;
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 12px 40px rgba(41, 37, 36, 0.25);
     width: 100%;
     max-width: 480px;
     padding: 20px 22px;
@@ -445,6 +643,7 @@ th { background: #f0f1f4; }
     .card {
       overflow: visible !important;
       box-shadow: none !important;
+      border: none !important;
       padding: 8px !important;
       margin-bottom: 8px !important;
     }
@@ -474,75 +673,158 @@ th { background: #f0f1f4; }
     }
   }
 
-  /* ================= BOUTON RETOUR ================= */
+  /* ---------- En-tête et pied d'impression professionnels ----------
+     Bandeau imprimé en haut de la 1re page (titre/service/semaine) et
+     pied discret en bas de chaque page (établissement + date d'édition).
+     Aucune URL technique : les liens (href) ne sortent jamais sur papier
+     (a[href]::after masqué) et le footer navigateur est neutralisé par le
+     bloc ci-dessous (aucun texte parasite). */
+  @media print {
+    /* Aucune URL visible derrière les liens (comportement navigateur) */
+    a[href]::after { content: none !important; }
+    /* Masque les éléments purement écran restants (boutons divers) */
+    .btn-icone, .msg-erreur, .pm-voile, .ahl-select-liste { display: none !important; }
+
+    /* Pied de page : généré par la classe .pied-impression de la page */
+    .pied-impression {
+      display: block !important;
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      padding: 6px 0;
+      border-top: 1px solid #999;
+      font-size: 9px;
+      color: #444;
+      text-align: center;
+      background: #fff;
+    }
+    .pied-impression .pied-gauche { float: left; padding-left: 8mm; }
+    .pied-impression .pied-droite { float: right; padding-right: 8mm; }
+    /* Espace réservé pour que le contenu ne soit pas recouvert */
+    .container { padding-bottom: 14mm !important; }
+
+    /* Pagination : chaque page porte le pied, aucune ligne coupée */
+    @page { margin: 10mm 8mm 14mm; }
+  }
+  /* À l'écran, le pied d'impression n'existe pas */
+  .pied-impression { display: none; }
+
+  /* ================= BOUTON RETOUR (icone seule) =================
+     Carre discret, centre parfait de l'icone, grande zone cliquable
+     (desktop et mobile), etats sobre : fond creme + accent rouge mate. */
   .btn-retour {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
-    background: transparent;
-    border: 1px solid #d1d5db;
-    color: #374151;
-    font-size: 13px;
-    font-weight: 600;
-    padding: 6px 12px;
-    border-radius: 6px;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    flex: 0 0 auto;
+    background: var(--zom-blanc);
+    border: 1px solid var(--zom-bordure);
+    border-radius: 8px;
+    color: #57534e;
     cursor: pointer;
     margin-bottom: 12px;
+    box-shadow: 0 1px 2px rgba(41, 37, 36, 0.05);
+    transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
   }
-  .btn-retour:hover { background: #eef1f5; border-color: #9ca3af; }
-  .btn-retour span { font-size: 15px; line-height: 1; }
+  .btn-retour:hover { background: var(--zom-creme); border-color: var(--zom-rouge); color: var(--zom-rouge); }
+  .btn-retour:focus-visible {
+    outline: none;
+    border-color: var(--zom-rouge);
+    box-shadow: 0 0 0 3px rgba(139, 0, 0, 0.15);
+  }
+  .btn-retour:active {
+    background: var(--zom-creme);
+    border-color: var(--zom-rouge-fonce);
+    color: var(--zom-rouge-fonce);
+    transform: translateY(1px);
+  }
+  .btn-retour svg { display: block; }
 
   @media (max-width: 640px) {
     .notif-dropdown { width: calc(100vw - 16px); right: -60px; }
     .navbar { flex-wrap: wrap; gap: 8px; }
     .navbar a { margin-right: 10px; }
-    .btn-retour { padding: 8px 14px; }
+    .btn-retour { width: 38px; height: 38px; }
   }
 /* ======================================================================
    DASHBOARDS ZOMATEL (Administrateur / RH / Chef de service)
-   Sidebar + topbar + cartes stats + graphiques CSS. L'Employe n'a pas
-   d'espace dans l'application (donnees uniquement, affectations planning).
+   Sidebar + topbar + cartes stats. L'Employe n'a pas d'espace dans
+   l'application (donnees uniquement, affectations planning).
    ====================================================================== */
+
+/* Stabilite du layout : le gutter de scrollbar est toujours reserve, sinon
+   chaque changement de page (contenu plus ou moins long) ou l'ouverture d'une
+   modale (body overflow hidden) fait apparaître/disparaître la scrollbar et
+   DECALE horizontalement toute la page, sidebar comprise. */
+html { scrollbar-gutter: stable; }
 
 .dash-layout { display: flex; min-height: 100vh; }
 
 /* ---------- Sidebar ---------- */
 .dash-sidebar {
   width: 240px;
-  background: #111827;
-  color: #e5e7eb;
+  min-width: 240px; /* largeur constante : jamais ecrasee par le contenu */
+  max-width: 240px;
+  background: var(--zom-rouge);
+  color: #fff;
   display: flex;
   flex-direction: column;
-  position: sticky;
+  position: fixed; /* FIXE : toujours visible, le contenu defile seul */
   top: 0;
+  left: 0;
   height: 100vh;
-  flex-shrink: 0;
+  height: 100dvh; /* mobile : suit la barre d'adresse, pas de saut au scroll */
+  overflow: hidden;
+  z-index: 30; /* sous les modales (200), au-dessus du contenu */
+}
+
+/* Le contenu principal est decale de la largeur du sidebar fixe.
+   La page defile NORMALEMENT : une seule scrollbar, le menu reste en place. */
+.dash-contenu {
+  margin-left: 240px;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .dash-brand {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 18px 16px;
-  border-bottom: 1px solid rgba(255,255,255,0.08);
+  padding: 16px;
+  border-bottom: 1px solid rgba(255,255,255,0.14);
 }
 .dash-logo {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 38px; height: 38px;
+  width: 40px; height: 40px;
   border-radius: 10px;
-  background: linear-gradient(135deg, #2f6fed, #1e3a8a);
-  color: #fff;
-  font-weight: 800;
-  font-size: 14px;
+  overflow: hidden;
+  background: #160d08;
   flex-shrink: 0;
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.25);
 }
+.dash-logo img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .dash-brand-texte { display: flex; flex-direction: column; line-height: 1.2; }
-.dash-brand-texte strong { font-size: 15px; color: #fff; }
-.dash-brand-texte small { font-size: 11px; color: #9ca3af; }
+.dash-brand-texte strong { font-size: 16px; color: #fff; }
+.dash-brand-texte small { font-size: 11px; color: var(--zom-or); }
+/* Monogramme « Z » de la sidebar : légèrement agrandi, couleur principale
+   Zomatel (rouge) sur pastille blanche, proportion équilibrée avec le texte. */
+.dash-logo-z {
+  width: 42px;
+  height: 42px;
+  border-radius: 11px;
+  font-size: 26px;
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.25), 0 1px 3px rgba(0,0,0,0.25);
+}
 
-.dash-nav { flex: 1; padding: 14px 10px; display: flex; flex-direction: column; gap: 2px; }
+/* Le menu defile EN INTERNE si trop long : la sidebar ne grandit jamais
+   et ne pousse jamais le contenu principal. */
+.dash-nav { flex: 1; min-height: 0; overflow-y: auto; padding: 14px 10px; display: flex; flex-direction: column; gap: 2px; }
 
 .dash-lien {
   display: flex;
@@ -551,108 +833,137 @@ th { background: #f0f1f4; }
   padding: 9px 12px;
   border-radius: 8px;
   text-decoration: none;
-  color: #cbd5e1;
-  font-size: 14px;
+  color: rgba(255,255,255,0.88);
+  font-size: 13.5px;
   font-weight: 500;
   transition: background 0.15s, color 0.15s;
 }
-.dash-lien:hover { background: rgba(255,255,255,0.07); color: #fff; }
-.dash-lien.actif { background: #2f6fed; color: #fff; font-weight: 600; }
-.dash-icone { width: 20px; text-align: center; flex-shrink: 0; }
+.dash-lien:hover { background: rgba(255,255,255,0.1); color: #fff; }
+.dash-lien.actif { background: var(--zom-rouge-hover); color: #fff; font-weight: 600; }
+.dash-lien.actif .dash-icone { color: var(--zom-or); }
+.dash-icone { display: inline-flex; width: 20px; justify-content: center; flex-shrink: 0; color: inherit; }
 
-.dash-sidebar-pied { padding: 12px 10px; border-top: 1px solid rgba(255,255,255,0.08); display: flex; flex-direction: column; gap: 6px; }
+.dash-sidebar-pied { padding: 12px 10px; border-top: 1px solid rgba(255,255,255,0.14); display: flex; flex-direction: column; gap: 6px; }
 .dash-deconnexion {
   display: flex; align-items: center; gap: 8px;
   width: 100%;
   background: transparent;
-  border: 1px solid rgba(255,255,255,0.15);
-  color: #fca5a5;
+  border: 1px solid rgba(255,255,255,0.28);
+  color: #fff;
   padding: 8px 12px;
   border-radius: 8px;
   cursor: pointer;
   font-size: 13px;
+  transition: background 0.15s, border-color 0.15s;
 }
-.dash-deconnexion:hover { background: rgba(220,38,38,0.15); border-color: #dc2626; color: #fff; }
+.dash-deconnexion:hover { background: rgba(0,0,0,0.18); border-color: var(--zom-or); color: var(--zom-or); }
 
 /* ---------- Contenu / topbar ---------- */
-.dash-contenu { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 
 .dash-topbar {
   display: flex;
   align-items: center;
   gap: 14px;
   background: #fff;
-  border-bottom: 1px solid #e5e7eb;
-  padding: 12px 24px;
+  border-bottom: 1px solid var(--zom-bordure);
+  padding: 10px 20px;
   position: sticky;
   top: 0;
   z-index: 20;
 }
-.dash-burger { display: none; background: none; border: 1px solid #e5e7eb; border-radius: 8px; font-size: 16px; padding: 6px 10px; cursor: pointer; }
-.dash-topbar-titre { font-size: 15px; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dash-burger {
+  display: none;
+  background: none;
+  border: 1px solid var(--zom-bordure);
+  border-radius: 8px;
+  padding: 6px;
+  cursor: pointer;
+  color: var(--zom-texte);
+  line-height: 0;
+}
+.dash-topbar-titre { font-size: 14.5px; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .dash-topbar-droite { display: flex; align-items: center; gap: 12px; }
 
 .dash-avatar {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 36px; height: 36px;
+  width: 34px; height: 34px;
   border-radius: 50%;
-  background: #1e3a8a;
+  background: var(--zom-rouge);
   color: #fff;
-  font-size: 13px;
+  font-size: 12.5px;
   font-weight: 700;
   flex-shrink: 0;
 }
 
-.dash-main { padding: 24px; background: #f4f5f7; flex: 1; }
-.dash-titre { margin: 0 0 4px; font-size: 22px; }
-.dash-soustitre { margin: 0 0 20px; color: #6b7280; font-size: 14px; }
+.dash-main { padding: 14px 20px 20px; background: var(--zom-fond); flex: 1; min-width: 0; }
+.dash-titre { margin: 0 0 4px; font-size: 19px; font-weight: 700; }
+.dash-soustitre { margin: 0 0 18px; color: var(--zom-texte-2); font-size: 13px; }
 
-/* ---------- Cartes statistiques ---------- */
+/* ---------- Cartes statistiques (compactes : memes hauteurs, largeurs
+   coherentes via la grille, chiffres principaux bien visibles) ---------- */
 .dash-stats {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: 14px;
-  margin-bottom: 22px;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 12px;
+  margin-bottom: 18px;
 }
 .dash-stat {
   background: #fff;
   border-radius: 12px;
-  padding: 16px 18px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.07);
-  border-left: 4px solid #2f6fed;
+  padding: 11px 13px;
+  box-shadow: var(--ombre);
+  border: 1px solid var(--zom-bordure);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  position: relative;
 }
-.dash-stat .valeur { font-size: 26px; font-weight: 800; line-height: 1.1; }
-.dash-stat .libelle { font-size: 13px; color: #6b7280; margin-top: 2px; }
-.dash-stat-bleu { border-left-color: #2f6fed; }
-.dash-stat-vert { border-left-color: #16a34a; }
-.dash-stat-orange { border-left-color: #f59e0b; }
-.dash-stat-rouge { border-left-color: #dc2626; }
-.dash-stat-violet { border-left-color: #7c3aed; }
-.dash-stat-gris { border-left-color: #9ca3af; }
+.dash-stat .stat-icone {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 6px;
+  background: var(--zom-creme);
+  color: var(--zom-rouge);
+}
+.dash-stat-rouge .stat-icone { background: var(--c-danger-fond); color: var(--c-danger-texte); }
+.dash-stat-vert .stat-icone { background: var(--c-ok-fond); color: var(--c-ok-texte); }
+.dash-stat-orange .stat-icone { background: var(--c-warn-fond); color: var(--c-warn-texte); }
+.dash-stat-bleu .stat-icone { background: var(--c-info-fond); color: var(--c-info-texte); }
+.dash-stat-gris .stat-icone { background: #f1efe9; color: #57534e; }
+.dash-stat .valeur { font-size: 22px; font-weight: 800; line-height: 1.1; letter-spacing: -0.02em; }
+.dash-stat .libelle { font-size: 12px; color: var(--zom-texte-2); margin-top: 2px; }
+.dash-stat-lien { cursor: pointer; text-decoration: none; color: inherit; transition: transform 0.12s ease, box-shadow 0.12s ease; }
+.dash-stat-lien:hover { transform: translateY(-2px); box-shadow: var(--ombre-hover); border-color: var(--zom-rouge); }
+.dash-stat-lien .libelle::after { content: " →"; opacity: 0.55; }
 
 /* ---------- Sections & graphiques ---------- */
 .dash-grille {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
   gap: 16px;
-  margin-bottom: 22px;
+  margin-bottom: 20px;
 }
 .dash-carte {
   background: #fff;
-  border-radius: 12px;
-  padding: 18px 20px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.07);
+  border-radius: var(--radius-lg);
+  padding: 16px 18px;
+  box-shadow: var(--ombre);
+  border: 1px solid var(--zom-bordure);
 }
-.dash-carte h3 { margin: 0 0 14px; font-size: 15px; color: #111827; }
+.dash-carte h3 { margin: 0 0 12px; font-size: 14px; color: var(--zom-texte); }
 
 .dash-bars { display: flex; flex-direction: column; gap: 10px; }
 .dash-bar-row { display: flex; align-items: center; gap: 10px; font-size: 13px; }
-.dash-bar-label { width: 110px; flex-shrink: 0; color: #374151; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.dash-bar-track { flex: 1; height: 14px; background: #eef1f5; border-radius: 999px; overflow: hidden; }
+.dash-bar-label { width: 110px; flex-shrink: 0; color: #57534e; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dash-bar-track { flex: 1; height: 12px; background: #f1efe9; border-radius: 999px; overflow: hidden; }
 .dash-bar-fill { display: block; height: 100%; border-radius: 999px; }
-.dash-bar-value { width: 40px; text-align: right; font-weight: 700; color: #111827; }
+.dash-bar-value { width: 40px; text-align: right; font-weight: 700; color: var(--zom-texte); }
 
 .dash-donut-wrap { display: flex; align-items: center; gap: 22px; flex-wrap: wrap; }
 .dash-donut {
@@ -672,39 +983,47 @@ th { background: #f0f1f4; }
   align-items: center;
   justify-content: center;
 }
-.dash-donut-trou strong { font-size: 24px; }
-.dash-donut-trou span { font-size: 11px; color: #6b7280; }
+.dash-donut-trou strong { font-size: 22px; }
+.dash-donut-trou span { font-size: 11px; color: var(--zom-texte-2); }
 .dash-donut-legende { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 7px; font-size: 13px; }
 .dash-donut-legende li { display: flex; align-items: center; gap: 8px; }
 .dash-pastille { width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0; }
 
 /* ---------- Tableau derniers plannings ---------- */
-.dash-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.dash-table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
 .dash-table th {
   text-align: left;
-  font-size: 12px;
+  font-size: 11.5px;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: #6b7280;
-  border-bottom: 2px solid #e5e7eb;
+  color: #57534e;
+  background: #fdfbf4;
+  border-bottom: 1px solid var(--zom-bordure);
+  border-top: none;
   padding: 8px 10px;
 }
-.dash-table td { padding: 10px; border-bottom: 1px solid #f0f1f3; }
-.dash-table tr:hover td { background: #f8fafc; }
+.dash-table td { padding: 9px 10px; border-bottom: 1px solid #f4f1ea; }
+.dash-table tr:hover td { background: #fdfbf4; }
+.dash-table tr:hover td.swv-courante { background: var(--zom-creme); }
 
 /* ---------- Responsive ---------- */
 @media (max-width: 900px) {
   .dash-sidebar {
     position: fixed;
     left: -260px;
+    width: 240px;
+    min-width: 240px;
+    max-width: 240px;
     transition: left 0.2s ease;
     z-index: 50;
     box-shadow: 0 0 30px rgba(0,0,0,0.25);
   }
+  /* Sidebar masquee : le contenu reprend toute la largeur */
+  .dash-contenu { margin-left: 0; }
   .dash-sidebar.ouverte { left: 0; }
   .dash-voile { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 40; }
   .dash-burger { display: block; }
-  .dash-main { padding: 16px; }
+  .dash-main { padding: 14px; }
 }
 
 /* Impression : le dashboard reste a l'ecran, sortie propre */
@@ -713,19 +1032,1119 @@ th { background: #f0f1f4; }
   .dash-main { padding: 0; background: #fff; }
 }
 
-/* Tuiles d'acces rapide du dashboard */
-.dash-acces { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; }
-.dash-acces-lien {
-  display: flex; align-items: center; gap: 10px;
-  padding: 12px 14px;
-  background: #f8fafc;
-  border: 1px solid #e5e7eb;
-  border-radius: 10px;
-  text-decoration: none;
-  color: #1f2430;
-  font-size: 14px;
-  font-weight: 500;
-  transition: background 0.15s, border-color 0.15s;
+/* ==================== EMPLOYES PAR SERVICE (dashboard) ==================== */
+.eps-tete {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
 }
-.dash-acces-lien:hover { background: #eef4ff; border-color: #2f6fed; }
-.dash-acces-icone { font-size: 18px; }
+.eps-barre-outils { display: flex; gap: 10px; flex-wrap: wrap; }
+.eps-recherche { min-width: 220px; }
+.eps-grille {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(310px, 1fr));
+  gap: 14px;
+}
+.eps-carte {
+  border: 1px solid var(--zom-bordure);
+  border-radius: var(--radius-lg);
+  background: #fff;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  transition: box-shadow 0.15s ease, transform 0.15s ease, border-color 0.15s ease;
+}
+.eps-carte-cliquable { cursor: pointer; }
+.eps-carte-cliquable:hover { transform: translateY(-2px); border-color: var(--zom-rouge); box-shadow: var(--ombre-hover); }
+.eps-carte-cliquable:hover .eps-nom { color: var(--zom-rouge); }
+.eps-carte-tete {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #f4f1ea;
+  margin-bottom: 8px;
+}
+.eps-icone {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: var(--zom-creme);
+  color: var(--zom-rouge);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.eps-nom { margin: 0; font-size: 14px; font-weight: 700; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.eps-compteur { font-size: 12px; font-weight: 700; color: var(--zom-rouge); background: var(--zom-creme); border-radius: 999px; padding: 3px 10px; white-space: nowrap; }
+.eps-liste { list-style: none; margin: 0 0 10px; padding: 0; flex: 1; }
+.eps-employe {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 0;
+  border-bottom: 1px dashed #eee9de;
+}
+.eps-employe:last-child { border-bottom: none; }
+.eps-employe-nom { font-size: 13px; font-weight: 600; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.eps-employe-droite { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
+.eps-matricule { font-size: 12px; color: var(--zom-texte-2); font-family: ui-monospace, monospace; }
+.eps-matricule-vide { color: #d6d3d1; }
+.eps-vide { color: var(--zom-texte-2); font-size: 13px; font-style: italic; margin: 10px 0; }
+.eps-carte-pied { display: flex; gap: 14px; padding-top: 8px; border-top: 1px solid #f4f1ea; }
+.eps-lien { font-size: 13px; font-weight: 600; color: var(--zom-rouge); text-decoration: none; }
+.eps-lien:hover { text-decoration: underline; }
+.eps-erreur {
+  background: var(--c-danger-fond);
+  border: 1px solid #fecaca;
+  border-radius: 10px;
+  padding: 14px 16px;
+  color: var(--c-danger-texte);
+  margin-bottom: 12px;
+}
+.eps-compteur-recherche { font-size: 13px; color: var(--zom-texte-2); margin: 0 0 10px; }
+.eps-lien-reset { background: none; border: none; color: var(--zom-rouge); cursor: pointer; font-weight: 600; padding: 0; }
+/* Squelettes de chargement */
+.eps-squelette { gap: 8px; }
+.eps-sk-ligne { height: 12px; border-radius: 6px; background: linear-gradient(90deg, #f3f4f6 25%, #e9ecef 50%, #f3f4f6 75%); background-size: 200% 100%; animation: eps-shimmer 1.4s infinite; }
+.eps-sk-titre { height: 18px; width: 55%; margin-bottom: 6px; }
+@keyframes eps-shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+.eps-chargement { grid-column: 1 / -1; text-align: center; }
+/* Badges statut employe (valeurs ENUM MariaDB, affichage seul) */
+.badge.TITULAIRE { background: var(--c-info-fond); color: var(--c-info-texte); }
+.badge.STAGIAIRE { background: var(--c-warn-fond); color: var(--c-warn-texte); }
+/* Mobile : une seule colonne */
+@media (max-width: 640px) {
+  .eps-grille { grid-template-columns: 1fr; }
+  .eps-recherche { min-width: 0; width: 100%; }
+}
+
+/* ============ Pagination plannings ============ */
+.dash-pagination { display: flex; align-items: center; gap: 14px; margin-top: 12px; flex-wrap: wrap; }
+.dash-vide { padding: 14px 0; }
+.dash-donut-vide { background: #f1efe9 !important; }
+
+/* ============ Repartition des plannings par statut (dashboard) ============ */
+.stat-repartition {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.stat-repartition-item {
+  flex: 1 1 150px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border: 1px solid var(--zom-bordure);
+  border-radius: 10px;
+  background: #fdfbf4;
+  text-decoration: none;
+  color: var(--zom-texte);
+  transition: border-color 0.12s ease, box-shadow 0.12s ease;
+}
+.stat-repartition-item:hover { border-color: var(--zom-rouge); box-shadow: var(--ombre); }
+.stat-repartition-pastille { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.stat-repartition-nombre { font-size: 18px; font-weight: 800; }
+.stat-repartition-label { font-size: 12.5px; color: var(--zom-texte-2); }
+
+/* ============ PARTIE PLANNING RH : cartes services cliquables ============ */
+.rh-services-grille {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 12px;
+}
+.rh-service-carte {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--zom-bordure);
+  border-radius: 10px;
+  background: #fdfbf4;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  color: var(--zom-texte);
+  transition: border-color 0.12s ease, box-shadow 0.12s ease, transform 0.12s ease;
+}
+.rh-service-carte:hover { border-color: var(--zom-rouge); box-shadow: var(--ombre); }
+.rh-service-carte:focus-visible { outline: 2px solid var(--zom-rouge); outline-offset: 2px; }
+.rh-service-carte:active { transform: translateY(1px); }
+.rh-service-icone {
+  width: 36px;
+  height: 36px;
+  border-radius: 9px;
+  background: var(--zom-creme);
+  color: var(--zom-rouge);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.rh-service-info { min-width: 0; }
+.rh-service-nom { font-weight: 700; font-size: 13.5px; }
+.rh-service-meta {
+  font-size: 12px;
+  color: var(--zom-texte-2);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.rh-mini-badge { font-size: 10.5px; padding: 1px 7px; border-radius: 999px; font-weight: 600; }
+.rh-mini-valide { background: var(--c-ok-fond); color: var(--c-ok-texte); }
+.rh-mini-soumis { background: var(--c-warn-fond); color: var(--c-warn-texte); }
+.rh-service-fleche { color: var(--zom-texte-2); flex-shrink: 0; }
+.rh-export-indispo { opacity: 0.35; cursor: not-allowed; }
+
+/* ---- EMPLOI DU TEMPS RH : sélection PAR SEMAINE (S40 ▼) ---- */
+/* La semaine est le critère de sélection/export ; les dates début/fin ne
+   sont que des informations affichées. Iconographie : lucide-react seul. */
+.rh-edt-barre {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+  border: 1px solid var(--zom-bordure);
+  border-radius: 10px;
+  background: #fdfbf4;
+}
+.rh-edt-label { font-weight: 700; font-size: 13px; }
+.rh-edt-select { width: auto; min-width: 220px; font-weight: 600; }
+.rh-edt-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+  border: 1px solid var(--zom-bordure);
+  border-radius: 10px;
+  background: #fdfbf4;
+}
+.rh-edt-compteur {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--zom-rouge);
+  white-space: nowrap;
+}
+.rh-edt-message {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 12px;
+  padding: 9px 12px;
+  border-radius: 9px;
+  font-size: 13px;
+}
+.rh-edt-message-ok {
+  background: var(--c-ok-fond, #e7f6ec);
+  color: var(--c-ok-texte, #166534);
+}
+.rh-edt-message-erreur {
+  background: var(--c-danger-fond, #fdecec);
+  color: var(--c-danger-texte, #991b1b);
+}
+@keyframes zom-spin { to { transform: rotate(360deg); } }
+.spin { animation: zom-spin 0.9s linear infinite; }
+
+/* ============ GRILLES MULTI-MODÈLES DE PLANNING ============ */
+/* Une classe commune (pm-*) pour tous les modèles : SECURITE (shifts ×
+   postes), HORAIRE_LIBRE (jours × colonnes horaires). Sobre, pro, imprimable. */
+.pm-conteneur { min-width: 0; }
+.pm-toolbar {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 10px;
+  font-size: 12.5px; color: var(--zom-texte-2);
+}
+.pm-horaire-edit {
+  display: inline-flex; align-items: center; gap: 4px;
+  border: 1px solid var(--zom-bordure); border-radius: 8px; padding: 3px 6px;
+  background: var(--zom-creme, #faf7f0);
+}
+.pm-horaire-edit input { border: none; background: none; font: inherit; font-size: 12px; width: 84px; outline: none; }
+.pm-suppr { border: none; background: none; cursor: pointer; color: var(--zom-texte-2); display: flex; padding: 2px; }
+.pm-suppr:hover { color: var(--c-danger, #dc2626); }
+.pm-table { border-collapse: collapse; width: 100%; font-size: 13px; }
+.pm-table th {
+  background: var(--zom-creme, #faf7f0); border: 1px solid var(--zom-bordure);
+  padding: 7px 9px; font-size: 12px; white-space: nowrap; text-align: left;
+}
+.pm-table td { border: 1px solid var(--zom-bordure); padding: 4px 6px; }
+.pm-jour { font-weight: 800; background: var(--zom-creme, #faf7f0); white-space: nowrap; }
+.pm-shift { font-weight: 700; font-size: 12px; color: var(--zom-texte-2); white-space: nowrap; }
+.pm-case { position: relative; min-width: 130px; }
+.pm-case-btn {
+  width: 100%; min-height: 26px; border: 1px dashed transparent; background: none;
+  font: inherit; font-size: 12.5px; cursor: pointer; color: var(--zom-texte);
+  display: inline-flex; align-items: center; justify-content: center; gap: 4px;
+  border-radius: 6px; padding: 2px 4px; text-align: center;
+}
+.pm-case-btn:hover:not(:disabled) { border-color: var(--zom-rouge); background: #fff; }
+.pm-case-btn:disabled { cursor: default; }
+.pm-case-multi { justify-content: flex-start; }
+.pm-case-vider {
+  position: absolute; top: 2px; right: 2px; border: none; background: #fff;
+  border: 1px solid var(--zom-bordure); border-radius: 50%; width: 16px; height: 16px;
+  display: none; align-items: center; justify-content: center; cursor: pointer; color: var(--c-danger, #dc2626); padding: 0;
+}
+.pm-case:hover .pm-case-vider { display: inline-flex; }
+.pm-case-obs { min-width: 150px; }
+.pm-obs-input { width: 100%; border: none; background: none; font: inherit; font-size: 12px; outline: none; }
+.pm-voile { position: fixed; inset: 0; background: rgba(0,0,0,0.3); z-index: 60; display: flex; align-items: center; justify-content: center; }
+.pm-popover {
+  background: #fff; border-radius: 12px; box-shadow: 0 10px 40px rgba(0,0,0,0.25);
+  width: 300px; max-width: 92vw; max-height: 70vh; overflow-y: auto; padding: 10px;
+  display: flex; flex-direction: column; gap: 3px;
+}
+.pm-popover-titre { font-weight: 800; font-size: 13px; padding: 4px 6px 8px; border-bottom: 1px solid var(--zom-bordure); margin-bottom: 4px; }
+.pm-popover-item {
+  display: flex; align-items: center; gap: 7px; width: 100%; text-align: left;
+  border: none; background: none; font: inherit; font-size: 13px;
+  padding: 7px 9px; border-radius: 8px; cursor: pointer; color: var(--zom-texte);
+}
+.pm-popover-item:hover { background: var(--zom-creme, #faf7f0); }
+.pm-popover-item-actif { background: var(--zom-creme, #faf7f0); font-weight: 700; }
+.pm-popover-fermer { margin-top: 6px; }
+
+/* Impression des grilles multi-modèles : aucune coupure de colonne */
+@media print {
+  .pm-table { font-size: 10px; }
+  .pm-table th, .pm-table td { border: 1px solid #999 !important; padding: 3px 5px; }
+  .pm-case-btn, .pm-case-vider, .pm-toolbar, .pm-suppr { display: none !important; }
+  .pm-case { min-width: 0; }
+  .pm-popover, .pm-voile { display: none !important; }
+}
+
+/* ================= MESSENGER INTERNE (module additif) ================= */
+/* 2 zones permanentes desktop : [ conversations | conversation ] ; le profil
+   détaillé s'ouvre en PANNEAU LATÉRAL (drawer) au clic sur la photo ou le nom
+   — il pousse légèrement le chat sans jamais le masquer complètement.
+   mobile : liste -> chat (bouton retour). Sobre, pro, aucune emoji. */
+.msg-page {
+  display: grid;
+  grid-template-columns: 300px minmax(0, 1fr);
+  gap: 14px;
+  height: calc(100vh - 130px);
+  min-height: 460px;
+}
+.msg-page.msg-page-avec-info { grid-template-columns: 300px minmax(0, 1fr) 290px; }
+.msg-liste, .msg-chat, .msg-info {
+  background: #fff;
+  border: 1px solid var(--zom-bordure);
+  border-radius: 12px;
+  box-shadow: var(--ombre, 0 1px 3px rgba(0,0,0,0.05));
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.msg-liste { overflow: hidden; }
+.msg-liste-haut {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 8px; padding: 12px 12px 8px;
+}
+.msg-titre { margin: 0; font-size: 15px; display: flex; align-items: center; gap: 7px; color: var(--zom-rouge); }
+/* Bouton « Nouvelle discussion » : icône seule, style WhatsApp (rond rouge) */
+.msg-nouvelle {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 34px; height: 34px; border-radius: 50%;
+  background: var(--zom-rouge); color: #fff; border: none; cursor: pointer;
+  flex-shrink: 0; transition: background 0.15s ease, transform 0.12s ease;
+}
+.msg-nouvelle:hover { background: var(--zom-rouge-hover); }
+.msg-nouvelle:active { transform: translateY(1px); }
+.msg-recherche {
+  display: flex; align-items: center; gap: 7px;
+  margin: 0 12px 10px; padding: 7px 10px;
+  border: 1px solid var(--zom-bordure); border-radius: 9px;
+  background: var(--zom-creme, #faf7f0); color: var(--zom-texte-2);
+}
+.msg-recherche input { border: none; background: none; outline: none; flex: 1; font: inherit; font-size: 13px; color: var(--zom-texte); }
+.msg-recherche button { border: none; background: none; cursor: pointer; color: var(--zom-texte-2); display: flex; padding: 2px; }
+.msg-convs { overflow-y: auto; flex: 1; padding: 0 6px 8px; }
+.msg-vide { color: var(--zom-texte-2); font-size: 13px; text-align: center; padding: 18px 12px; }
+.msg-conv {
+  display: flex; align-items: center; gap: 10px; width: 100%;
+  padding: 9px 8px; border: none; border-radius: 10px; background: none;
+  cursor: pointer; text-align: left; font: inherit; color: var(--zom-texte);
+  position: relative;
+}
+.msg-conv:hover { background: var(--zom-creme, #faf7f0); }
+.msg-conv-active { background: var(--zom-creme, #faf7f0); box-shadow: inset 3px 0 0 var(--zom-rouge); }
+/* Indication discrète « épinglée » : petite épingle devant l'heure */
+.msg-conv-epinglee { color: var(--zom-rouge); flex-shrink: 0; }
+/* Groupe « Épinglées » : libellé discret au-dessus du groupe */
+.msg-groupe-label {
+  display: flex; align-items: center; gap: 5px;
+  margin: 8px 8px 2px; font-size: 11px; font-weight: 700;
+  color: var(--zom-texte-2); text-transform: uppercase; letter-spacing: 0.4px;
+}
+/* Menu discret ⋮ de chaque discussion (épingler/archiver/supprimer) */
+.msg-conv-menu-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 24px; height: 24px; padding: 0; border: none; border-radius: 6px;
+  background: none; color: var(--zom-texte-2); cursor: pointer; flex-shrink: 0;
+}
+.msg-conv-menu-btn:hover, .msg-conv-menu-btn.msg-conv-menu-btn-ouvert { background: rgba(41,37,36,0.08); color: var(--zom-texte); }
+.msg-conv-menu {
+  position: absolute; right: 6px; top: calc(100% - 4px); z-index: 40;
+  min-width: 170px; padding: 4px;
+  background: #fff; border: 1px solid var(--zom-bordure); border-radius: 10px;
+  box-shadow: 0 8px 26px rgba(41, 37, 36, 0.18);
+  display: flex; flex-direction: column;
+}
+.msg-conv-menu button {
+  display: flex; align-items: center; gap: 8px; width: 100%;
+  border: none; background: none; font: inherit; font-size: 13px;
+  padding: 7px 9px; border-radius: 7px; cursor: pointer; color: var(--zom-texte); text-align: left;
+}
+.msg-conv-menu button:hover { background: var(--zom-creme, #faf7f0); }
+.msg-conv-menu button.msg-menu-danger { color: var(--c-danger); }
+.msg-conv-menu button.msg-menu-danger:hover { background: var(--c-danger-fond); }
+/* Bascule « Archivees (n) » sous la recherche (style WhatsApp) */
+.msg-archives-bascule {
+  display: flex; align-items: center; gap: 7px;
+  margin: 0 12px 8px; padding: 7px 10px;
+  border: none; border-radius: 9px; background: none; cursor: pointer;
+  font: inherit; font-size: 12.5px; font-weight: 600; color: var(--zom-texte-2);
+}
+.msg-archives-bascule:hover { background: var(--zom-creme, #faf7f0); color: var(--zom-rouge); }
+.msg-conv-corps { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.msg-conv-haut { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.msg-conv-nom { font-weight: 700; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.msg-conv-heure { font-size: 11px; color: var(--zom-texte-2); white-space: nowrap; }
+.msg-conv-bas { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.msg-conv-apercu {
+  font-size: 12px; color: var(--zom-texte-2);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 180px;
+}
+.msg-badge {
+  background: var(--zom-rouge); color: #fff; border-radius: 999px;
+  font-size: 10.5px; font-weight: 800; padding: 1px 7px; min-width: 18px; text-align: center;
+}
+.msg-badge-menu { background: var(--zom-rouge); color: #fff; border-radius: 999px; font-size: 10px; font-weight: 800; padding: 1px 6px; margin-left: auto; }
+
+/* Avatars + présence */
+.msg-avatar { position: relative; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.msg-avatar > span:first-child, .msg-avatar img {
+  width: 100%; height: 100%; border-radius: 50%;
+  background: var(--zom-creme, #faf7f0); color: var(--zom-rouge);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 800; object-fit: cover; border: 1px solid var(--zom-bordure);
+}
+.msg-presence {
+  position: absolute; bottom: -1px; right: -1px;
+  color: #9ca3af; background: #fff; border-radius: 50%; padding: 1px;
+}
+.msg-presence-enligne { color: #16a34a; }
+
+/* Chat */
+.msg-chat { overflow: hidden; }
+.msg-chat-vide {
+  flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 10px; color: var(--zom-texte-2); text-align: center; font-size: 13.5px;
+}
+.msg-chat-header {
+  display: flex; align-items: center; gap: 10px; padding: 10px 12px;
+  border-bottom: 1px solid var(--zom-bordure); background: var(--zom-creme, #faf7f0);
+}
+.msg-retour { display: none; border: none; background: none; cursor: pointer; color: var(--zom-texte-2); padding: 4px; }
+/* En-tête cliquable (photo + nom) : ouvre le panneau profil (drawer) */
+.msg-chat-tete {
+  display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0;
+  background: none; border: none; padding: 0; margin: 0; cursor: pointer;
+  text-align: left; font: inherit; color: inherit; border-radius: 8px;
+}
+.msg-chat-tete:hover strong { text-decoration: underline; }
+.msg-chat-titre { flex: 1; min-width: 0; }
+.msg-chat-titre strong { display: block; font-size: 14px; }
+.msg-chat-titre small { color: var(--zom-texte-2); font-size: 11.5px; }
+.msg-fil { flex: 1; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 10px; background: var(--zom-creme, #faf7f0); }
+.msg-avant {
+  align-self: center; display: inline-flex; align-items: center; gap: 5px;
+  border: 1px solid var(--zom-bordure); background: #fff; border-radius: 999px;
+  font-size: 12px; padding: 4px 12px; cursor: pointer; color: var(--zom-texte-2); font: inherit;
+}
+.msg-avant:hover { color: var(--zom-rouge); border-color: var(--zom-rouge); }
+.msg-ligne { display: flex; gap: 8px; align-items: flex-end; max-width: 78%; }
+.msg-mien { align-self: flex-end; flex-direction: row-reverse; }
+.msg-recu { align-self: flex-start; }
+.msg-bulle {
+  position: relative; background: #fff; border: 1px solid var(--zom-bordure);
+  border-radius: 12px; padding: 8px 12px; box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+}
+.msg-mien .msg-bulle { background: var(--zom-rouge); color: #fff; border-color: var(--zom-rouge); }
+.msg-texte { margin: 0; font-size: 13.5px; white-space: pre-wrap; word-break: break-word; }
+.msg-meta { display: flex; align-items: center; gap: 6px; justify-content: flex-end; margin-top: 3px; font-size: 10.5px; opacity: 0.75; }
+.msg-modifie { font-style: italic; }
+.msg-supprime { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-style: italic; opacity: 0.65; }
+.msg-reponse-apercu {
+  display: flex; align-items: center; gap: 6px; font-size: 11.5px;
+  border-left: 2px solid currentColor; padding-left: 7px; margin-bottom: 5px; opacity: 0.8;
+}
+.msg-reponse-apercu span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 230px; }
+.msg-bloc-planning {
+  display: inline-flex; align-items: center; gap: 6px; margin-top: 6px;
+  background: rgba(255,255,255,0.14); border: 1px solid rgba(255,255,255,0.35);
+  color: inherit; text-decoration: none; font-size: 11.5px; font-weight: 700;
+  border-radius: 8px; padding: 4px 9px;
+}
+.msg-recu .msg-bloc-planning { background: var(--zom-creme, #faf7f0); border-color: var(--zom-bordure); color: var(--zom-rouge); }
+.msg-actions {
+  position: absolute; top: -14px; right: 8px; display: none; gap: 2px;
+  background: #fff; border: 1px solid var(--zom-bordure); border-radius: 8px; padding: 2px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.12);
+}
+.msg-ligne:hover .msg-actions, .msg-actions:focus-within { display: flex; }
+.msg-actions button { border: none; background: none; cursor: pointer; padding: 3px; color: var(--zom-texte-2); display: flex; border-radius: 5px; }
+.msg-actions button:hover { color: var(--zom-rouge); background: var(--zom-creme, #faf7f0); }
+.msg-edition textarea {
+  width: 260px; max-width: 100%; border: 1px solid var(--zom-bordure); border-radius: 8px;
+  font: inherit; font-size: 13px; padding: 6px 8px; resize: vertical;
+}
+.msg-typing {
+  align-self: flex-start; display: inline-flex; align-items: center; gap: 6px;
+  font-size: 12px; color: var(--zom-texte-2); font-style: italic;
+}
+.msg-bandeau-reponse {
+  display: flex; align-items: center; gap: 8px; padding: 7px 12px;
+  border-top: 1px solid var(--zom-bordure); background: var(--zom-creme, #faf7f0); font-size: 12px;
+}
+.msg-bandeau-reponse span { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.msg-bandeau-reponse button { border: none; background: none; cursor: pointer; color: var(--zom-texte-2); display: flex; }
+.msg-saisie {
+  display: flex; align-items: flex-end; gap: 8px; padding: 10px 12px;
+  border-top: 1px solid var(--zom-bordure); background: #fff;
+}
+.msg-saisie textarea {
+  flex: 1; border: 1px solid var(--zom-bordure); border-radius: 10px;
+  font: inherit; font-size: 13.5px; padding: 8px 11px; resize: none; max-height: 120px;
+  outline: none; background: var(--zom-creme, #faf7f0);
+}
+.msg-saisie textarea:focus { border-color: var(--zom-rouge); background: #fff; }
+.msg-planning-input {
+  border: 1px solid var(--zom-bordure); border-radius: 10px; font: inherit; font-size: 12px;
+  padding: 8px 9px; outline: none; background: var(--zom-creme, #faf7f0);
+}
+.msg-envoyer {
+  border: none; background: var(--zom-rouge); color: #fff; border-radius: 10px;
+  width: 38px; height: 38px; display: flex; align-items: center; justify-content: center;
+  cursor: pointer; flex-shrink: 0;
+}
+.msg-envoyer:hover:not(:disabled) { background: var(--zom-rouge-hover); }
+.msg-envoyer:disabled { opacity: 0.45; cursor: not-allowed; }
+
+/* Panneau informations (drawer latéral du profil, ouvert au clic) */
+.msg-info { position: relative; align-items: center; text-align: center; padding: 16px 12px; gap: 4px; overflow-y: auto; }
+.msg-info-fermer {
+  position: absolute; top: 8px; right: 8px;
+  border: none; background: none; cursor: pointer; color: var(--zom-texte-2);
+  display: flex; padding: 4px; border-radius: 6px;
+}
+.msg-info-fermer:hover { background: var(--zom-creme, #faf7f0); color: var(--zom-texte); }
+.msg-info h3 { margin: 8px 0 0; font-size: 14.5px; }
+.msg-info-role { margin: 0; font-size: 12px; color: var(--zom-texte-2); }
+.msg-info-statut { margin: 0; font-size: 11.5px; font-weight: 700; color: #16a34a; }
+.msg-info-bloc { width: 100%; margin-top: 12px; text-align: left; }
+.msg-info-bloc h4 { display: flex; align-items: center; gap: 6px; font-size: 12px; margin: 0 0 6px; color: var(--zom-texte-2); text-transform: uppercase; letter-spacing: 0.4px; }
+.msg-info-membre { display: flex; align-items: center; gap: 7px; font-size: 12.5px; padding: 3px 0; }
+
+/* Modal nouvelle conversation */
+.msg-modal-voile {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.35); z-index: 60;
+  display: flex; align-items: center; justify-content: center; padding: 16px;
+}
+.msg-modal { background: #fff; border-radius: 14px; width: 360px; max-width: 100%; max-height: 70vh; display: flex; flex-direction: column; box-shadow: 0 10px 40px rgba(0,0,0,0.25); }
+.msg-modal-haut { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; border-bottom: 1px solid var(--zom-bordure); }
+.msg-modal-haut button { border: none; background: none; cursor: pointer; display: flex; color: var(--zom-texte-2); }
+.msg-modal-liste { overflow-y: auto; padding: 6px; }
+.msg-modal-item {
+  display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px;
+  border: none; border-radius: 10px; background: none; cursor: pointer; text-align: left; font: inherit; color: var(--zom-texte);
+}
+.msg-modal-item:hover { background: var(--zom-creme, #faf7f0); }
+.msg-modal-item-info { display: flex; flex-direction: column; min-width: 0; }
+.msg-modal-item-info strong { font-size: 13px; }
+.msg-modal-item-info small { color: var(--zom-texte-2); font-size: 11.5px; }
+.msg-erreur {
+  position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%);
+  display: flex; align-items: center; gap: 10px;
+  background: var(--c-danger, #dc2626); color: #fff; border-radius: 10px;
+  padding: 9px 14px; font-size: 13px; z-index: 70; box-shadow: 0 4px 14px rgba(0,0,0,0.25);
+}
+.msg-erreur button { border: none; background: none; color: #fff; cursor: pointer; display: flex; }
+
+/* Responsive : mobile -> liste ou chat (jamais les 3 a la fois) */
+@media (max-width: 1100px) {
+  .msg-page { grid-template-columns: 280px minmax(0, 1fr); }
+  /* Desktop/tablette moyenne : le panneau profilde la 3e colonne devient
+     un drawer superpose (la conversation reste visible derriere). */
+  .msg-page.msg-page-avec-info { grid-template-columns: 280px minmax(0, 1fr); }
+  .msg-info { display: none; }
+  .msg-info-mobile-visible {
+    display: flex; position: fixed; right: 12px; top: 90px; bottom: 20px;
+    width: 280px; z-index: 50; box-shadow: 0 8px 30px rgba(0,0,0,0.2);
+  }
+}
+@media (max-width: 760px) {
+  .msg-page { grid-template-columns: 1fr; height: calc(100vh - 120px); }
+  .msg-chat-mobile-cachee { display: none; }
+  .msg-liste-mobile-cachee { display: none; }
+  .msg-retour { display: flex; }
+  .msg-ligne { max-width: 88%; }
+  .msg-planning-input { display: none; }
+}
+
+/* ---- Export groupé RH : barre de sélection + cases à cocher ---- */
+/* (muted colors, lucide-react icons only, aucun emoji) */
+.rh-export-multi {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+  border: 1px solid var(--c-bordure, #e2e2e2);
+  border-radius: 10px;
+  background: var(--c-fond-2, #fafafa);
+}
+.rh-export-multi-info { font-size: 12.5px; color: var(--zom-texte-2); }
+.rh-case-coche { width: 15px; height: 15px; cursor: pointer; accent-color: var(--zom-rouge); }
+.rh-case-coche:disabled { opacity: 0.3; cursor: not-allowed; }
+@media (max-width: 640px) {
+  .rh-services-grille { grid-template-columns: 1fr; }
+}
+
+/* ============ TABLEAU PLANNINGS : en-tetes triables ============ */
+.th-tri { cursor: pointer; user-select: none; white-space: nowrap; }
+.th-tri:hover { color: var(--zom-rouge); }
+.th-tri .tri-neutre { opacity: 0.35; font-size: 11px; }
+.th-tri .tri-actif { color: var(--zom-rouge); font-size: 11px; }
+
+/* ============ WIDGET « PROCHAINES SEMAINES » ============ */
+.swv-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.swv-table th, .swv-table td { padding: 7px 8px; text-align: center; border-bottom: 1px solid #f4f1ea; }
+.swv-table th {
+  font-size: 11px;
+  color: #57534e;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: #fdfbf4;
+}
+.swv-table th .swv-dates { display: block; font-weight: 400; font-size: 10.5px; color: #a8a29e; text-transform: none; letter-spacing: 0; }
+.swv-col-service { text-align: left !important; min-width: 170px; }
+.swv-service { text-align: left !important; font-weight: 600; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.swv-courante { background: var(--zom-creme); }
+.swv-table th.swv-courante { color: var(--zom-rouge); }
+.swv-aucun { background: #fafaf9; color: #a8a29e; border: 1px dashed #ddd7cc; }
+.swv-table td .badge { cursor: default; }
+.swv-table td .badge.swv-aucun, .swv-table td button.badge { cursor: pointer; }
+.swv-table tbody tr:hover td { background: #fdfbf4; }
+.swv-table tbody tr:hover td.swv-courante { background: #fdf0c2; }
+
+/* ===== Card de saisie d'heure en FLOAT (7.5 = 07:30) ===== */
+.saisie-float-groupe {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: stretch;
+}
+.card-float-heure {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1 1 120px;
+  min-width: 120px;
+  padding: 10px 12px;
+  background: #fdfbf4;
+  border: 1px solid var(--zom-bordure);
+  border-radius: 10px;
+}
+.card-float-heure label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #57534e;
+}
+.card-float-heure input {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid #ddd7cc;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  background: #fff;
+}
+.card-float-heure input:focus {
+  outline: none;
+  border-color: var(--zom-rouge);
+  box-shadow: 0 0 0 3px rgba(139, 0, 0, 0.12);
+}
+.apercu-hhmm {
+  font-size: 12px;
+  color: var(--zom-rouge);
+  font-weight: 600;
+  min-height: 16px;
+}
+.hint-erreur-float {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: var(--c-danger);
+  font-weight: 600;
+}
+
+/* ===== Dropdown d'heures scrollable (SaisieHeureFloat) ===== */
+.shf { position: relative; }
+.shf-champ {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 8px 10px;
+  border: 1px solid #ddd7cc;
+  border-radius: 8px;
+  background: #fff;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--zom-texte);
+  cursor: pointer;
+}
+.shf-champ:hover { border-color: var(--zom-rouge); }
+.shf-fleche { display: inline-flex; color: #a8a29e; }
+.shf-liste {
+  position: absolute;
+  z-index: 60;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  max-height: 210px;              /* hauteur limitee : ~7 options visibles */
+  overflow-y: auto;               /* defilement vertical (molette/tactile) */
+  overscroll-behavior: contain;   /* ne propage pas le scroll a la page */
+  background: #fff;
+  border: 1px solid var(--zom-bordure);
+  border-radius: 10px;
+  box-shadow: 0 10px 28px rgba(41, 37, 36, 0.16);
+}
+.shf-option {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 7px 10px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  font-size: 13.5px;
+  color: var(--zom-texte);
+  cursor: pointer;
+}
+.shf-option:hover { background: var(--zom-creme); }
+.shf-option-active { background: var(--zom-creme); font-weight: 700; }
+.shf-check { color: var(--zom-rouge); display: inline-flex; }
+@media (max-width: 640px) {
+  .shf-liste { max-height: 180px; }
+}
+
+/* ===== Modal reutilisable Zomatel ===== */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(41, 37, 36, 0.5);
+  backdrop-filter: blur(2px);
+}
+.modal-boite {
+  width: 100%;
+  background: #fff;
+  border: 1px solid var(--zom-bordure);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 24px 60px rgba(41, 37, 36, 0.28);
+  animation: modal-apparition 0.16s ease-out;
+  max-height: min(88vh, 720px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+@keyframes modal-apparition {
+  from { transform: translateY(8px) scale(0.985); opacity: 0; }
+  to { transform: translateY(0) scale(1); opacity: 1; }
+}
+.modal-entete {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 13px 18px;
+  border-bottom: 1px solid var(--zom-bordure);
+}
+.modal-entete h3 { margin: 0; font-size: 15px; color: var(--zom-rouge); }
+.modal-fermer {
+  border: 0;
+  background: transparent;
+  color: var(--zom-texte-2);
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 8px;
+  display: inline-flex;
+  line-height: 0;
+}
+.modal-fermer:hover { background: #f1efe9; color: var(--zom-texte); }
+.modal-contenu {
+  padding: 16px 18px;
+  overflow-y: auto;      /* seul le contenu defile si trop haut */
+}
+@media (max-width: 640px) {
+  .modal-boite { max-height: 92vh; border-radius: 12px; }
+  .modal-overlay { padding: 8px; }
+}
+
+/* ================= LOGIN ZOMATEL ================= */
+.login-ecran {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background:
+    radial-gradient(1000px 500px at 85% -10%, rgba(139, 0, 0, 0.14), transparent 60%),
+    radial-gradient(800px 420px at -10% 110%, rgba(255, 226, 111, 0.2), transparent 55%),
+    var(--zom-fond);
+}
+.login-carte {
+  width: 100%;
+  max-width: 400px;
+  background: #fff;
+  border: 1px solid var(--zom-bordure);
+  border-radius: 16px;
+  box-shadow: var(--ombre-hover);
+  padding: 28px;
+}
+.login-logo {
+  display: block;
+  width: 100%;
+  max-width: 250px;
+  margin: 0 auto 18px;
+}
+.login-soustitre { text-align: center; color: var(--zom-texte-2); font-size: 12.5px; margin: -6px 0 18px; }
+
+/* ================= PAGES SIMPLES (Profil, Historique, Statistiques, Parametres) ================= */
+/* Bouton d'ajout compact aligne a droite du titre de la page */
+.tete-page {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+.tete-page h1 { margin: 0; }
+.btn-ajout {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Historique : liste compacte d'evenements reels (notifications) */
+.hist-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 10px 2px;
+  border-bottom: 1px solid var(--zom-bordure);
+}
+.hist-item:last-child { border-bottom: none; }
+.hist-date {
+  flex-shrink: 0;
+  width: 150px;
+  color: var(--zom-texte-2);
+  font-size: 12.5px;
+  padding-top: 2px;
+}
+
+/* Profil : identite en tete de carte */
+.profil-identite {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 6px;
+}
+.profil-avatar-grand {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px; height: 56px;
+  border-radius: 50%;
+  background: var(--zom-rouge);
+  color: #fff;
+  flex-shrink: 0;
+}
+.fiche-lignes { margin: 0; }
+.fiche-lignes > div {
+  display: flex;
+  gap: 16px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--zom-bordure);
+  font-size: 13.5px;
+}
+.fiche-lignes > div:last-child { border-bottom: none; }
+.fiche-lignes dt { width: 170px; flex-shrink: 0; color: var(--zom-texte-2); }
+.fiche-lignes dd { margin: 0; font-weight: 500; }
+
+/* Parametres : sections/lignes lisibles */
+.param-ligne {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--zom-bordure);
+  font-size: 13.5px;
+  flex-wrap: wrap;
+}
+.param-ligne:last-child { border-bottom: none; }
+.param-ligne .muted { font-size: 12.5px; }
+.param-actif { border-color: var(--zom-rouge) !important; color: var(--zom-rouge) !important; }
+
+/* Preference de densite des tableaux (Parametres -> Affichage, localStorage).
+   Mode compact : interlignage reduit sur tous les tableaux de l'application. */
+html[data-densite='compact'] table th { padding: 4px 8px; }
+html[data-densite='compact'] table td { padding: 4px 8px; }
+html[data-densite='compact'] .dash-table th { padding: 5px 8px; }
+html[data-densite='compact'] .dash-table td { padding: 5px 8px; }
+
+/* Statistiques : mini-grille de chiffres cles */
+.stat-grille {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: 12px;
+}
+.stat-case {
+  border: 1px solid var(--zom-bordure);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  background: #fff;
+}
+.stat-case .valeur { font-size: 22px; font-weight: 800; line-height: 1.2; }
+.stat-case .libelle { font-size: 12.5px; color: var(--zom-texte-2); }
+
+/* Photo de profil : apercu, actions, avatar par defaut */
+.profil-photo-zone {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+.profil-photo-img {
+  width: 84px;
+  height: 84px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--zom-bordure);
+  flex-shrink: 0;
+  background: #fff;
+}
+.profil-photo-actions { flex: 1; min-width: 220px; }
+
+/* Photo affichee dans l'avatar de la sidebar */
+.dash-avatar-photo {
+  object-fit: cover;
+  border: 1px solid rgba(255,255,255,0.35);
+}
+
+/* Archives : barre de filtres compacte (recherche + annee + compteur) */
+.arch-filtres {
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+/* ================= PAGE PROFIL (page complete) ================= */
+/* Couverture sobre : degrade rouge mat + monogramme discret (pas de photo fictive) */
+.pf-couverture {
+  height: 130px;
+  border-radius: var(--radius-lg);
+  background: linear-gradient(135deg, #8b0000 0%, #6d0000 55%, #4d0a0a 100%);
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 0 26px;
+  margin-bottom: -38px;
+  box-shadow: var(--ombre);
+}
+.pf-monogramme {
+  font-size: 42px;
+  font-weight: 800;
+  color: rgba(255, 226, 111, 0.28); /* or Zomatel tres discret */
+  letter-spacing: 2px;
+  user-select: none;
+}
+.pf-tete {
+  display: flex;
+  align-items: flex-end;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 0 18px;
+  margin-bottom: 18px;
+}
+.pf-avatar-zone { position: relative; margin-top: 0; }
+.pf-avatar {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 4px solid #fff;
+  box-shadow: var(--ombre);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #fff;
+}
+.pf-avatar-defaut {
+  background: var(--zom-creme);
+  color: var(--zom-rouge);
+}
+.pf-badge-apercu {
+  position: absolute;
+  bottom: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--zom-texte);
+  color: #fff;
+  font-size: 10.5px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.pf-identite { flex: 1; min-width: 220px; padding-bottom: 6px; }
+.pf-nom { margin: 0; font-size: 21px; }
+.pf-sous-titre { margin: 4px 0 0; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.pf-actions { padding-bottom: 10px; display: flex; gap: 8; flex-wrap: wrap; }
+
+@media (max-width: 640px) {
+  .pf-couverture { height: 100px; margin-bottom: -30px; }
+  .pf-avatar { width: 80px; height: 80px; }
+  .pf-tete { flex-direction: column; align-items: flex-start; gap: 10px; }
+  .pf-actions { padding-bottom: 0; }
+}
+
+/* Statistiques : graphiques cote a cote (responsive) — cartes compactes,
+   chaque graphique dans SA carte, jamais pleine largeur inutilement. */
+.stat-grille-graphiques {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 14px;
+  margin-bottom: 16px;
+}
+.stat-carte-graphique {
+  margin-bottom: 0;
+  padding: 14px 16px;
+}
+.stat-carte-graphique h3 { margin: 0 0 10px; font-size: 14px; }
+
+/* ===================== GRAPHIQUE EN COURBE (SVG pur) ===================== */
+/* Palette mate du theme ; grille legere ; tooltip sombre discret.           */
+.linechart-wrap { width: 100%; }
+.lc-grille { stroke: var(--zom-bordure); stroke-width: 1; stroke-dasharray: 2 4; }
+.lc-axe { stroke: #a8a29e; stroke-width: 1; }
+.lc-axe-y, .lc-axe-x { fill: var(--zom-texte-2); font-size: 11px; font-family: inherit; }
+.lc-aire {
+  fill: rgba(139, 0, 0, 0.06);
+  opacity: 0; /* pilote inline : passe a 1 quand visible */
+  transition: opacity 500ms ease 450ms; /* apparait a la fin du trace */
+}
+.lc-courbe {
+  fill: none;
+  stroke: var(--zom-rouge);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+/* Trace gauche -> droite jouee UNE fois : la classe n'est posee que lorsque
+   le graphique est entre dans le viewport (IntersectionObserver). */
+.lc-courbe-animee {
+  animation: lc-dessin 1000ms ease-out forwards;
+}
+.lc-point {
+  fill: var(--zom-rouge);
+  stroke: var(--zom-blanc);
+  stroke-width: 1.5;
+  opacity: 0; /* pilote inline : passe a 1 quand visible */
+  transition: opacity 350ms ease 900ms, r 120ms ease; /* fin de trace */
+}
+.lc-secondaire {
+  fill: none;
+  stroke: #9c958c;
+  stroke-width: 1.5;
+  stroke-dasharray: 4 4;
+  opacity: 0;
+  transition: opacity 400ms ease 800ms;
+}
+.lc-point-sec {
+  fill: #9c958c;
+  opacity: 0;
+  transition: opacity 400ms ease 850ms;
+}
+.lc-curseur { stroke: var(--zom-rouge); stroke-width: 1; stroke-dasharray: 3 3; opacity: 0.55; }
+.lc-tooltip-fond {
+  fill: var(--zom-texte);
+  opacity: 0.94;
+  filter: drop-shadow(0 2px 4px rgba(41, 37, 36, 0.25));
+}
+.lc-tooltip-titre { fill: #f5f5f4; font-size: 11px; font-weight: 700; font-family: inherit; }
+.lc-tooltip-valeur { fill: #d6d3d1; font-size: 11px; font-family: inherit; }
+.lc-legende { display: flex; gap: 16px; margin-top: 8px; font-size: 12px; color: var(--zom-texte-2); flex-wrap: wrap; }
+.lc-legende-item { display: inline-flex; align-items: center; gap: 6px; }
+.lc-pastille { width: 14px; height: 3px; border-radius: 2px; display: inline-block; }
+.lc-pastille-courbe { background: var(--zom-rouge); }
+.lc-pastille-sec { background: repeating-linear-gradient(90deg, #9c958c 0 4px, transparent 4px 7px); }
+
+@keyframes lc-dessin {
+  to { stroke-dashoffset: 0; }
+}
+
+/* Accessibilite : si l'utilisateur desactive les animations systeme,
+   le graphique s'affiche directement (pas d'animation de trace). */
+@media (prefers-reduced-motion: reduce) {
+  .lc-courbe { animation: none !important; stroke-dasharray: none !important; stroke-dashoffset: 0 !important; }
+  .lc-aire, .lc-point, .lc-secondaire, .lc-point-sec { opacity: 1 !important; transition: none !important; }
+}
+
+/* ===================== GRAPHIQUE EN BARRES (SVG pur) ===================== */
+/* Meme palette mate que la courbe ; barres rouges Zomatel, serie secondaire
+   grise ; tooltip discret ; compact (hauteur reduite).                    */
+.bar-chart { width: 100%; }
+.bar-chart-svg { width: 100%; height: auto; display: block; }
+.bc-grille { stroke: var(--zom-bordure); stroke-width: 1; stroke-dasharray: 2 4; }
+.bc-axe { stroke: #a8a29e; stroke-width: 1; }
+.bc-axe-y, .bc-axe-x { fill: var(--zom-texte-2); font-size: 11px; font-family: inherit; }
+.bc-barre { fill: var(--zom-rouge); transition: opacity 120ms ease; }
+.bc-barre-sec { fill: #9c958c; opacity: 0.85; }
+.bc-tooltip-fond {
+  fill: var(--zom-texte);
+  opacity: 0.94;
+  filter: drop-shadow(0 2px 4px rgba(41, 37, 36, 0.25));
+}
+.bc-tooltip-titre { fill: #f5f5f4; font-size: 11px; font-weight: 700; font-family: inherit; }
+.bc-tooltip-valeur { fill: #d6d3d1; font-size: 11px; font-family: inherit; }
+.bc-legende { display: flex; gap: 16px; margin-top: 8px; font-size: 12px; color: var(--zom-texte-2); flex-wrap: wrap; }
+.bc-legende-item { display: inline-flex; align-items: center; gap: 6px; }
+.bc-pastille { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+.bc-pastille-principale { background: var(--zom-rouge); }
+.bc-pastille-sec { background: #9c958c; }

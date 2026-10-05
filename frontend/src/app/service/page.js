@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Navbar from '@/components/Navbar';
-import RetourButton from '@/components/RetourButton';
+import { Hotel, Trash2 } from 'lucide-react';
+import AppShell from '@/components/AppShell';
+import Modal from '@/components/Modal';
 import { api } from '@/lib/api';
 import { getToken, getUser } from '@/lib/auth';
 
@@ -14,6 +15,7 @@ export default function ServicesPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [modalAjout, setModalAjout] = useState(false);
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(null);
   const router = useRouter();
@@ -72,14 +74,20 @@ export default function ServicesPage() {
 
   return (
     <PageShell>
-      <RetourButton fallback="/dashboard" hasUnsaved={nom !== ''} />
-      <h1>Services</h1>
+      {/* Bouton Ajouter a cote du titre */}
+      <div className="tete-page">
+        <h1>Services</h1>
+        {user?.role === 'RH' && (
+          <button className="btn btn-ajout" onClick={() => { setError(''); setModalAjout(true); }}>
+            <Hotel size={15} aria-hidden="true" /> Ajouter un service
+          </button>
+        )}
+      </div>
       {error && <div className="error">{error}</div>}
 
-      {user?.role === 'RH' && (
-        <div className="card">
-          <h3 style={{ marginTop: 0 }}>Ajouter un service</h3>
-          <form onSubmit={ajouter} style={{ display: 'flex', gap: 12, alignItems: 'flex-end', flexWrap: 'wrap' }}>
+      {user?.role === 'RH' && modalAjout && (
+        <Modal titre="Ajouter un service" onClose={() => setModalAjout(false)} largeur={480}>
+          <form onSubmit={ajouter}>
             <div className="form-row">
               <label>Nom du service</label>
               <input value={nom} onChange={(e) => setNom(e.target.value)} required />
@@ -91,11 +99,14 @@ export default function ServicesPage() {
                 <option value="HORAIRE_LIBRE">Horaire libre (jours × horaires)</option>
               </select>
             </div>
-            <button className="btn" type="submit" disabled={saving}>
-              {saving ? 'Ajout...' : 'Ajouter'}
-            </button>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button className="btn secondary" type="button" onClick={() => setModalAjout(false)}>Annuler</button>
+              <button className="btn" type="submit" disabled={saving}>
+                {saving ? 'Ajout...' : 'Ajouter'}
+              </button>
+            </div>
           </form>
-        </div>
+        </Modal>
       )}
 
       <div className="card">
@@ -114,8 +125,8 @@ export default function ServicesPage() {
                 <td>{s.type_affichage === 'HORAIRE_LIBRE' ? 'Horaire libre' : 'Périodes fixes'}</td>
                 {user?.role === 'RH' && (
                   <td>
-                    <button className="btn danger" onClick={() => supprimer(s.id_service)}>
-                      Supprimer
+                    <button className="btn-icone danger" title="Supprimer" onClick={() => supprimer(s.id_service)}>
+                      <Trash2 size={15} aria-hidden="true" />
                     </button>
                   </td>
                 )}
@@ -130,9 +141,8 @@ export default function ServicesPage() {
 
 function PageShell({ children }) {
   return (
-    <div>
-      <Navbar />
+    <AppShell>
       <div className="container">{children}</div>
-    </div>
+    </AppShell>
   );
 }

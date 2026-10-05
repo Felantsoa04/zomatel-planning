@@ -1,6 +1,6 @@
 'use client';
 
-// BOUTON RETOUR ←
+// BOUTON RETOUR (icone seule)
 // - Revient a la page d'ou l'utilisateur vient (router.back()), ce qui evite
 //   de renvoyer systematiquement au dashboard quand il venait d'une autre liste.
 // - Si la page a ete ouverte directement (bookmark, nouvel onglet : pas
@@ -9,9 +9,13 @@
 //   une confirmation est demandee avant de quitter (aucune perte silencieuse).
 //   NB : le bouton Back du navigateur n'est pas affecte (on n'ecrase pas
 //   l'historique, on utilise router.back()).
+// - Apparence : icone ArrowLeft seule dans un carre discret (title="Retour"
+//   pour l'aide au survol, aria-label pour les lecteurs d'ecran). La logique
+//   de navigation est strictement inchangee ; voir .btn-retour dans globals.css.
 
 import { useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import { ArrowLeft } from 'lucide-react';
 
 export default function RetourButton({
   fallback = '/dashboard',
@@ -32,8 +36,14 @@ export default function RetourButton({
   }, [router, hasUnsaved, message, fallback]);
 
   return (
-    <button type="button" className="btn-retour" onClick={handleClick} title="Retour">
-      <span aria-hidden="true">←</span> Retour
+    <button
+      type="button"
+      className="btn-retour"
+      onClick={handleClick}
+      title="Retour"
+      aria-label="Retour"
+    >
+      <ArrowLeft size={16} aria-hidden="true" />
     </button>
   );
 }

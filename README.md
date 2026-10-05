@@ -44,7 +44,7 @@ Page **`/planning/gestion`** (chef de service) : saisie directe façon Excel, sa
 - grille `Employé × Lundi…Dimanche` limitée aux employés **du service du chef** ;
 - clic sur une cellule : horaire `début - fin` (ex. `06:00 - 14:00`) ou statut `REPOS` / `CONGÉ` / `ABSENCE` ; modification et suppression directes ;
 - durée calculée automatiquement par cellule, totaux hebdo par employé, comparaison à la référence (`heures planifiées / prévues / différence`) avec alerte de dépassement ;
-- contrôles automatiques côté client **et** en base (triggers MariaDB) : heures valides, 8 h/jour max, chevauchement, hors-semaine, employé hors service, congé/indisponibilité/récupération communiqués par la RH (bandeau d'alerte dans la cellule) ;
+- contrôles automatiques côté client **et** en base (triggers MariaDB) : heures valides, chevauchement, hors-semaine, employé hors service, congé/indisponibilité/récupération communiqués par la RH (bandeau d'alerte dans la cellule) ;
 - statuts : `BROUILLON` et `REJETE` modifiables, `SOUMIS` et `VALIDE` verrouillés ;
 - actions : **Enregistrer brouillon** / **Vérifier le planning** / **Soumettre à la RH** (sauvegarde puis soumission).
 
@@ -67,7 +67,6 @@ Base complète créée pour l'application, avec les règles métier appliquées 
 
 | Règle | Application en base |
 |---|---|
-| 8 h de travail max par jour et par employé | `trg_creneau_bi/bu` (refus si total du jour > 8 h) |
 | Conflits d'horaires (chevauchement de créneaux) | `trg_creneau_bi/bu` (refus si intersection) |
 | Créneau sur repos/absence/congé interdit | `trg_creneau_bi/bu` |
 | Affectation bornée à la semaine du planning | `trg_affectation_bi` |

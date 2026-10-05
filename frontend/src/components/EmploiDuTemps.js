@@ -1,6 +1,7 @@
 'use client';
 
 import LegendeStatuts from './LegendeStatuts';
+import { api } from '@/lib/api';
 
 // Vue "emploi du temps officiel" reproduisant le format du fichier Excel Zomatel :
 // un bloc par jour, employes en lignes, 3 periodes (matin / apres-midi / soir)
@@ -84,11 +85,33 @@ export default function EmploiDuTemps({ planning, affectations, employes, imprim
         <h3>
           Emploi du temps — {planning.service_nom} — WEEK {planning.numero_semaine}/{planning.annee}
         </h3>
-        {imprimable && (
-          <button className="btn secondary" onClick={() => window.print()}>
-            Imprimer / PDF
+        <div style={{ display: 'flex', gap: 8 }}>
+          {imprimable && (
+            <button className="btn secondary" onClick={() => window.print()}>
+              Imprimer / PDF
+            </button>
+          )}
+          <button
+            className="btn secondary"
+            onClick={async () => {
+              try {
+                // Téléchargement authentifié (token) du fichier généré depuis
+                // le modèle Excel de référence ; le modèle original est intact.
+                const flux = await api.getBrut(`/plannings/${planning.id_planning}/emploi-du-temps.xlsx`);
+                const url = URL.createObjectURL(flux.blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = flux.nomFichier;
+                a.click();
+                URL.revokeObjectURL(url);
+              } catch (e) {
+                alert('Export impossible : ' + e.message);
+              }
+            }}
+          >
+            Export Excel
           </button>
-        )}
+        </div>
       </div>
 
       <h2 className="edt-titre">

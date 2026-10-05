@@ -1,9 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
-import { saveSession } from '@/lib/auth';
+import { saveSession, getUser } from '@/lib/auth';
+import { dashboardDe } from '@/lib/dash';
+import ThemeToggle, { appliquerTheme, lireTheme } from '@/components/ThemeToggle';
 
 export default function LoginPage() {
   const [login, setLogin] = useState('');
@@ -11,6 +13,12 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+
+  // Theme persiste : applique des le montage de la page Login (meme bascule
+  // que la topbar, cf. ThemeToggle). Le script inline du layout evite le flash.
+  useEffect(() => {
+    appliquerTheme(lireTheme());
+  }, []);
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -26,7 +34,10 @@ export default function LoginPage() {
         return;
       }
       saveSession(data.token, data.user);
-      router.push('/dashboard');
+      // Redirection automatique vers le dashboard du role (verifie cote
+      // serveur : le role vient de MariaDB via le JWT, jamais du frontend).
+      const cible = dashboardDe(data.user?.role || getUser()?.role);
+      router.push(cible || '/dashboard');
     } catch (err) {
       setError(err.message);
     } finally {
@@ -35,14 +46,18 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="container" style={{ maxWidth: 420, marginTop: 80 }}>
-      <div className="card">
-        <h1 style={{ marginTop: 0 }}>Connexion</h1>
-        <p className="muted">Espace Chef de service / RH</p>
+    <div className="login-ecran">
+      {/* Bascule clair/sombre : coin haut droit, avant le formulaire. */}
+      <div className="login-theme">
+        <ThemeToggle variante="login" />
+      </div>
+      <div className="login-carte">
+        <img src="/logo-zomatel.svg" alt="Zomatel — L'évasion au naturel" className="login-logo" />
+        <p className="login-soustitre">Gestion des plannings — Espace Chef de service / RH</p>
         <form onSubmit={handleSubmit}>
           <div className="form-row">
-            <label>Identifiant</label>
-            <input value={login} onChange={(e) => setLogin(e.target.value)} required />
+            <label>Email</label>
+            <input value={login} onChange={(e) => setLogin(e.target.value)} required autoFocus />
           </div>
           <div className="form-row">
             <label>Mot de passe</label>
@@ -53,7 +68,7 @@ export default function LoginPage() {
               required
             />
           </div>
-          <button className="btn" type="submit" disabled={loading}>
+          <button className="btn" type="submit" disabled={loading} style={{ width: '100%' }}>
             {loading ? 'Connexion...' : 'Se connecter'}
           </button>
           {error && <div className="error">{error}</div>}

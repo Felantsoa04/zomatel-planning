@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Zomatel">
+  <defs>
+    <linearGradient id="zom-or" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFE26F"/>
+      <stop offset="1" stop-color="#E3B94E"/>
+    </linearGradient>
+    <linearGradient id="zom-or2" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FFE99B"/>
+      <stop offset="1" stop-color="#E3B94E"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Fond sombre chaud -->
+  <rect width="512" height="512" rx="112" fill="#160d08"/>
+
+  <!-- Parasol -->
+  <path d="M46 232 C130 116 340 104 466 214 L430 244 C326 156 186 162 84 258 Z"
+        fill="url(#zom-or)" stroke="#8B0000" stroke-width="12" stroke-linejoin="round"/>
+  <path d="M84 258 C186 162 326 156 430 244" fill="none" stroke="#8B0000" stroke-width="7" stroke-linecap="round" opacity="0.55"/>
+
+  <!-- Etoiles du parasol -->
+  <g fill="#FFFFFF">
+    <path transform="translate(150 192) scale(0.95)" d="M0,-12 L3.5,-3.7 L12,-3.7 L5.1,2.3 L7.4,11 L0,5.7 L-7.4,11 L-5.1,2.3 L-12,-3.7 L-3.5,-3.7 Z"/>
+    <path transform="translate(192 182) scale(0.8)" d="M0,-12 L3.5,-3.7 L12,-3.7 L5.1,2.3 L7.4,11 L0,5.7 L-7.4,11 L-5.1,2.3 L-12,-3.7 L-3.5,-3.7 Z"/>
+    <path transform="translate(230 180) scale(0.85)" d="M0,-12 L3.5,-3.7 L12,-3.7 L5.1,2.3 L7.4,11 L0,5.7 L-7.4,11 L-5.1,2.3 L-12,-3.7 L-3.5,-3.7 Z"/>
+    <path transform="translate(268 186) scale(0.7)" d="M0,-12 L3.5,-3.7 L12,-3.7 L5.1,2.3 L7.4,11 L0,5.7 L-7.4,11 L-5.1,2.3 L-12,-3.7 L-3.5,-3.7 Z"/>
+  </g>
+  <path transform="translate(190 190) scale(0.9)" fill="#160d08" stroke="#FFFFFF" stroke-width="2.2"
+        d="M0,-12 L3.5,-3.7 L12,-3.7 L5.1,2.3 L7.4,11 L0,5.7 L-7.4,11 L-5.1,2.3 L-12,-3.7 L-3.5,-3.7 Z"/>
+
+  <!-- Voile -->
+  <path d="M292 76 C348 138 358 238 322 336 L288 324 C316 240 306 152 266 92 Z"
+        fill="url(#zom-or2)" stroke="#8B0000" stroke-width="12" stroke-linejoin="round"/>
+  <path d="M288 324 L322 336 L272 398 Z" fill="#8B0000"/>
+
+  <!-- Palmier -->
+  <path d="M398 414 C406 362 404 318 388 274 L420 272 C432 318 434 364 428 414 Z"
+        fill="#E3B94E" stroke="#8B0000" stroke-width="10" stroke-linejoin="round"/>
+  <g fill="url(#zom-or2)" stroke="#8B0000" stroke-width="10" stroke-linejoin="round">
+    <path d="M402 268 C440 218 486 206 500 214 C462 238 434 254 408 274 Z"/>
+    <path d="M404 268 C438 252 474 260 496 288 C462 288 430 280 402 276 Z"/>
+    <path d="M400 266 C376 236 366 204 372 178 C392 204 402 234 408 262 Z"/>
+    <path d="M398 270 C368 268 342 280 326 300 C354 300 378 290 400 278 Z"/>
+  </g>
+</svg>

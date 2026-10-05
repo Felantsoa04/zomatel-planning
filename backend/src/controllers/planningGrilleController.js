@@ -3,6 +3,20 @@ const { logAction } = require('../utils/historique');
 const { notifierRole } = require('../utils/notifier');
 
 const PERIODES = ['MATIN', 'APRES_MIDI', 'SOIR'];
+
+// Regle de repartition issue du fichier Excel de reference du projet
+// (document utiliise/EMPLOI DU TEMPS ZOMATEL WEEK 37_2026.xlsx) : chaque
+// plage horaire est rangee dans la colonne de son HEURE DE DEBUT —
+// < 12:00 = matin, 12:00-17:59 = apres-midi, >= 18:00 = soir
+// (conformite mesuree : 1663/1673 plages du fichier, 99,4 %).
+// Appliquee cote serveur : la valeur de periode envoyee par le client
+// n'est qu'un indice, jamais la source de verite.
+function periodeSelonEntree(entreeMinutes) {
+  if (entreeMinutes == null) return 'MATIN';
+  if (entreeMinutes < 12 * 60) return 'MATIN';
+  if (entreeMinutes < 18 * 60) return 'APRES_MIDI';
+  return 'SOIR';
+}
 const STATUTS_JOUR = ['TRAVAIL', 'REPOS', 'CONGE', 'ABSENCE'];
 
 function hmin(h) {
@@ -63,6 +77,21 @@ async function getGrille(req, res, next) {
       [id]
     );
 
+    // Dernier rejet RH : motif exposé tant que le planning est REJETE, pour
+    // que le chef voie POURQUOI il corrige pendant la modification de la grille
+    // (même source de vérité que la page consultation : table validation_rh).
+    let dernierRejet = null;
+    if (planning.statut === 'REJETE') {
+      [[dernierRejet]] = await pool.query(
+        `SELECT commentaire, date_validation, rh_id
+         FROM validation_rh
+         WHERE planning_id = ? AND decision = 'REJETE'
+         ORDER BY date_validation DESC, id_validation DESC
+         LIMIT 1`,
+        [id]
+      );
+    }
+
     const debut = planning.date_debut;
     const fin = planning.date_fin;
 
@@ -97,6 +126,7 @@ async function getGrille(req, res, next) {
       affectations,
       creneaux,
       contraintes: { conges, indisponibilites: indispos, recuperations },
+      dernier_rejet: dernierRejet || null,
     });
   } catch (err) {
     next(err);
@@ -177,39 +207,49 @@ async function saveGrille(req, res, next) {
           continue;
         }
 
-        // Controle local du creneau (les triggers rejouent les regles en base)
+        // Controle local des creneaux (les triggers rejouent les regles en
+        // base : chevauchement, maximum 3/jour, heure fin > debut).
+        // MULTI-PERIODES : une cellule peut porter PLUSIEURS periodes de
+        // travail (ex. 07:00-12:00 + 14:00-18:00). Deux formats acceptes :
+        //   creneau: { ... }            (historique, 1 periode)
+        //   creneaux: [ { ... }, ... ]  (nouveau, N periodes)
+        const creneauxCellule = Array.isArray(cellule.creneaux)
+          ? cellule.creneaux.filter((c) => c && (c.heure_entree || c.heure_sortie))
+          : (creneau && (creneau.heure_entree || creneau.heure_sortie) ? [creneau] : []);
         let minutes = 0;
-        if (creneau && (creneau.heure_entree || creneau.heure_sortie)) {
-          if (statut !== 'TRAVAIL') {
-            resultats.push({
-              ...base,
-              ok: false,
-              erreur: `Un horaire ne peut pas coexister avec le statut ${statut}.`,
-            });
-            continue;
-          }
-          const periode = String(creneau.periode || 'MATIN').toUpperCase();
-          const entree = hmin(creneau.heure_entree);
-          const sortie = hmin(creneau.heure_sortie);
+        let creneauxInvalides = null;
+        if (creneauxCellule.length > 0 && statut !== 'TRAVAIL') {
+          resultats.push({
+            ...base,
+            ok: false,
+            erreur: `Un horaire ne peut pas coexister avec le statut ${statut}.`,
+          });
+          continue;
+        }
+        for (const c of creneauxCellule) {
+          const entree = hmin(c.heure_entree);
+          const sortie = hmin(c.heure_sortie);
+          const periode = periodeSelonEntree(entree);
           if (!PERIODES.includes(periode)) {
-            resultats.push({ ...base, ok: false, erreur: `Periode invalide : ${periode}` });
-            continue;
+            creneauxInvalides = `Periode invalide : ${periode}`;
+            break;
           }
           if (entree === null || sortie === null) {
-            resultats.push({ ...base, ok: false, erreur: 'Format d\'heure invalide (attendu HH:MM).' });
-            continue;
+            creneauxInvalides = 'Format d\'heure invalide (attendu HH:MM).';
+            break;
           }
           if (sortie <= entree) {
-            resultats.push({ ...base, ok: false, erreur: 'Heure de fin anterieure ou egale a l\'heure de debut.' });
-            continue;
+            creneauxInvalides = 'Heure de fin anterieure ou egale a l\'heure de debut.';
+            break;
           }
-          if (sortie - entree > 480) {
-            resultats.push({ ...base, ok: false, erreur: '8h/jour maximum par employe.' });
-            continue;
-          }
-          minutes = sortie - entree;
-        } else if (statut === 'TRAVAIL' && (!creneau || !creneau.heure_entree || !creneau.heure_sortie)) {
-          resultats.push({ ...base, ok: false, erreur: 'Un jour TRAVAIL doit avoir un horaire.' });
+          minutes += sortie - entree;
+        }
+        if (creneauxInvalides) {
+          resultats.push({ ...base, ok: false, erreur: creneauxInvalides });
+          continue;
+        }
+        if (statut === 'TRAVAIL' && creneauxCellule.length === 0) {
+          resultats.push({ ...base, ok: false, erreur: 'Un jour TRAVAIL doit avoir au moins un horaire.' });
           continue;
         }
 
@@ -229,14 +269,31 @@ async function saveGrille(req, res, next) {
           [id, id_employe, jour]
         );
 
-        if (creneau && creneau.heure_entree && creneau.heure_sortie) {
-          const periode = String(creneau.periode || 'MATIN').toUpperCase();
-          await pool.query(
-            `INSERT INTO creneau_travail (affectation_id, type_creneau, heure_entree, heure_sortie)
-             VALUES (?, ?, ?, ?)
-             ON DUPLICATE KEY UPDATE heure_entree = VALUES(heure_entree), heure_sortie = VALUES(heure_sortie)`,
-            [aff.id_affectation, periode, creneau.heure_entree, creneau.heure_sortie]
-          );
+        // MULTI-PERIODES : chaque periode est ecrite dans sa colonne
+        // type_creneau (MATIN / APRES_MIDI / SOIR deduits des heures de debut).
+        // ORDRE IMPORTANT : supprimer d'abord les periodes qui disparaissent
+        // (le trigger de MAJ verifie les chevauchements SANS s'exclure lui-meme,
+        // un upsert sur une periode inchangée serait donc refusé sinon).
+        if (statut === 'TRAVAIL') {
+          const periodesEnvoyees = creneauxCellule.map((c) => periodeSelonEntree(hmin(c.heure_entree)));
+          if (periodesEnvoyees.length > 0) {
+            const joker = periodesEnvoyees.map(() => '?').join(',');
+            await pool.query(
+              `DELETE FROM creneau_travail WHERE affectation_id = ? AND type_creneau NOT IN (${joker})`,
+              [aff.id_affectation, ...periodesEnvoyees]
+            );
+          } else {
+            await pool.query('DELETE FROM creneau_travail WHERE affectation_id = ?', [aff.id_affectation]);
+          }
+          for (let i = 0; i < creneauxCellule.length; i++) {
+            const c = creneauxCellule[i];
+            await pool.query(
+              `INSERT INTO creneau_travail (affectation_id, type_creneau, heure_entree, heure_sortie)
+               VALUES (?, ?, ?, ?)
+               ON DUPLICATE KEY UPDATE heure_entree = VALUES(heure_entree), heure_sortie = VALUES(heure_sortie)`,
+              [aff.id_affectation, periodesEnvoyees[i], c.heure_entree, c.heure_sortie]
+            );
+          }
         }
 
         modifiees += 1;
@@ -247,10 +304,8 @@ async function saveGrille(req, res, next) {
           duree_minutes: minutes || undefined,
         });
       } catch (cellErr) {
-        // Erreurs des triggers MariaDB (8h/jour, chevauchement, date hors semaine...)
-        const message = /depassee/i.test(cellErr.message)
-          ? 'Regle 8h/jour depassee pour cet employe ce jour.'
-          : /chevauch/i.test(cellErr.message)
+        // Erreurs des triggers MariaDB (chevauchement, date hors semaine...)
+        const message = /chevauch/i.test(cellErr.message)
             ? 'Conflit d\'horaires : chevauchement avec un autre creneau.'
             : /non travail/i.test(cellErr.message)
               ? 'Impossible : le jour n\'est pas en TRAVAIL.'
@@ -306,6 +361,8 @@ async function modifiable(req, res, next) {
 
 // PATCH /api/plannings/:id/soumettre : BROUILLON ou REJETE -> SOUMIS
 // (remplace la version limitee au seul statut BROUILLON)
+// Une REJETE resoumise est un planning MODIFIE : la notification RH le precise
+// (meme circuit, meme endpoint — aucun chemin parallele de validation).
 async function soumettre(req, res, next) {
   try {
     const { id } = req.params;
@@ -325,22 +382,33 @@ async function soumettre(req, res, next) {
         message: 'Seul un planning BROUILLON ou REJETE peut etre soumis.',
       });
     }
+    // Une resoumission après rejet = planning modifié/resoumis (statut
+    // REJETE avant passage) ; après rouverture d'un VALIDÉ, le statut
+    // BROUILLON se resoumet comme une correction d'un planning déjà validé.
+    const estResoumission = planning.statut === 'REJETE';
     await pool.query(
       "UPDATE planning SET statut = 'SOUMIS' WHERE id_planning = ?",
       [id]
     );
-    await logAction(id, req.user.id_utilisateur, 'Soumission pour validation RH');
+    await logAction(
+      id,
+      req.user.id_utilisateur,
+      estResoumission ? 'Resoumission apres modification (correction du rejet RH)' : 'Soumission pour validation RH'
+    );
 
-    // Notification aux RH : un planning attend leur validation
+    // Notification aux RH (systeme existant) : un planning attend leur
+    // validation — le libelle distingue une resoumission d'une premiere fois.
     await notifierRole(
       'RH',
       id,
-      'Planning soumis pour validation',
-      `Le planning ${planning.nom_service} S${planning.numero_semaine}/${planning.annee} a ete soumis pour validation.`,
+      estResoumission ? 'Planning modifié — à revalider' : 'Planning soumis pour validation',
+      estResoumission
+        ? `Le planning ${planning.nom_service} S${planning.numero_semaine}/${planning.annee} a ete modifie par le chef et resoumis : il attend votre revalidation.`
+        : `Le planning ${planning.nom_service} S${planning.numero_semaine}/${planning.annee} a ete soumis pour validation.`,
       { exceptUtilisateurId: req.user.id_utilisateur }
     );
 
-    res.json({ message: 'Planning soumis a la RH.' });
+    res.json({ message: estResoumission ? 'Planning modifié et resoumis à la RH.' : 'Planning soumis a la RH.' });
   } catch (err) {
     next(err);
   }

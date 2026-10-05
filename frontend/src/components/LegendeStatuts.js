@@ -5,12 +5,12 @@
 // .edt-statut-* (globals.css) et restent visibles a l'impression.
 
 const ITEMS = [
-  { emoji: '🟢', label: 'Repos' },
-  { emoji: '🔴', label: 'Absent' },
-  { emoji: '🟠', label: 'Congé' },
-  { emoji: '🔵', label: 'Récupération' },
-  { emoji: '🟣', label: 'Formation' },
-  { emoji: '⚪', label: 'Non planifié' },
+  { couleur: '#16a34a', label: 'Repos' },
+  { couleur: '#dc2626', label: 'Absent' },
+  { couleur: '#d97706', label: 'Congé' },
+  { couleur: '#1d4ed8', label: 'Récupération' },
+  { couleur: '#6b21a8', label: 'Formation' },
+  { couleur: '#d6d3d1', label: 'Non planifié' },
 ];
 
 export default function LegendeStatuts() {
@@ -18,7 +18,11 @@ export default function LegendeStatuts() {
     <div className="legende-statuts" aria-label="Légende des statuts">
       {ITEMS.map((it) => (
         <span key={it.label} className="legende-item">
-          <span role="img" aria-hidden="true">{it.emoji}</span> {it.label}
+          <span
+            aria-hidden="true"
+            style={{ width: 9, height: 9, borderRadius: '50%', background: it.couleur, display: 'inline-block' }}
+          />
+          {it.label}
         </span>
       ))}
     </div>

@@ -6,7 +6,10 @@
 
 export function DashBars({ data, unite = '' }) {
   const items = (data || []).filter((d) => d.valeur > 0);
-  if (items.length === 0) return <p className="muted">Aucune donnée.</p>;
+  if (items.length === 0) {
+    // Etat vide explicite (polish : jamais un graphique muet sans explication).
+    return <p className="muted dash-vide">Aucune donnée à afficher pour le moment.</p>;
+  }
   const max = Math.max(...items.map((d) => d.valeur));
   return (
     <div className="dash-bars">
@@ -29,7 +32,27 @@ export function DashBars({ data, unite = '' }) {
 export function DashDonut({ data, centreHaut, centreBas }) {
   const items = (data || []).filter((d) => d.valeur > 0);
   const total = items.reduce((s, d) => s + d.valeur, 0);
-  if (total === 0) return <p className="muted">Aucune donnée.</p>;
+  if (total === 0) {
+    // Etat vide : garde la légende informative même sans plannings.
+    return (
+      <div className="dash-donut-wrap">
+        <div className="dash-donut dash-donut-vide" role="img" aria-label="Aucune donnée">
+          <div className="dash-donut-trou">
+            <strong>0</strong>
+            <span>{centreBas || 'total'}</span>
+          </div>
+        </div>
+        <ul className="dash-donut-legende">
+          {(data || []).map((d) => (
+            <li key={d.label} className="muted">
+              <span className="dash-pastille" style={{ background: d.couleur, opacity: 0.3 }} />
+              {d.label} <strong>0</strong>
+            </li>
+          ))}
+        </ul>
+      </div>
+    );
+  }
 
   // Anneau en conic-gradient (segments dans l'ordre des donnees)
   let accumule = 0;

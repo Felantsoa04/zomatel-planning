@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Navbar from '@/components/Navbar';
+import { CalendarPlus } from 'lucide-react';
+import AppShell from '@/components/AppShell';
 import RetourButton from '@/components/RetourButton';
 import { api } from '@/lib/api';
 import { getToken, getUser } from '@/lib/auth';
@@ -56,15 +57,14 @@ export default function NewPlanningPage() {
   }
 
   return (
-    <div>
-      <Navbar />
+<AppShell>
       <div className="container" style={{ maxWidth: 480 }}>
         <RetourButton fallback="/dashboard" hasUnsaved={!!dateDebut || !!dateFin} />
         <h1>Nouveau planning</h1>
         <div className="card">
           <form onSubmit={handleSubmit}>
             <div className="form-row">
-              <label>Date de debut (lundi)</label>
+              <label>Date de début (lundi)</label>
               <input type="date" value={dateDebut} onChange={(e) => setDateDebut(e.target.value)} required />
             </div>
             <div className="form-row">
@@ -72,12 +72,12 @@ export default function NewPlanningPage() {
               <input type="date" value={dateFin} onChange={(e) => setDateFin(e.target.value)} required />
             </div>
             <button className="btn" type="submit" disabled={loading}>
-              {loading ? 'Creation...' : 'Creer le planning'}
+              <CalendarPlus size={15} aria-hidden="true" /> {loading ? 'Création...' : 'Créer le planning'}
             </button>
             {error && <div className="error">{error}</div>}
           </form>
         </div>
       </div>
-    </div>
+    </AppShell>
   );
 }

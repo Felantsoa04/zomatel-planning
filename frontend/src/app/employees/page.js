@@ -9,8 +9,9 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Navbar from '@/components/Navbar';
-import RetourButton from '@/components/RetourButton';
+import { UserPlus, Pencil, Trash2 } from 'lucide-react';
+import AppShell from '@/components/AppShell';
+import Modal from '@/components/Modal';
 import { api } from '@/lib/api';
 import { getToken, getUser } from '@/lib/auth';
 
@@ -29,6 +30,7 @@ export default function EmployeesPage() {
   const [form, setForm] = useState(FORM_VIDE);
   // edition = null (ferme) | { id_employe, ...champs }
   const [edition, setEdition] = useState(null);
+  const [modalAjout, setModalAjout] = useState(false);
   const [recherche, setRecherche] = useState('');
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
@@ -93,7 +95,7 @@ export default function EmployeesPage() {
     resetMessages();
     try {
       await api.post('/employes', { ...form, id_service: Number(form.id_service) }, token);
-      setMessage(`Employe ${form.nom} ajoute.`);
+      setMessage(`Employé ${form.nom} ajouté.`);
       setForm(FORM_VIDE);
       await charger(token);
     } catch (err) {
@@ -123,7 +125,7 @@ export default function EmployeesPage() {
         { ...edition, id_service: Number(edition.id_service) },
         token
       );
-      setMessage(`Employe ${edition.nom} mis a jour.`);
+      setMessage(`Employé ${edition.nom} mis à jour.`);
       setEdition(null);
       await charger(token);
     } catch (err) {
@@ -132,11 +134,11 @@ export default function EmployeesPage() {
   }
 
   async function desactiverEmploye(emp) {
-    if (!confirm(`Desactiver l'employe ${emp.nom} ? Il disparaitra des listes actives (ses donnees sont conservees).`)) return;
+    if (!confirm(`Désactiver l'employé ${emp.nom} ? Il disparaîtra des listes actives (ses données sont conservées).`)) return;
     resetMessages();
     try {
       await api.delete(`/employes/${emp.id_employe}`, token);
-      setMessage(`Employe ${emp.nom} desactive.`);
+      setMessage(`Employé ${emp.nom} désactivé.`);
       await charger(token);
     } catch (err) {
       setError(err.message);
@@ -144,21 +146,22 @@ export default function EmployeesPage() {
   }
 
   return (
-    <div>
-      <Navbar />
+    <AppShell>
       <div className="container">
-        <RetourButton fallback="/dashboard" hasUnsaved={!!(form.nom || edition)} />
-        <h1>Employes</h1>
+        {/* Bouton Ajouter a cote du titre (liste simple en dessous) */}
+        <div className="tete-page">
+          <h1>Employés</h1>
+          {peutGerer && (
+            <button className="btn btn-ajout" onClick={() => { resetMessages(); setForm(FORM_VIDE); setModalAjout(true); }}>
+              <UserPlus size={15} aria-hidden="true" /> Ajouter un employé
+            </button>
+          )}
+        </div>
         {error && <div className="error">{error}</div>}
-        {message && (
-          <div style={{ color: '#166534', background: '#dcfce7', padding: '8px 12px', borderRadius: 6, fontSize: 13, marginBottom: 12 }}>
-            {message}
-          </div>
-        )}
+        {message && <div className="bandeau-succes">{message}</div>}
 
-        {(user?.role === 'RH' || user?.role === 'CHEF_SERVICE') && (
-          <div className="card">
-            <h3 style={{ marginTop: 0 }}>Ajouter un employe</h3>
+        {(user?.role === 'RH' || user?.role === 'CHEF_SERVICE') && modalAjout && (
+          <Modal titre="Ajouter un employé" onClose={() => setModalAjout(false)} largeur={640}>
             <form onSubmit={handleSubmit}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
                 <div className="form-row">
@@ -170,7 +173,7 @@ export default function EmployeesPage() {
                   />
                 </div>
                 <div className="form-row">
-                  <label>Matricule (optionnel, vide pour stagiaire)</label>
+                  <label>Matricule (optionnel)</label>
                   <input
                     value={form.matricule}
                     onChange={(e) => setForm((f) => ({ ...f, matricule: e.target.value }))}
@@ -210,7 +213,7 @@ export default function EmployeesPage() {
                   </select>
                 </div>
                 <div className="form-row">
-                  <label>Reference hebdo (h)</label>
+                  <label>Référence hebdo (h)</label>
                   <select
                     value={form.reference_hebdo}
                     onChange={(e) =>
@@ -222,17 +225,17 @@ export default function EmployeesPage() {
                   </select>
                 </div>
               </div>
-              <button className="btn" type="submit">
-                Ajouter
-              </button>
+              <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                <button className="btn secondary" type="button" onClick={() => setModalAjout(false)}>Annuler</button>
+                <button className="btn" type="submit">Ajouter</button>
+              </div>
             </form>
-          </div>
+          </Modal>
         )}
 
-        {/* ---------- Modification (formulaire inline) ---------- */}
+        {/* ---------- Modification (modale) ---------- */}
         {peutGerer && edition && (
-          <div className="card">
-            <h3 style={{ marginTop: 0 }}>Modifier l&apos;employe #{edition.id_employe}</h3>
+          <Modal titre={`Modifier l'employé — ${edition.nom || `#${edition.id_employe}`}`} onClose={() => setEdition(null)} largeur={640}>
             <form onSubmit={enregistrerEdition}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
                 <div className="form-row">
@@ -284,7 +287,7 @@ export default function EmployeesPage() {
                   </select>
                 </div>
                 <div className="form-row">
-                  <label>Reference hebdo (h)</label>
+                  <label>Référence hebdo (h)</label>
                   <select
                     value={edition.reference_hebdo}
                     onChange={(e) =>
@@ -306,13 +309,13 @@ export default function EmployeesPage() {
                 Annuler
               </button>
             </form>
-          </div>
+          </Modal>
         )}
 
         <div className="card">
           <div className="form-row">
             <input
-              placeholder="Rechercher un employe (nom ou matricule)..."
+              placeholder="Rechercher un employé (nom ou matricule)..."
               value={recherche}
               onChange={(e) => setRecherche(e.target.value)}
             />
@@ -329,7 +332,7 @@ export default function EmployeesPage() {
                   <th>Statut</th>
                   <th>Fonction</th>
                   <th>Service</th>
-                  <th>Reference</th>
+                  <th>Référence</th>
                   {peutGerer && <th>Actions</th>}
                 </tr>
               </thead>
@@ -344,8 +347,12 @@ export default function EmployeesPage() {
                     <td>{e.reference_hebdo} h</td>
                     {peutGerer && (
                       <td style={{ whiteSpace: 'nowrap' }}>
-                        <button className="btn secondary" onClick={() => ouvrirEdition(e)} title="Modifier">✏️</button>{' '}
-                        <button className="btn danger" onClick={() => desactiverEmploye(e)} title="Desactiver">🗑️</button>
+                        <button className="btn-icone" onClick={() => ouvrirEdition(e)} title="Modifier">
+                          <Pencil size={15} aria-hidden="true" />
+                        </button>{' '}
+                        <button className="btn-icone danger" onClick={() => desactiverEmploye(e)} title="Désactiver">
+                          <Trash2 size={15} aria-hidden="true" />
+                        </button>
                       </td>
                     )}
                   </tr>
@@ -353,7 +360,7 @@ export default function EmployeesPage() {
                 {employesFiltres.length === 0 && (
                   <tr>
                     <td colSpan={peutGerer ? 7 : 6} className="muted">
-                      Aucun employe trouve.
+                      Aucun employé trouvé.
                     </td>
                   </tr>
                 )}
@@ -362,6 +369,6 @@ export default function EmployeesPage() {
           )}
         </div>
       </div>
-    </div>
+    </AppShell>
   );
 }

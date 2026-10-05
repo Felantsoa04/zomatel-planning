@@ -1,6 +1,6 @@
 'use client';
 
-// CLOCHE DE NOTIFICATIONS 🔔
+// CLOCHE DE NOTIFICATIONS
 // - Badge = nombre de non-lues (GET /notifications/non-lues/count)
 // - Clic -> panneau listant les notifications (GET /notifications)
 // - Chaque item : titre, message, date/heure, etat lu/non-lu
@@ -13,6 +13,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { Bell, CheckCheck } from 'lucide-react';
 import { api } from '@/lib/api';
 import { getToken } from '@/lib/auth';
 
@@ -113,7 +114,7 @@ export default function NotificationBell() {
   return (
     <div className="notif-wrap" ref={wrapRef}>
       <button className="notif-btn" onClick={basculer} aria-label="Notifications" title="Notifications">
-        <span role="img" aria-hidden="true">🔔</span>
+        <Bell size={18} aria-hidden="true" />
         {nonLues > 0 && <span className="notif-badge">{nonLues > 99 ? '99+' : nonLues}</span>}
       </button>
 
@@ -123,7 +124,7 @@ export default function NotificationBell() {
             <strong>Notifications</strong>
             {nonLues > 0 && (
               <button className="notif-tout-lu" onClick={toutMarquerLu}>
-                Tout marquer comme lu
+                <CheckCheck size={13} aria-hidden="true" /> Tout marquer comme lu
               </button>
             )}
           </div>
