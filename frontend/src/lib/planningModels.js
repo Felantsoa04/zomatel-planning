@@ -126,9 +126,8 @@ const MODELE_HORAIRE_LIBRE = {
 };
 
 /* ---------------------------------------------------------------------------
- * REGISTRE — résolution par nom de service (correspondance souple, insensible
- * à la casse/accents ; jamais de structure générique imposée aux modèles
- * spécifiques). Tout service non listé = MODELE_STANDARD.
+ * REGISTRE — résolution par le type de planning configuré sur le service.
+ * Le nom du service n'influence ni la structure ni les fonctionnalités.
  * ------------------------------------------------------------------------- */
 export const MODELES = {
   STANDARD: MODELE_STANDARD,
@@ -140,29 +139,11 @@ export const MODELES = {
  * proprement l'état des pages avant résolution. */
 export const MODELE_STANDARD_PAR_DEFAUT = MODELE_STANDARD;
 
-function normaliser(nom) {
-  return String(nom || '')
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toUpperCase()
-    .trim();
-}
-
-/* Correspondances service -> modèle (configuration, pas du code métier).
- * SECURITE et les services HORAIRE_LIBRE (type_affichage en base) sont
- * reconnus ; tous les autres restent sur le modèle standard. */
-const REGLE_SECURITE = /SECURITE|GUARD/;
-const REGLE_STOCK_CONGELATEUR = /STOCK CONGELATEUR|CONGELATEUR/;
-
-/* Résolveur principal : service (nom + type_affichage) -> modèle. */
+/* Résolveur principal : type d'affichage configuré -> format des données. */
 export function resoudreModele(service) {
   if (!service) return MODELE_STANDARD;
-  const nom = normaliser(service.nom_service || service.nom);
   const type = service.type_affichage || null;
-  // 1. Correspondance explicite par nom (prioritaire)
-  if (REGLE_SECURITE.test(nom)) return MODELE_SECURITE;
-  if (REGLE_STOCK_CONGELATEUR.test(nom)) return MODELE_HORAIRE_LIBRE;
-  // 2. Sinon : le type_affichage en base décide (HORAIRE_LIBRE existant)
+  if (type === 'SHIFT_POSTE') return MODELE_SECURITE;
   if (type === 'HORAIRE_LIBRE') return MODELE_HORAIRE_LIBRE;
   return MODELE_STANDARD;
 }

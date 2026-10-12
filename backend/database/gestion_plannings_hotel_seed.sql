@@ -13,7 +13,7 @@ INSERT INTO service (id_service, nom_service, type_affichage, description) VALUE
   (1, 'Réception',           'PERIODES_FIXES', 'Accueil et check-in/out'),
   (2, 'Restauration',        'PERIODES_FIXES', 'Restaurant et snack'),
   (3, 'Housekeeping',        'HORAIRE_LIBRE',  'Nettoyage des chambres'),
-  (4, 'Sécurité',            'PERIODES_FIXES', 'Ronde jour et nuit'),
+  (4, 'Sécurité',            'SHIFT_POSTE',    'Ronde jour et nuit'),
   (5, 'Maintenance',         'HORAIRE_LIBRE',  'Technique et entretien')
 ON DUPLICATE KEY UPDATE nom_service = VALUES(nom_service);
 

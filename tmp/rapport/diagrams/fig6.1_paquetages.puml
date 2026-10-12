@@ -1,0 +1,77 @@
+@startuml
+skinparam defaultFontName "Times New Roman"
+skinparam defaultFontSize 18
+skinparam shadowing false
+skinparam componentStyle rectangle
+
+package "Frontend (Next.js 14 / React 18)" as FE {
+  package "app (App Router)" as app {
+    [login]
+    [dashboard]
+    [planning]
+    [validations]
+    [employees]
+    [statistiques]
+    [archives]
+    [messagerie]
+  }
+  package "lib" as lib {
+    [api.js]
+    [auth.js]
+    [permissions.js]
+    [planningData.js]
+    [socket.js]
+  }
+  [AppShell / Navbar]
+}
+
+package "Backend (Node.js + Express)" as BE {
+  package "routes" as routes {
+    [authRoutes]
+    [serviceRoutes]
+    [employeRoutes]
+    [planningRoutes]
+    [affectationRoutes]
+    [creneauRoutes]
+    [recuperationRoutes]
+    [messengerRoutes]
+    [notificationRoutes]
+  }
+  package "controllers" as ctrl {
+    [authController]
+    [planningController]
+    [planningGrilleController]
+    [validationController]
+    [couvertureController]
+    [employeController]
+    [exportEdtController]
+    [statistiquesHeuresController]
+    [messengerController]
+  }
+  package "middleware" as mw {
+    [authRequired + requirePermission]
+  }
+  package "services" as srv {
+    [emploiDuTempsExcel]
+    [emailService]
+  }
+  [app.js / socket.io]
+}
+
+database "MariaDB" as DB {
+  package "gestion_plannings_hotel" as base {
+    [16 tables]
+    [4 vues de calcul]
+    [9 triggers de controle]
+  }
+}
+
+[login] --> [AppShell / Navbar]
+[AppShell / Navbar] --> [api.js]
+[api.js] --> [authRequired + requirePermission]
+[authRequired + requirePermission] --> routes
+routes --> ctrl
+ctrl --> dbcore
+srv --> dbcore
+[socket.io] --> [notificationRoutes]
+@enduml

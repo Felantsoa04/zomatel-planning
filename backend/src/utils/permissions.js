@@ -18,6 +18,7 @@ const CATALOGUE = [
   ['planning.delete',   'Supprimer un planning',                    null],
   ['planning.validate', 'Valider / refuser un planning',            null],
   ['planning.reopen',   'Rouvrir un planning valide',               null],
+  ['planning.export_edt', 'Exporter l’emploi du temps Excel (RH)',   null],
   // Employes (routes employeRoutes.js)
   ['employe.view',      'Consulter les employes',                   null],
   ['employe.manage',    'Ajouter / modifier / desactiver les employes', null],
@@ -35,9 +36,9 @@ const CATALOGUE = [
 // Permissions proposees par defaut a la CREATION d'un compte selon son role
 // (copie des droits actuels de chaque role — aucune elevation cachee).
 const DEFAUTS_PAR_ROLE = {
-  ADMIN: CATALOGUE.map(([code]) => code),
+  ADMIN: CATALOGUE.filter(([code]) => code !== 'planning.export_edt').map(([code]) => code),
   RH: [
-    'planning.view', 'planning.view_all', 'planning.validate', 'planning.reopen',
+    'planning.view', 'planning.view_all', 'planning.validate', 'planning.reopen', 'planning.export_edt',
     'planning.delete', 'employe.view', 'employe.manage', 'service.manage',
     'user.view', 'user.create', 'user.update', 'messenger.use',
   ],

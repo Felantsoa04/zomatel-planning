@@ -1,0 +1,411 @@
+[] RÉPUBLIQUE DE MADAGASCAR
+[] MINISTÈRE DE L’ENSEIGNEMENT SUPÉRIEUR ET DE LA RECHERCHE SCIENTIFIQUE
+[] UNIVERSITÉ DE FIANARANTSOA
+[] ÉCOLE DE MANAGEMENT ET D’INNOVATION TECHNOLOGIQUE (EMIT)
+[] Département : Développement d’Application Internet et Intranet (DASI)
+[] [Emplacements réservés aux logos : Université de Fianarantsoa — EMIT — Établissement d’accueil]
+[] RAPPORT DE STAGE
+[] En vue de l’obtention du diplôme de Licence en informatique, parcours Développement d’Application Internet et Intranet (DASI)
+[] TITRE DU MÉMOIRE
+[] Conception et développement d’une application web de digitalisation de la gestion des plannings du personnel d’un établissement hôtelier
+[] Cas de l’établissement Zomatel (hôtellerie – restauration)
+[] Présenté et soutenu par :
+[] « Nom et prénoms de l’étudiant : À COMPLÉTER »
+[] Période de stage : À COMPLÉTER   —   Maître de stage (entreprise) : À COMPLÉTER
+[] Établissement d’accueil : ZOMATEL — adresse : À COMPLÉTER
+[] Encadrant pédagogique : À COMPLÉTER
+[] Membres du jury : À COMPLÉTER (président) — À COMPLÉTER (rapporteur)
+[] Année universitaire : À COMPLÉTER
+[] PAGE DE GARDE
+[] (
+[] Version noir et blanc, à imprimer recto uniquement — en-tête de page : logos ; contenu identique à la page de couverture.
+[] N.B. : conformément au canevas, la page de garde reprend fidèlement la couverture, en noir et blanc.
+[] Signe distinctif / fac-similé de signature facultatif : À COMPLÉTER
+[Heading1] CURRICULUM VITAE
+[] Photo récente (tenue correcte) : À COMPLÉTER
+[] Nom et prénoms : À COMPLÉTER
+[] Né(e) le : À COMPLÉTER  —  à À COMPLÉTER
+[] Adresse : À COMPLÉTER  —  Téléphone : À COMPLÉTER  —  Courriel : À COMPLÉTER
+[] Diplômes et formations :
+[ListNumber] À COMPLÉTER — année universitaire À COMPLÉTER
+[ListNumber] À COMPLÉTER
+[ListNumber] À COMPLÉTER
+[] Expériences et stages :
+[ListNumber] Stage de À COMPLÉTER — À COMPLÉTER
+[ListNumber] Stage 3e année (Licence DASI) : Établissement ZOMATEL — digitalisation de la gestion des plannings du personnel
+[] Compétences :
+[ListBullet] Développement web full stack : JavaScript (Next.js, React), Node.js/Express ;
+[ListBullet] Bases de données relationnelles : MariaDB (modélisation, requêtes SQL, triggers et vues) ;
+[ListBullet] Analyse et conception : UML, méthode de conception orientée objets ;
+[ListBullet] Gestion de versions : Git.
+[Heading1] REMERCIEMENTS
+[] Avant toute chose, je tiens à exprimer ma profonde gratitude envers tous ceux qui, de près ou de loin, ont contribué au bon déroulement de ce stage et à l’élaboration du présent rapport.
+[] Je remercie sincèrement mon maître de stage au sein de l’établissement ZOMATEL, À COMPLÉTER, pour son accueil, pour la confiance qu’il m’a accordée et pour les multiples explications qui ont permis de
+[] Je remercie également mon encadrant pédagogique, À COMPLÉTER, pour la rigueur de ses consignes, pour la pertinence de ses remarques et pour la disponibilité dont il a fait preuve tout au long de la ré
+[] Mes remerciements s’adressent aussi à l’ensemble du corps enseignant de l’EMIT, département DASI, pour la qualité de la formation reçue, ainsi qu’à l’administration de l’école pour son organisation et
+[] Enfin, je remercie mes camarades de promotion, le personnel des services de l’établissement ZOMATEL que j’ai eu à fréquenter pendant la phase d’analyse (cuisine, salle, réception, administration), ain
+[] (Personnaliser librement les personnes citées : À COMPLÉTER.)
+[Heading1] RÉSUMÉ
+[] Dans l’hôtellerie-restauration, l’élaboration des plannings hebdomadaires du personnel reste, dans de nombreux établissements, un exercice essentiellement manuel : tableurs indépendants par service, c
+[] Le présent rapport décrit la conception et le développement d’une application web destinée à digitaliser la gestion des plannings du personnel d’un établissement hôtelier, l’établissement ZOMATEL. L’a
+[] L’application couvre trois formats de saisie configurables par service (périodes fixes matin/après-midi/soir, horaire libre, shift par poste), la gestion des congés et récupérations, le contrôle de co
+[] MOTS-CLÉS : planning du personnel ; hôtellerie ; digitalisation ; application web ; Next.js ; Node.js ; MariaDB ; validation RH ; heures de travail.
+[Heading1] ABSTRACT
+[] In hotel and restaurant establishments, the weekly scheduling of staff still relies, in many places, on a mostly manual exercise: separate spreadsheets per department, mental calculation of worked hou
+[] This report describes the design and development of a web application to digitize the staff scheduling of a hotel establishment, ZOMATEL. Built as a three-tier architecture (a Next.js/React interface,
+[] The application supports three input formats configurable per department (fixed periods morning/afternoon/evening, free-hour grid, shift per station), the management of leave and compensations, covera
+[] KEYWORDS: staff scheduling; hotel industry; digitization; web application; Next.js; Node.js; MariaDB; HR validation; working hours.
+[Heading1] LISTE DES FIGURES
+[] Figure 1.1 — Chronogramme de réalisation du projet (diagramme de Gantt).
+[] Figure 3.1 — Architecture trois tiers de l’application.
+[] Figure 4.1 — Diagramme de flux du processus actuel de gestion des plannings.
+[] Figure 4.2 — Diagramme de cas d’utilisation de l’application.
+[] Figure 5.1 — Diagramme de séquence système : soumission et validation d’un planning.
+[] Figure 5.2 — Diagramme de séquence système : authentification.
+[] Figure 5.3 — Modèle de domaine.
+[] Figure 6.1 — Diagramme de paquetages de l’application.
+[] Figure 6.2 — Diagramme de déploiement.
+[] Figure 6.3 — Modèle conceptuel des données (MCD).
+[] Figure 6.4 — Diagramme de classes backend.
+[Heading1] LISTE DES TABLEAUX
+[] Tableau 3.1 — Moyens humains, matériels et logiciels nécessaires au projet.
+[] Tableau 3.2 — Résultat attendu (livrables).
+[] Tableau 4.1 — Critique de l’existant.
+[] Tableau 5.1 — Extrait du dictionnaire de données.
+[] Tableau 5.2 — Règles de gestion.
+[] Tableau 5.3 — Description textuelle du cas d’utilisation « Soumettre un planning à la RH ».
+[] Tableau 5.4 — Description textuelle du cas d’utilisation « Valider ou rejeter un planning soumis ».
+[] Tableau 6.1 — Synthèse de la base de données gestion_plannings_hotel.
+[] Tableau 6.2 — Principales règles métier appliquées par triggers MariaDB.
+[] Tableau 7.1 — Outils et technologies de réalisation.
+[] Tableau 9.1 — Comparaison de l’application avec des solutions existantes.
+[Heading1] LISTE DES SIGLES ET ABRÉVIATIONS
+[] API : Application Programming Interface (interface de programmation applicative)
+[] BROUILLON : Premier état d’un planning, librement modifiable par le chef de service
+[] CRF : Sigle non utilisé dans le corps du rapport (conservé comme entrée vide)
+[] DASI : Développement d’Application Internet et Intranet (parcours de licence)
+[] EMIT : École de Management et d’Innovation Technologique
+[] ENUM : Type de colonne SQL n’acceptant qu’une liste finie de valeurs
+[] HR / RH : Human Resources / Ressources Humaines
+[] HTTP : HyperText Transfer Protocol (protocole de transfert du web)
+[] JWT : JSON Web Token (jeton d’authentification)
+[] MCD : Modèle Conceptuel des Données
+[] MVC : Modèle-Vue-Contrôleur (motif d’architecture logicielle)
+[] REST : REpresentational State Transfer (style d’architecture d’API web)
+[] RH : Ressources Humaines
+[] SDK : Software Development Kit
+[] SOUMIS : État d’un planning transmis à la RH et en attente de décision
+[] SQL : Structured Query Language (langage de requête des bases de données)
+[] UML : Unified Modeling Language (langage de modélisation unifié)
+[] VALIDE / REJETE : États finals d’un planning après décision de la RH
+[] (La liste complète des états d’un planning est donnée dans la règle de gestion n°5 : À COMPLÉTER à ajuster si nécessaire.)
+[Heading1] GLOSSAIRE
+[] Affectation : Statut d’un employé pour un jour donné d’un planning (TRAVAIL, REPOS, ABSENCE).
+[] Besoins de couverture : Effectifs requis par jour et par créneau pour un service.
+[] Couverture : Comparaison entre l’effectif requis et l’effectif réel previsto d’un créneau de service.
+[] Créneau de travail : Période horizontale d’une journée (matin, après-midi, soir) avec heure d’entrée et heure de sortie.
+[] Emploi du temps : Planning hebdomadaire validé, transformé en support de consultation et d’export Excel.
+[] Grille du planning : Vue d’édition directe employé × jour du lundi au dimanche, façon tableur.
+[] Message : Contenu textuel ou fichier échangé dans une conversation de la messagerie interne.
+[] Notification : Message généré automatiquement par le système pour informer un utilisateur (décision, soumission).
+[] Notification temps réel : Notification poussée en direct au client connecté via socket.io.
+[] Permission : Droit d’accès associée à un rôle (côté serveur, chaque route vérifie sa permission requis).
+[] Récupération : Heure de repos compensé enregistrée par le chef de service ou la RH.
+[] Référence hebdomadaire : Volume d’heures de référence d’un employé (44 h ou 48 h) utilisé pour comparaison.
+[] Service : Département de l’établissement (Cuisine Snack, Salle Snack, Patisserie & Pizza, ...).
+[] Trigger : Programme SQL exécuté automatiquement au moment d’un insert ou d’un update en base.
+[] Vue SQL : Requête enregistrée en base, calculant par exemple la durée totale d’un employé.
+[Heading1] TABLE DES MATIÈRES
+[] Table des matières : appuyez sur Ctrl+A puis F9 (ou clic droit > Mettre à jour les champs) pour l'actualiser dans Word.
+[Heading1] INTRODUCTION GÉNÉRALE
+[] Parmi les établissements du secteur de l’hôtellerie-restauration, la qualité de l’accueil offert à la clientèle dépend en grande partie d’une donnée souvent invisible : la bonne répartition du personn
+[] Dans la pratique, cet exercice reste dans de nombreux établissements purement manuel. Un tableur indépendant est rédigé par service, les durées de chaque créneau et les totaux hebdomadaires sont calcu
+[] En se fondant sur ces constats, ce travail pose une hypothèse simple : la digitalisation de la gestion des plannings du personnel, appuyée sur une application web adaptée aux contraintes réelles de l’
+[] Le présent rapport est organisé en trois grandes parties. La première présente le cadre général du stage : l’école, l’établissement d’accueil et le projet lui-même, avec ses objectifs et les moyens mi
+[Heading1] PARTIE 1 : PRÉSENTATION GÉNÉRALE
+[Heading2] CHAPITRE 1 : PRÉSENTATION DE L’ÉCOLE
+[Heading3] 1.1. Historique et rattachement
+[] L’École de Management et d’Innovation Technologique (EMIT) est un établissement de l’Université de Fianarantsoa. À COMPLÉTER ; les éléments suivants sont à ajuster d’après les données officielles de l
+[] L’EMIT forme des cadres dans les domaines du management de la technologie et de l’informatique, avec plusieurs parcours de licence et de master. Le présent rapport a été réalisé dans le cadre du parco
+[Heading3] 1.2. La formation DASI et le stage de troisième année
+[] La formation DASI cèle plusieurs axes utiles à ce projet :
+[ListBullet] la programmation orientée objet et les langages du web (JavaScript, PHP, Java) ;
+[ListBullet] les bases de données relationnelles et la production de requêtes SQL ;
+[ListBullet] l’analyse et la conception informatiques, avec une grande place donnée à la modélisation UML ;
+[ListBullet] les méthodes et techniques de gestion de projet informatique.
+[] Le stage de troisième année constitue la mise en situation de ces acquis : chaque étudiant réalise, au sein d’une structure d’accueil, un projet informatique complet de la collecte des besoins jusqu’a
+[Heading2] CHAPITRE 2 : PRÉSENTATION DE L’ENTREPRISE D’ACCUEIL
+[Heading3] 2.1. Présentation générale
+[] ZOMATEL est un établissement d’hôtellerie-restauration comportant plusieurs services opérationnels parmi lesquels, du point de vue de la planification du personnel :
+[ListBullet] Cuisine Snack ;
+[ListBullet] Salle Snack ;
+[ListBullet] Patisserie & Pizza.
+[ListBullet] ainsi que d’autres services internes (réception, étage, détente, administration…).
+[] Chaque service dispose de son équipe, de ses horaires de service et de ses plages de répartition. Le personnel est principalement de deux statuts : titulaires, possédant un matricule, et stagiaires, s
+[Heading3] 2.2. Organisation de la gestion du personnel
+[] Adresse complète, historique, effectif global et détails administratifs : À COMPLÉTER. À partir des observations effectuées pendant le stage, la gestion du personnel fonctionne autour de deux acteurs 
+[Heading3] 2.3. Quelques repères
+[Legende] Tableau 2.1 — Repères sur l’établissement d’accueil
+--- TABLE (6 lignes) ---
+[Heading2] CHAPITRE 3 : PRÉSENTATION DU PROJET
+[Heading3] 3.1. Formulation du projet
+[] Le projet consiste à concevoir et développer une application web de digitalisation de la gestion des plannings du personnel de l’établissement ZOMATEL. Concrètement, il s’agit de remplacer les fichier
+[ListBullet] la création, par service, de plannings hebdomadaires avec saisie des statuts de chaque jour (travail, repos, absence) et jusqu’à trois créneaux horaires par journée (matin, après-midi, soir) ;
+[ListBullet] le calcul automatique des heures travaillées, journalier et hebdomadaire, sans aucune saisie manuelle de totaux ;
+[ListBullet] un circuit de validation formel BROUILLON → SOUMIS → VALIDÉ / REJETÉ entre le chef de service et la RH ;
+[ListBullet] la traçabilité horodatée de toute création ou modification significative d’un planning ;
+[ListBullet] le contrôle automatique de la couverture de service, par comparaison entre l’effectif requis et l’effectif planifié.
+[Heading3] 3.2. Justification de l’importance du sujet
+[] La gestion des plannings influence directement la qualité de service —un créneau sous-effectif complique le travail de toute l’équipe—, la paie —les heures travaillées doivent être exactes—, et le cli
+[Heading3] 3.3. Objectifs et besoins utilisateurs
+[Heading4] 3.3.1. Objectif général
+[] Digitaliser de bout en bout la gestion des plannings hebdomadaires du personnel de l’établissement ZOMATEL, en automatisant les calculs d’heures et en garantissant un circuit de validation fiable entr
+[Heading4] 3.3.2. Objectifs spécifiques
+[ListNumber] Remplacer les plannings papier/Excel par un outil numérique centralisé ;
+[ListNumber] Automatiser le calcul des heures travaillées (aucune saisie manuelle de totaux) ;
+[ListNumber] Mettre en place un circuit de validation formel entre le chef de service et la RH ;
+[ListNumber] Assurer une traçabilité des modifications apportées à un planning ;
+[ListNumber] Contrôler la couverture de service par créneau horaire.
+[Heading4] 3.3.3. Besoins utilisateurs
+[] Les besoins utilisateurs sont recueillis auprès des deux acteurs concernés :
+[ListBullet] Côté chef de service : élaborer en peu de temps le planning de la semaine, en mode « tableur », voir immédiatement les totaux d’heures et les alertes, soumettre le planning à la RH, gérer les fiches d
+[ListBullet] Côté RH : consulter tous les plannings, contrôler les heures, valider ou rejeter avec un commentaire, créer des comptes utilisateurs, consulter l’historique, exporter les emplois du temps en Excel.
+[Heading3] 3.4. Moyens nécessaires à la réalisation du projet
+[Legende] Tableau 3.1 — Moyens humains, matériels et logiciels nécessaires au projet
+--- TABLE (5 lignes) ---
+[Heading3] 3.5. Chronogramme de réalisation du projet (diagramme de Gantt)
+[] Le stage s’est déroulé sur plusieurs semaines, selon l’enchainement analyse → conception → développement → tests. Le chronogramme ci-dessous récapitule les principales phases ; les dates exactes, ajus
+[Legende] Figure 1.1 — Chronogramme de réalisation du projet (diagramme de Gantt)
+[] (Dates exactes du stage : À COMPLÉTER.)
+[Heading3] 3.6. Résultat attendu
+[Legende] Tableau 3.2 — Résultat attendu (livrables)
+--- TABLE (6 lignes) ---
+[Heading1] PARTIE 2 : ANALYSE ET CONCEPTION
+[Heading2] CHAPITRE 4 : ANALYSE PRÉALABLE
+[Heading3] 4.1. Analyse de l’existant
+[Heading4] 4.1.1. Organisation actuelle (diagramme de flux)
+[] L’observation du processus actuel, réalisée à partir des fichiers de l’établissement (fichier « EMPLOI DU TEMPS ZOMATEL WEEK 37_2026.xlsx », feuilles « CUISINE SNACK », « SALLE SNACK », « PATISS-PIZZA
+[] 1. Chaque responsable de service établit, chaque semaine, un emploi du temps de son équipe dans une feuille du fichier Excel de la semaine ;
+[] 2. Pour chaque employé, et pour chaque créneau (matin, après-midi, soir), sont indiqués les heures d’entrée et de sortie, avec le calcul manuel de la durée ;
+[] 3. Le fichier circule (WhatsApp, impression, dépôt papier) pour consultation et renseignement de la couverture de service ;
+[] 4. La RH consolide manuellement les heures travaillées hebdomadaires par employé pour la paie.
+[Legende] Figure 4.1 — Diagramme de flux du processus actuel de gestion des plannings
+[Heading4] 4.1.2. Critique de l’existant
+[Legende] Tableau 4.1 — Critique de l’existant
+--- TABLE (8 lignes) ---
+[Heading4] 4.1.3. Moyens existants pour la réalisation du projet
+[ListBullet] Moyens humains : chefs de service connaisseurs des besoins réels, bureau RH disponible, équipe informatique légère interne (partagée avec d’autres projets) ;
+[ListBullet] Moyens matériels : un parc informatique de gestion existant, des ordinateurs portables personnels, le réseau local de l’établissement ;
+[ListBullet] Moyens logiciels : suite bureautique déjà utilisée (Excel), serveur local de développement Laragon, outil de gestion de versions Git.
+[Heading3] 4.2. Choix de la solution
+[] Face à ces limites, deux grandes solutions ont été examinées : (1) rester sur des fichiers Excel partagés, en les homogénéisant par des modèles de feuilles, et (2) développer une application web dédié
+[Heading3] 4.3. Choix de la méthode de conception / gestion de projet
+[] Le projet a été conduit de manière incrémentale : l’analyse de l’existant et la collecte des besoins ont fourni une base de règles de gestion formalisées dans un cahier des charges ; la conception a é
+[Heading3] 4.4. Choix des outils de conception
+[ListBullet] PlantUML pour les diagrammes (canevas conforme) et Visual Studio Code / IntelliJ comme environnement d’édition ;
+[ListBullet] Draw.io et StarUML comme alternatives testées, écartées au profit de solutions en textual-généré (plus faciles à versionner avec Git).
+[Heading3] 4.5. Choix du langage de programmation
+[] Le langage retenu est JavaScript, exécuté côté serveur par Node.js et côté client par React. Ce choix canalise un certain nombre d’avantages concrets :
+[ListBullet] un langage unique pour le frontend et le backend, ce qui simplifie les échanges autour d’une API REST en JSON ;
+[ListBullet] un grand toucher de libraries modernes pour la construction rapide d’interfaces riches ;
+[ListBullet] un runtime Node.js adapté au développement d’une API REST évolutive et l’accès natif aux bases de données SQL par des libraries dédiées (mysql2).
+[] PHP aurait pu être envisagé (Laragon est un serveur Apache/PHP/MySQL), mais il ne permet pas de partager un design d’application aussi bien arrondi entre le client et le serveur, et l’écosystème actue
+[Heading3] 4.6. Choix du Framework
+[ListBullet] Next.js 14 (React) côté frontend : framework officiel recommandé par React pour la construction d’applications web, avec routeur applicatif (App Router), rendu côté serveur pratique, et organisation d
+[ListBullet] Express côté backend : framework minimaliste et de référence en Node.js pour servir une API REST, avec un écosystème de middlewares adapté (authentification JWT, autorisation par permission, chargemen
+[Heading3] 4.7. Choix de l’environnement de développement
+[] Le développement s’est fait sous Windows avec l’environnement local Laragon (Apache, MariaDB, Node.js), Visual Studio Code comme éditeur, Git pour la gestion de versions, et Google Chrome pour les tes
+[Heading3] 4.8. Choix du système de gestion de base de données
+[] Le système retenu est MariaDB, la variante communautaire de MySQL, pleinement pris en charge par Laragon et accessible via la library Node.js mysql2. Ce choix est justifié par :
+[ListBullet] la compatibilité avec le serveur Laragon déjà installé au sein de l’établissement ;
+[ListBullet] la maîtrise des bases relationnelles pour modéliser les plannings d’affectations et créneaux ;
+[ListBullet] la présence, dans MariaDB, de fonctionnalités clés pour faire appliquer les règles de gestion en base : vues (pour le calcul automatique des heures) et triggers (pour les contraintes métier avancées –
+[Heading2] CHAPITRE 5 : CONCEPTION DU PROJET
+[Heading3] 5.1. Présentation de la méthode de conception
+[] La conception du projet a été réalisée avec la notation UML et une approche orientée objets. Le modèle du domaine est d’abord construit à partir du vocabulaire métier (service, employé, planning, affe
+[Heading3] 5.2. Dictionnaire des données
+[] Le tableau ci-dessous présente un extrait significatif du dictionnaire de données. L’intégralité des tables est décrite dans la partie base de données (Chapitre 6).
+[Legende] Tableau 5.1 — Extrait du dictionnaire de données
+--- TABLE (15 lignes) ---
+[Heading3] 5.3. Règles de gestion
+[Legende] Tableau 5.2 — Règles de gestion
+--- TABLE (13 lignes) ---
+[Heading3] 5.4. Diagramme de cas d’utilisation
+[] Le diagramme ci-dessous synthétise les cas d’utilisation identifiés. Les acteurs sont le chef de service et la RH, regroupés au sens large sous un acteur « utilisateur connecté » pour les cas communs 
+[Legende] Figure 4.2 — Diagramme de cas d’utilisation de l’application
+[Heading3] 5.5. Description textuelle des cas d’utilisation
+[Legende] Tableau 5.3 — Description textuelle du cas d’utilisation « Soumettre un planning à la RH »
+--- TABLE (7 lignes) ---
+[Legende] Tableau 5.4 — Description textuelle du cas d’utilisation « Valider ou rejeter un planning soumis »
+--- TABLE (7 lignes) ---
+[Heading3] 5.6. Diagrammes de séquence système
+[Heading4] 5.6.1. Soumission et validation d’un planning
+[Legende] Figure 5.1 — Diagramme de séquence système : soumission et validation d’un planning
+[Heading4] 5.6.2. Authentification (login)
+[Legende] Figure 5.2 — Diagramme de séquence système : authentification
+[Heading3] 5.7. Modèle de domaine
+[] Le modèle du domaine traduit le vocabulaire métier retenu. Le diagramme de classes détaillé au niveau de la base de données est présenté au chapitre 6.
+[Legende] Figure 5.3 — Modèle de domaine
+[Heading2] CHAPITRE 6 : CONCEPTION DÉTAILLÉE
+[Heading3] 6.1. Architecture de l’application
+[] L’application est architecturée en trois tiers :
+[ListBullet] un tier Client : l’interface web Next.js 14 (React 18), rendue par le navigateur, qui consomme l’API REST ;
+[ListBullet] un tier Application : un serveur Node.js exécutant l’API Express, chargé de l’authentification (JWT), des permissions, des contrôleurs métier et des services (export Excel, e-mails) ;
+[ListBullet] un tier Données : la base MariaDB gestion_plannings_hotel, qui porte le schéma relationnel, les vues de calcul des heures et les triggers de contrainte.
+[Legende] Figure 3.1 — Architecture trois tiers de l’application
+[] Ce découpage répond à deux exigences : la séparation claire des responsabilités (interface / logique métier / données) et l’extensibilité de l’API, qui pourra servir plus tard une application mobile o
+[Heading4] 6.1.1. Périmètre des rôles (matrice de permissions)
+[] Conformément au cahier des charges, l’application ne comporte que deux rôles applicatifs : RH et CHEF_SERVICE ; l’employé n’a pas de compte (il est géré comme une fiche), et le rôle ADMIN n’est pas pr
+[ListBullet] CHEF_SERVICE : gestion des plannings de son service (grille hebdomadaire), fiches employés de son service, soumission à la RH, récupérations de son équipe ;
+[ListBullet] RH : consultation de tous les services, contrôle et validation ou rejet des plannings soumis, gestion des comptes utilisateurs, fiches employés de tous services, consult de l’historique et export des 
+[] Les permissions effectives sont vérifiées à chaque requête côté serveur (middleware requirePermission) après relecture du profil complet /api/auth/me, ce qui évite tout contournement par le client.
+[Heading3] 6.2. Diagramme de séquence de conception
+[] Le diagramme de séquence système de la figure 5.1 est traduit au niveau de la conception par le chaînage concret suivant : le composant frontend (page /planning/gestion) appelle la route Express conce
+[Heading3] 6.3. Diagramme de classes
+[] Le diagramme de classes ci-dessous se concentre sur la couche applicative backend (contrôleurs, middlewares et services), le modèle de données relationnel étant détaillé à la section 6.5. Les contrôle
+[Legende] Figure 6.4 — Diagramme de classes backend
+[Heading3] 6.4. Diagramme de paquetages
+[] Le découpage en paquetages reflète l’organisation réelle des répertoires du projet : côté frontend, le dossier app (App Router) regroupe les pages, le dossier lib les utilitaires transverses (client A
+[Legende] Figure 6.1 — Diagramme de paquetages de l’application
+[Heading3] 6.5. Diagramme de déploiement
+[] Le déploiement cible est volontairement léger, adapté à la taille de l’établissement et à son infrastructure existante : les deux serveurs (Next.js et l’API Express) et la base MariaDB tournent sur un
+[Legende] Figure 6.2 — Diagramme de déploiement
+[Heading3] 6.6. Modèle conceptuel des données
+[] La base gestion_plannings_hotel comporte 16 tables, 4 vues et 9 triggers. Le modèle conceptuel ci-dessous décrit les entités principales et leurs cardinalités. Le tableau 6.1 précise ensuite le rôle d
+[Legende] Figure 6.3 — Modèle conceptuel des données (MCD)
+[Legende] Tableau 6.1 — Synthèse de la base de données gestion_plannings_hotel
+--- TABLE (19 lignes) ---
+[Legende] Tableau 6.2 — Principales règles métier appliquées par triggers MariaDB
+--- TABLE (9 lignes) ---
+[Heading1] PARTIE 3 : MISE EN ŒUVRE ET RÉSULTATS
+[Heading2] CHAPITRE 7 : MISE EN ŒUVRE
+[Heading3] 7.1. Architecture du système
+[] L’implémentation reprend exactement l’architecture de conception : deux processus (frontend Next.js sur le port 3000, API Express sur le port 4000) et une base MariaDB. Les échanges internes se font e
+[Heading4] 7.1.1. Organisation du backend
+[] Le backend est organisé par responsabilités :
+[ListBullet] src/routes : définition des points d’entrée REST par domaine (auth, services, employés, plannings, affectations, créneaux, types d’horaires, récupérations, messagerie, notifications) ;
+[ListBullet] src/controllers : logique de traitement par domaine (soumission, validation, grille, couverture, export EDT, statistiques d’heures…) ;
+[ListBullet] src/middleware : authRequired (JWT) et requirePermission (permissions par rôle) ;
+[ListBullet] src/services : services encapsulés (emploiDuTempsExcel pour l’export, emailService pour l’oubli de mot de passe) ;
+[ListBullet] src/socket : notifications temps réel ;
+[ListBullet] src/config : configuration centralisée (connexion base, secret JWT).
+[Heading4] 7.1.2. Organisation du frontend
+[] Le frontend suit l’App Router de Next.js : chaque page (dashboard, planning, validations, employees, statistiques, archives, messagerie, paramètres, utilisateurs, profile) est un dossier de src/app ; 
+[Heading4] 7.1.3. Authentification et permissions
+[ListBullet] Toutes les routes exigent un jeton JWT valide (middleware authRequired), y compris /api/services ;
+[ListBullet] Le jeton encode l’identité, le rôle et le service de l’utilisateur ; il est vérifié à chaque appel de l’API ;
+[ListBullet] Les mots de passe sont stockés hachés (bcrypt), jamais en clair ;
+[ListBullet] Les permissions effectives sont relues à partir de /api/auth/me, ce qui permet à la navigation du frontend de n’afficher que les actions autorisées, tout en gardant la décision finale côté serveur (re
+[ListBullet] Le chef de service reste limité à son service : un compte sans la permission planning.view_all ne voit que le service qui lui est associé.
+[Heading3] 7.2. Configuration des outils de conception
+[ListBullet] PlantUML : diagrams en textual-généré, compilés en PNG pour le rapport ;
+[ListBullet] Visual Studio Code : extensions JavaScript/React et SQL ;
+[ListBullet] Git : gestion de versions, dépôt local du projet ;
+[ListBullet] HeidiSQL (fourni avec Laragon) : exploration visuelle de la base MariaDB pendant le développement.
+[Heading3] 7.3. Génération de la base de données
+[] La base gestion_plannings_hotel est créée par exécution de deux scripts SQL fournis dans backend/database :
+[] mysql -u root -p < backend/database/gestion_plannings_hotel_schema.sql
+[] mysql -u root -p < backend/database/gestion_plannings_hotel_seed.sql
+[] Le script de schéma crée la base, les 16 tables, les 4 vues de calcul et les 9 triggers de contrôle ; le script de jeu de données insère les services, les comptes de démonstration, les employés et que
+[Heading3] 7.4. Configuration de l’environnement de développement
+[] 1) dans backend : npm install, puis configuration du fichier .env (connexion MariaDB, secret JWT), puis npm run dev (nodemon) ;
+[] 2) dans frontend : npm install, configuration de l’URL de l’API, puis npm run dev (next dev) ;
+[] 3) base : création par les scripts SQL ci-dessus, accessible via MariaDB 12.3 de Laragon ;
+[] 4) accès : http://localhost:3000 pour l’application, http://localhost:4000 pour l’API.
+[] Les comptes de démonstration fournis couvrent chaque rôle (admin123, rh123, chef123, employe123 selon README) et permettent de tester le comportement de chaque profil.
+[Heading3] 7.5. Extraits de code des fonctionnalités principales
+[Heading4] 7.5.1. Authentification (login) et génération du JWT
+[] Extrait authentifié de la méthode de connexion (backend/src/controllers/authController.js), abrégé pour le rapport :
+[] // Post /api/auth/loginconst user = await db.query(  'SELECT * FROM utilisateur WHERE login = ? AND actif = 1 LIMIT 1', [login]);if (!user.length || !(await bcrypt.compare(motDePasse, user[0].mot_de_p
+[Heading4] 7.5.2. Sauvegarde de la grille du planning avec réponse 207
+[] La sauvegarde de grille (planningGrilleController.js) applique ligne par ligne les modifications, et remonte cellule par cellule les refus issus des triggers :
+[] // PUT /api/plannings/:id/grilleconst results = []; let refused = 0;for (const cell of cells) {  try { await applyCellule(cell); results.push({ cell: cell.ref, ok: true }); }  catch (e) {    refused++
+[Heading4] 7.5.3. Contrôle en base : trigger d’interdiction de chevauchement
+[] Extrait de trg_creneau_bi (backend/database/gestion_plannings_hotel_schema.sql), qui refuse l’enregistrement d’un créneau chevauchant un créneau existant du même employé :
+[] CREATE TRIGGER trg_creneau_bi BEFORE INSERT ON creneau_travailFOR EACH ROW BEGIN  DECLARE n INT;  SELECT COUNT(*) INTO n FROM creneau_travail c JOIN affectation a    ON c.affectation_id = a.id_affecta
+[Heading4] 7.5.4. Calcul automatique des heures (vues SQL)
+[] Extrait de v_duree_creneau puis de v_total_hebdo_employe :
+[] CREATE OR REPLACE VIEW v_duree_creneau ASSELECT id_creneau,       TIMESTAMPDIFF(MINUTE, heure_debut, heure_fin) / 60.0 AS duree  FROM creneau_travail;CREATE OR REPLACE VIEW v_duree_jour ASSELECT a.id_
+[Heading4] 7.5.5. Export Excel de l’emploi du temps (service)
+[] L’export (services/emploiDuTempsExcel.js) construit le classeur Excel réservé RH + permission planning.export_edt : une feuille par service, en respectant la structure du fichier historique de l’établ
+[] Côté frontend, la grille de saisie (components/PlanningEditorShiftPoste.js, PlanningEditorHoraireLibre.js, AffectationsHoraireLibre.js) utilise une structure simple : chaque cellule se modifie par un 
+[Heading2] CHAPITRE 8 : PRÉSENTATION DE L’APPLICATION
+[] L’interface se parcourt selon une ligne de démonstration : connexion → dashboard → gestion du planning → soumission → validation RH → consultation / export. Les figures ci-dessous illustrent cette log
+[Heading4] 8.1. Page de connexion
+[Heading4] 8.2. Tableau de bord (dashboard)
+[Heading4] 8.3. Gestion du planning (grille hebdomadaire)
+[Heading4] 8.4. Statuts et soumission
+[Heading4] 8.5. Validation RH
+[Heading4] 8.6. Gestion des employés
+[Heading4] 8.7. Messagerie interne et notifications
+[] Capture d’écran de l’interface — À COMPLÉTER : insérer ici la capture correspondante (répertoire captures/ ou à générer en phase de finition).
+[Heading2] CHAPITRE 9 : ÉVALUATION ET SUGGESTIONS
+[Heading3] 9.1. Évaluation de l’application (comparaison avec des solutions existantes)
+[Legende] Tableau 9.1 — Comparaison de l’application avec des solutions existantes
+--- TABLE (9 lignes) ---
+[] Cette comparaison montre que l’application répond point par point aux limites relevées dans l’analyse de l’existant. Elle ne remplace pas la rigueur des responsables : elle rend les contrôles automati
+[Heading3] 9.2. Contributions académiques et professionnelles
+[ListBullet] Académiques : mise en pratique complète d’un cycle de développement (analyse, conception UML, développement client-serveur, tests), apprentissage des vues et triggers MariaDB, exploitation d’une archi
+[ListBullet] Professionnelles : découverte du fonctionnement concret d’un établissement hôtelier (services, contraintes d’horaires, paie), capacité d’adaptation aux règles de gestion réelles plutôt qu’à un modèle 
+[Heading3] 9.3. Limitations de l’étude et pistes de recherche futures
+[Heading4] 9.3.1. Limites
+[ListBullet] Pas de rôle ADMIN prévu dans le système cible, conformément au cahier des charges ; le rôle reste néanmoins présent dans le schéma de la base (cf. compte de démonstration) ;
+[ListBullet] Pas de sous-catégorie d’absence (pas de distinction congé / maladie / congé sans solde) ;
+[ListBullet] Pas de contrôle obligatoire d’un volume horaire journalier fixe (pas de règle des 8 h/jour) ;
+[ListBullet] Les employés ne disposent pas de compte de connexion et ne peuvent pas demander eux-mêmes une modification ou une récupération ;
+[ListBullet] Le déploiement cible reste local (Laragon) ; la mise en production sur un serveur de l’établissement et les sauvegardes restent à organiser ;
+[ListBullet] Les captures d’écran finales et les dates exactes du stage restent à compléter dans le présent rapport.
+[Heading4] 9.3.2. Perspectives
+[ListBullet] Portail employé : consultation de son planning et demande de récupération, avec notification au chef de service ;
+[ListBullet] Application mobile de consultation ;
+[ListBullet] Planification pluri-hebdomadaire (vue mensuelle, prévision des heures sur plusieurs semaines) ;
+[ListBullet] Statistiques avancées (heures par service, taux de couverture, tendances) et exports élargis ;
+[ListBullet] Intégration avec la paie ;
+[ListBullet] Internationalisation complète de l’interface (bases déjà en places via /lib/i18n.js).
+[Heading1] CONCLUSION GÉNÉRALE ET PERSPECTIVES
+[] Ce stage avait pour objet la digitalisation de la gestion des plannings du personnel de l’établissement ZOMATEL. Partant d’un processus manuel constitué de fichiers Excel indépendants par service, il 
+[] La solution retenue correspond aux règles de gestion observées sur le terrain et formalisées dans le cahier des charges : jalonnement des statuts (BROUILLON, SOUMIS, VALIDE, REJETE), identité simplifi
+[] Les points forts de l’application développée sont : l’automatisation complète des calculs (aucun total saisi par l’utilisateur), la fiabilité au plus près des données (triggers MariaDB), la traçabilit
+[] Les difficultés rencontrées lors de la mise en œuvre tiennent essentiellement à trois points : la modélisation des règles de gestion réelles (qui devaient correspondre exactement à la pratique de l’ét
+[] En perspectives, la poursuite de ce travail pourrait porter sur un portail employé (consultation de son planning, demande de récupération), une application mobile, une planification pluri-hebdomadaire
+[Heading1] BIBLIOGRAPHIE
+[] OMG, 2017. OMG Unified Modeling Language (OMG UML), version 2.5.1 [en ligne]. Object Management Group. Disponible sur : <https://www.omg.org/spec/UML/2.5.1> (consulté le 08/10/2026).
+[] Node.js Foundation, 2026. Node.js v22 documentation [en ligne]. Disponible sur : <https://nodejs.org/docs/latest-v22.x/api/> (consulté le 05/10/2026).
+[] Express, 2026. Express 4.x API Reference [en ligne]. OpenJS Foundation. Disponible sur : <https://expressjs.com/en/4x/api.html> (consulté le 05/10/2026).
+[] Next.js, 2026. Next.js 14 documentation [en ligne]. Vercel. Disponible sur : <https://nextjs.org/docs/14> (consulté le 05/10/2026).
+[] React, 2026. React 18 documentation [en ligne]. Meta Platforms. Disponible sur : <https://react.dev/> (consulté le 05/10/2026).
+[] MariaDB Corporation, 2026. MariaDB Server documentation [en ligne]. Disponible sur : <https://mariadb.com/kb/en/documentation/> (consulté le 05/10/2026).
+[] Auth0 Inc., 2024. JSON Web Token (JWT) — RFC 7519 [en ligne]. IETF. Disponible sur : <https://datatracker.ietf.org/doc/html/rfc7519> (consulté le 06/10/2026).
+[] Provos N. & Mazières D., 1999. A future-adaptable password scheme. In Proceedings of the 1999 USENIX Annual Technical Conference (FREENIX Track). Monterey : USENIX Association, pp. 81-91.
+[] Fielding R., 2000. Architectural styles and the design of network-based software architectures. Th. doct. : Inf. : Irvine : University of California, Irvine, 180 p.
+[] N.B. : les dates de consultation sont à actualiser par l’étudiant au moment de la soutenance (À COMPLÉTER). Les références suivent le modèle demandé par le canevas (Nom, année. Titre en italique. [en 
+[Heading1] WEBOGRAPHIE
+[] Wikipedia, 2026. Planning des ressources humaines [en ligne]. Disponible sur : <https://fr.wikipedia.org/wiki/Planning_des_ressources_humaines> (consulté le 06/10/2026).
+[] OpenJS Foundation, 2026. socket.io documentation [en ligne]. Disponible sur : <https://socket.io/docs/v4/> (consulté le 06/10/2026).
+[] Vercel, 2026. Next.js App Router documentation [en ligne]. Disponible sur : <https://nextjs.org/docs/app> (consulté le 06/10/2026).
+[] MySQL / MariaDB, 2026. CREATE TRIGGER statement [en ligne]. MariaDB Knowledge Base. Disponible sur : <https://mariadb.com/kb/en/create-trigger/> (consulté le 06/10/2026).
+[] Laragon, 2026. Laragon documentation [en ligne]. Disponible sur : <https://laragon.org/docs/> (consulté le 06/10/2026).
+[Heading1] ANNEXES
+[] Les annexes suivantes sont annoncées dans le corps du texte :
+[ListBullet] Annexe A — Structure complète de la base de données gestion_plannings_hotel (script SQL de schéma).
+[ListBullet] Annexe B — Jeu de données de démonstration (extrait du script de seed).
+[ListBullet] Annexe C — Extrait du fichier Excel de référence de l’établissement (semaine 37 de 2026, feuille Cuisine Snack).
+[] (voir Annexe A ci-dessous), (voir Annexe B ci-dessous) ; le contenu est présenté dans les pages suivantes, paginées en continuation du rapport.
+[Heading2] ANNEXE A — STRUCTURE DE LA BASE DE DONNÉES
+[] Extrait du script backend/database/gestion_plannings_hotel_schema.sql (tables principales) :
+[] CREATE TABLE IF NOT EXISTS service (  id_service     INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,  nom_service    VARCHAR(100) NOT NULL,  type_affichage ENUM('PERIODES_FIXES','HORAIRE_LIBRE','SHIFT_POSTE'
+[Heading2] ANNEXE B — JEU DE DONNÉES DE DÉMONSTRATION (EXTRAIT)
+[] Les comptes de démonstration fournis avec la base (script de seed) couvrent chaque rôle :
+[Legende] Tableau B.1 — Comptes de démonstration
+--- TABLE (5 lignes) ---
+[] Jeu d’employés de démonstration (extrait, repris de la pratique de l’établissement) : matricules P477 ANYAH (06:00-12:00), P522 AVOTRA (10:00-14:00 et 18:00-22:00), P543 AUGUSTIN (14:00-18:00 et 18:00
+[Heading2] ANNEXE C — FICHIER EXCEL DE RÉFÉRENCE (EXTRAIT)
+[] Structure du fichier « EMPLOI DU TEMPS ZOMATEL WEEK 37_2026.xlsx », feuille « CUISINE SNACK », dont l’application reprend le modèle (format PERIODES_FIXES) est la suivante, pour chaque employé :
+[Legende] Tableau C.1 — Structure du fichier de référence (feuille Cuisine Snack)
+--- TABLE (6 lignes) ---
+[Heading1] RÉSUMÉ + MOTS-CLÉS (COUVERTURE DE DOS)
+[] Conformément au canevas, les versions française et anglaise du résumé et des mots-clés figurent également sur la couverture de dos du rapport imprimé. Elles reprennent, sans en modifier le contenu, le
+[] MOTS-CLÉS : planning du personnel ; hôtellerie ; digitalisation ; application web ; Next.js ; Node.js ; MariaDB ; validation RH ; heures de travail.
+[] KEYWORDS: staff scheduling; hotel industry; digitization; web application; Next.js; Node.js; MariaDB; HR validation; working hours.
+--- SECTION BREAK ---
+### images totales: 11

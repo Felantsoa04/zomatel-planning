@@ -11,6 +11,7 @@
 import { useMemo, useState } from 'react';
 import { Plus, X } from 'lucide-react';
 import { libelleJourModel } from '@/lib/planningModels';
+import { numeroSemaineISO } from '@/lib/dash';
 
 export default function PlanningEditorShiftPoste({ jours, employes, valeur, onChange, lectureSeule }) {
   const config = valeur.config; // { shifts, postes }
@@ -36,67 +37,97 @@ export default function PlanningEditorShiftPoste({ jours, employes, valeur, onCh
     setCaseOuverte(null);
   }
 
+  const pairesJours = [];
+  for (let i = 0; i < jours.length; i += 2) {
+    pairesJours.push(jours.slice(i, i + 2));
+  }
+  const numeroSemaine = jours.length ? numeroSemaineISO(new Date(`${jours[0]}T12:00:00`)) : null;
+  const nomJour = (jour) => libelleJourModel(jour, 'MAJ');
+  const nomPoste = (poste) => poste.replace(/^Chef de poste\s+(\d+)$/i, 'Chef de poste$1');
+
   return (
-    <div className="pm-conteneur">
-      <table className="pm-table pm-table-securite">
-        <thead>
-          <tr>
-            <th>ANDRO</th>
-            <th>SHIFT</th>
-            {config.postes.map((p) => (
-              <th key={p}>{p}</th>
+    <div className="pm-conteneur pm-securite">
+      <header className="pm-securite-entete">
+        {numeroSemaine !== null && <span className="pm-securite-semaine">WEEK {String(numeroSemaine).padStart(2, '0')}</span>}
+        <h2>SECURITE</h2>
+      </header>
+
+      <div className="pm-securite-table-wrap">
+        <table className="pm-table pm-table-securite">
+          <colgroup>
+            <col className="pm-securite-col-shift" />
+            {Array.from({ length: config.postes.length * 2 }, (_, index) => (
+              <col key={index} />
             ))}
-          </tr>
-        </thead>
-        <tbody>
-          {jours.map((jour) =>
-            config.shifts.map((shift, indexShift) => (
-              <tr key={`${jour}|${shift}`}>
-                {indexShift === 0 && (
-                  <td rowSpan={config.shifts.length} className="pm-jour">
-                    {libelleJourModel(jour, 'MAJ')}
-                  </td>
-                )}
-                <td className="pm-shift">{shift}</td>
-                {config.postes.map((p, i) => {
-                  const posteId = `poste${i + 1}`;
-                  const cle = `${jour}|${shift}|${posteId}`;
-                  const idEmp = donnees[cle];
-                  return (
-                    <td key={posteId} className="pm-case">
-                      {lectureSeule ? (
-                        idEmp ? nomEmploye(idEmp) : <span className="muted">&nbsp;</span>
-                      ) : (
-                        <>
-                          <button
-                            type="button"
-                            className="pm-case-btn"
-                            onClick={() => setCaseOuverte({ jour, shift, posteId })}
-                            title="Affecter un employé"
-                          >
-                            {idEmp ? nomEmploye(idEmp) : <Plus size={13} aria-hidden="true" />}
-                          </button>
-                          {idEmp && (
-                            <button
-                              type="button"
-                              className="pm-case-vider"
-                              onClick={() => definir(jour, shift, posteId, null)}
-                              title="Vider la case"
-                              aria-label="Vider la case"
-                            >
-                              <X size={10} aria-hidden="true" />
-                            </button>
+          </colgroup>
+          {pairesJours.map((paire) => {
+            const dimancheSeul = paire.length === 1;
+            return (
+              <tbody key={paire[0]}>
+                <tr className="pm-securite-jours">
+                  <th aria-hidden="true" />
+                  {dimancheSeul && <th colSpan={config.postes.length / 2} aria-hidden="true" />}
+                  {paire.map((jour) => (
+                    <th scope="colgroup" colSpan={config.postes.length} key={jour}>
+                      {nomJour(jour)}
+                    </th>
+                  ))}
+                  {dimancheSeul && <th colSpan={config.postes.length / 2} aria-hidden="true" />}
+                </tr>
+                <tr className="pm-securite-postes">
+                  <th scope="col" className="pm-securite-shift">SHIFT</th>
+                  {dimancheSeul && <th colSpan={config.postes.length / 2} aria-hidden="true" />}
+                  {paire.flatMap((jour) => config.postes.map((poste) => (
+                    <th scope="col" key={`${jour}|${poste}`}>{nomPoste(poste)}</th>
+                  )))}
+                  {dimancheSeul && <th colSpan={config.postes.length / 2} aria-hidden="true" />}
+                </tr>
+                {config.shifts.map((shift) => (
+                  <tr key={`${paire[0]}|${shift}`}>
+                    <th scope="row" className="pm-securite-shift">{shift}</th>
+                    {dimancheSeul && <td colSpan={config.postes.length / 2} aria-hidden="true" />}
+                    {paire.flatMap((jour) => config.postes.map((poste, i) => {
+                      const posteId = `poste${i + 1}`;
+                      const cle = `${jour}|${shift}|${posteId}`;
+                      const idEmp = donnees[cle];
+                      return (
+                        <td key={`${jour}|${posteId}`} className="pm-case">
+                          {lectureSeule ? (
+                            idEmp ? nomEmploye(idEmp) : <span className="muted">&nbsp;</span>
+                          ) : (
+                            <>
+                              <button
+                                type="button"
+                                className="pm-case-btn"
+                                onClick={() => setCaseOuverte({ jour, shift, posteId })}
+                                title="Affecter un employé"
+                              >
+                                {idEmp ? nomEmploye(idEmp) : <Plus size={13} aria-hidden="true" />}
+                              </button>
+                              {idEmp && (
+                                <button
+                                  type="button"
+                                  className="pm-case-vider"
+                                  onClick={() => definir(jour, shift, posteId, null)}
+                                  title="Vider la case"
+                                  aria-label="Vider la case"
+                                >
+                                  <X size={10} aria-hidden="true" />
+                                </button>
+                              )}
+                            </>
                           )}
-                        </>
-                      )}
-                    </td>
-                  );
-                })}
-              </tr>
-            ))
-          )}
-        </tbody>
-      </table>
+                        </td>
+                      );
+                    }))}
+                    {dimancheSeul && <td colSpan={config.postes.length / 2} aria-hidden="true" />}
+                  </tr>
+                ))}
+              </tbody>
+            );
+          })}
+        </table>
+      </div>
 
       {caseOuverte && (
         <div className="pm-voile" onClick={() => setCaseOuverte(null)}>

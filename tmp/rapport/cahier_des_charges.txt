@@ -1,0 +1,106 @@
+[Title] CAHIER DES CHARGES
+[] Zomatel — Systeme de gestion de planning du personnel
+[] Version 1.0 — Septembre 2026
+[Heading1] 1. Presentation du projet
+[] Zomatel est un etablissement d'hotellerie-restauration organise en plusieurs services : Cuisine Snack, Salle Snack, et Patisserie & Pizza. La gestion des plannings du personnel est aujourd'hui realisee sur papier et sur fichiers Excel independants par service, sans calcul automatique des heures ni processus de validation formalise.
+[] Le projet consiste a developper une application web permettant de creer, gerer et valider les plannings hebdomadaires du personnel de chaque service, avec un calcul automatique des heures travaillees et un controle de la couverture de service.
+[Heading1] 2. Objectifs
+[ListParagraph] Remplacer les plannings papier/Excel par un outil numerique centralise.
+[ListParagraph] Automatiser le calcul des heures travaillees (aucune saisie manuelle de totaux).
+[ListParagraph] Mettre en place un circuit de validation formel entre le Chef de service et la RH.
+[ListParagraph] Assurer une tracabilite des modifications apportees a un planning.
+[ListParagraph] Controler la couverture de service par creneau horaire.
+[Heading1] 3. Perimetre fonctionnel
+[] Le systeme couvre les services suivants, chacun disposant de son propre planning hebdomadaire et de sa propre equipe :
+[ListParagraph] Cuisine Snack
+[ListParagraph] Salle Snack
+[ListParagraph] Patisserie & Pizza
+[] D'autres services pourront etre ajoutes ulterieurement sans modification du modele de donnees.
+[Heading1] 4. Acteurs et roles
+[] Le systeme ne comporte que deux roles utilisateurs. Il n'existe pas de role ADMIN, et les employes ne disposent pas de compte de connexion : ils sont geres comme de simples fiches par la RH et le Chef de service.
+--- TABLE ---
+Role | Responsabilites
+CHEF_SERVICE | Cree le planning hebdomadaire de son service, affecte les employes (jour de travail, repos, absence), definit les horaires (creneaux matin / apres-midi / soir), soumet le planning a la RH pour validation.
+RH | Controle et valide (ou rejette) les plannings soumis par les chefs de service. Peut consulter l'ensemble des services. Peut creer des comptes utilisateurs (Chef de service, RH).
+--- END TABLE ---
+[Heading1] 5. Regles de gestion
+[Heading2] 5.1 Identification des employes
+[ListParagraph] Chaque employe est identifie par un seul champ nom (pas de prenom separe), conformement a l'usage reel observe sur les plannings existants.
+[ListParagraph] Le matricule est optionnel : les stagiaires n'en possedent pas.
+[ListParagraph] Deux statuts possibles : TITULAIRE ou STAGIAIRE.
+[Heading2] 5.2 Statut du jour
+[ListParagraph] Chaque jour d'un employe dans un planning a un statut parmi : TRAVAIL, REPOS, ABSENCE.
+[ListParagraph] Il n'existe pas de sous-categorie d'absence (pas de distinction conge / maladie / congé sans solde) : tout motif d'absence est enregistre simplement comme ABSENCE. Un commentaire libre peut preciser le motif si necessaire.
+[ListParagraph] REPOS est un statut a part entiere, distinct d'une absence : il s'agit d'un jour de repos planifie, non travaille par defaut.
+[Heading2] 5.3 Horaires et creneaux
+[ListParagraph] Une journee de travail peut comporter jusqu'a 3 creneaux : matin, apres-midi, soir, chacun avec une heure d'entree et une heure de sortie.
+[ListParagraph] Il n'y a pas de controle obligatoire d'un volume horaire journalier fixe (pas de regle des 8h/jour).
+[ListParagraph] Chaque employe possede une reference hebdomadaire de 44h ou 48h, utilisee uniquement pour comparaison automatique, sans blocage strict.
+[Heading2] 5.4 Calcul des heures
+[ListParagraph] Le total d'heures journalier et hebdomadaire n'est jamais saisi manuellement : il est calcule automatiquement a partir des creneaux enregistres (vues SQL).
+[ListParagraph] Un depassement de la reference hebdomadaire est signale automatiquement, sans bloquer la creation du planning.
+[Heading2] 5.5 Cycle de vie d'un planning
+[ListParagraph] BROUILLON : le Chef de service cree et modifie librement le planning.
+[ListParagraph] SOUMIS : le Chef de service transmet le planning a la RH ; il n'est plus modifiable par le Chef de service.
+[ListParagraph] VALIDE / REJETE : la RH statue sur le planning soumis. Un planning valide devient l'emploi du temps officiel et n'est plus modifiable.
+[Heading2] 5.6 Couverture de service
+[ListParagraph] Pour chaque jour et chaque creneau, un effectif requis peut etre defini ; l'effectif reellement affecte est compare automatiquement pour detecter une sous-couverture ou une sur-couverture.
+[Heading2] 5.7 Recuperations
+[ListParagraph] Les recuperations sont enregistrees uniquement par le Chef de service ou la RH. Il n'existe pas de fonctionnalite permettant a un employe de demander lui-meme une recuperation, les employes n'ayant pas acces a l'application.
+[Heading2] 5.8 Tracabilite
+[ListParagraph] Toute creation ou modification significative d'un planning (affectation, creneau, soumission, validation) est enregistree dans un historique horodate, associe a l'utilisateur ayant realise l'action.
+[Heading1] 6. Modele de donnees (synthese)
+[] Le modele de donnees comporte 12 tables et 3 vues de calcul, sous MariaDB :
+--- TABLE ---
+Table | Role
+service | Liste des services (Cuisine Snack, Salle Snack, Patisserie & Pizza...)
+utilisateur | Comptes de connexion (CHEF_SERVICE, RH uniquement)
+employe | Fiche du personnel (nom, matricule optionnel, statut, service, reference hebdo)
+type_horaire | Modeles d'horaires reutilisables
+planning | Un planning = un service + une semaine, avec son statut
+affectation | Statut d'un employe pour un jour donne (TRAVAIL / REPOS / ABSENCE)
+creneau_travail | Creneaux horaires (matin / apres-midi / soir) d'une affectation
+validation_rh | Decision de la RH sur un planning soumis
+controle_couverture | Resultat du controle effectif requis / effectif reel
+jour_ferie | Liste des jours feries
+recuperation | Recuperations saisies par Chef de service / RH
+historique_modification | Journal des actions realisees sur un planning
+--- END TABLE ---
+[] Vues de calcul (aucun total n'est stocke manuellement) : v_duree_creneau, v_duree_jour, v_total_hebdo_employe.
+[Heading1] 7. Fonctionnalites detaillees
+[Heading2] 7.1 Cote Chef de service
+[ListParagraph] Connexion securisee (identifiant / mot de passe).
+[ListParagraph] Creation d'un planning hebdomadaire pour son service.
+[ListParagraph] Affectation des employes jour par jour, avec statut et creneaux horaires.
+[ListParagraph] Consultation du total d'heures calcule automatiquement par employe.
+[ListParagraph] Soumission du planning a la RH.
+[ListParagraph] Gestion des fiches employes de son service.
+[ListParagraph] Saisie de recuperations pour ses employes.
+[Heading2] 7.2 Cote RH
+[ListParagraph] Connexion securisee.
+[ListParagraph] Consultation de l'ensemble des plannings, tous services confondus.
+[ListParagraph] Validation ou rejet des plannings soumis, avec commentaire.
+[ListParagraph] Consultation de l'historique des decisions et des modifications.
+[ListParagraph] Creation de comptes utilisateurs (Chef de service, RH).
+[ListParagraph] Gestion des fiches employes, tous services confondus.
+[Heading1] 8. Architecture technique
+--- TABLE ---
+Couche | Technologie
+Frontend | Next.js (React)
+Backend | Node.js + Express (API REST, authentification JWT)
+Base de donnees | MariaDB
+--- END TABLE ---
+[] L'authentification repose sur un jeton JWT contenant le role et le service de l'utilisateur, verifie a chaque appel a l'API. Les mots de passe sont stockes sous forme de hachage (bcrypt).
+[Heading1] 9. Hors perimetre (exclusions explicites)
+[ListParagraph] Pas de role ADMIN dans l'application.
+[ListParagraph] Pas de compte de connexion pour les employes (l'employe n'est qu'une fiche geree par le Chef de service / la RH).
+[ListParagraph] Pas de sous-categorisation des absences (pas de table dediee aux types de conge).
+[ListParagraph] Pas de controle obligatoire d'un volume horaire journalier fixe (8h/jour).
+[ListParagraph] Pas de saisie manuelle des totaux d'heures hebdomadaires (calcul automatique uniquement).
+[ListParagraph] Pas de demande de recuperation initiee par l'employe dans l'application.
+[Heading1] 10. Livrables
+[ListParagraph] Script de creation de la base de donnees MariaDB (schema + vues).
+[ListParagraph] API backend Node.js / Express documentee.
+[ListParagraph] Application frontend Next.js (authentification, gestion des plannings, gestion des employes).
+[ListParagraph] Jeu de donnees de demonstration.
+[ListParagraph] Present cahier des charges.

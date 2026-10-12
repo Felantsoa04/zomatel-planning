@@ -17,23 +17,22 @@
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import {
-  CalendarDays, FileSpreadsheet, RefreshCw, Eye, Loader2, Clock, Users,
+  CalendarDays, FileSpreadsheet, Eye, Loader2, Clock,
 } from 'lucide-react';
+import BadgeStatutPlanning from '@/components/BadgeStatutPlanning';
 import { api } from '@/lib/api';
 import { getToken } from '@/lib/auth';
-import { LABELS_STATUT } from '@/lib/dash';
+import { useI18n } from '@/lib/i18n';
 
-export default function PlanningRhSemaineSection({ plannings, onRafraichir, chargement }) {
+export default function PlanningRhSemaineSection({ plannings, chargement = false, exportAutorise = false }) {
+  const { t } = useI18n();
   // Liste déroulante "Semaine : [ S40 ▼ ]" — construite depuis les données
   // réelles (aucune valeur en dur), semaine récente d'abord.
   const semaines = useMemo(() => {
-    const map = new Map(); // cle annee-num -> { annee, numero_semaine, nb, nbValides }
+    const map = new Map();
     for (const p of plannings || []) {
       const cle = `${p.annee}-${p.numero_semaine}`;
-      if (!map.has(cle)) map.set(cle, { annee: p.annee, numero_semaine: p.numero_semaine, nb: 0, nbValides: 0 });
-      const s = map.get(cle);
-      s.nb += 1;
-      if (p.statut === 'VALIDE') s.nbValides += 1;
+      if (!map.has(cle)) map.set(cle, { annee: p.annee, numero_semaine: p.numero_semaine });
     }
     return [...map.values()].sort((a, b) =>
       (b.annee - a.annee) || (b.numero_semaine - a.numero_semaine));
@@ -63,11 +62,6 @@ export default function PlanningRhSemaineSection({ plannings, onRafraichir, char
 
   // Plannings de la semaine NON exportables (tout statut autre que VALIDE :
   // BROUILLON, SOUMIS, REJETE) : affichés pour information, jamais cochables.
-  const nbIncompatibles = useMemo(
-    () => planningsSemaine.filter((p) => p.statut !== 'VALIDE').length,
-    [planningsSemaine]
-  );
-
   const selectionEstTotale = planningsSemaine.length > 0 &&
     planningsSemaine.every((p) => p.statut === 'VALIDE') &&
     selection.size === planningsSemaine.filter((p) => p.statut === 'VALIDE').length;
@@ -119,7 +113,6 @@ export default function PlanningRhSemaineSection({ plannings, onRafraichir, char
       setMessage({ type: 'erreur', texte: 'Les plannings sélectionnés doivent appartenir à la même semaine.' });
       return;
     }
-    const aucuneDonnee = choisis.some((p) => p.total_heures == null);
     setMessage(null);
     setExportEnCours(true);
     try {
@@ -170,27 +163,14 @@ export default function PlanningRhSemaineSection({ plannings, onRafraichir, char
     <div className="dash-carte" id="emploi-du-temps">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10, marginBottom: 12 }}>
         <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
-          <CalendarDays size={17} aria-hidden="true" /> Emploi du temps
+          <CalendarDays size={17} aria-hidden="true" /> {t('nav.planning')}
         </h3>
-        <button
-          className="btn secondary"
-          onClick={onRafraichir}
-          disabled={chargement}
-          title="Actualiser les plannings"
-        >
-          {chargement ? <Loader2 size={14} className="spin" aria-hidden="true" /> : <RefreshCw size={14} aria-hidden="true" />} Actualiser
-        </button>
       </div>
-
-      <p className="muted" style={{ marginTop: 0, fontSize: 12.5 }}>
-        Choisissez une semaine, sélectionnez un ou plusieurs plannings (services) puis exportez un seul fichier Excel.
-        La période affichée est indicative : des dates différentes n&apos;empêchent pas la sélection dans la même semaine.
-      </p>
 
       {/* Sélecteur de semaine */}
       <div className="rh-edt-barre">
         <label className="rh-edt-label" htmlFor="rh-edt-semaine">
-          Semaine :
+          {t('common.week')}:
         </label>
         <select
           id="rh-edt-semaine"
@@ -198,7 +178,7 @@ export default function PlanningRhSemaineSection({ plannings, onRafraichir, char
           value={semaineChoisie}
           onChange={(e) => choisirSemaine(e.target.value)}
         >
-          <option value="">— Choisir une semaine —</option>
+          <option value="">— {t('common.week')} —</option>
           {semaines.map((s) => (
             <option key={`${s.annee}-${s.numero_semaine}`} value={`${s.annee}-${s.numero_semaine}`}>
               Semaine {s.numero_semaine} · {s.annee}
@@ -207,7 +187,7 @@ export default function PlanningRhSemaineSection({ plannings, onRafraichir, char
         </select>
         {chargement && (
           <span className="muted" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12.5 }}>
-            <Loader2 size={13} className="spin" aria-hidden="true" /> Chargement…
+          <Loader2 size={13} className="spin" aria-hidden="true" /> {t('common.loading')}
           </span>
         )}
       </div>
@@ -219,16 +199,6 @@ export default function PlanningRhSemaineSection({ plannings, onRafraichir, char
       {semaineChoisie && !chargement && planningsSemaine.length === 0 && (
         <p className="muted">Aucun planning disponible pour cette semaine.</p>
       )}
-      {semaineChoisie && planningsSemaine.length > 0 && (
-        <p className="muted" style={{ margin: '0 0 10px', fontSize: 13 }}>
-          {planningsSemaine.length} planning{planningsSemaine.length > 1 ? 's' : ''} disponible{planningsSemaine.length > 1 ? 's' : ''}
-          {nbIncompatibles > 0 && (
-            <> · {nbIncompatibles} planning{nbIncompatibles > 1 ? 's' : ''} incompatible{nbIncompatibles > 1 ? 's' : ''} visible{nbIncompatibles > 1 ? 's' : ''} (non validé)</>
-          )}
-        </p>
-      )}
-
-      {/* Barre de sélection + export (visible dès qu'une semaine est choisie) */}
       {semaineChoisie && planningsSemaine.length > 0 && (
         <>
           <div className="rh-edt-actions">
@@ -244,19 +214,18 @@ export default function PlanningRhSemaineSection({ plannings, onRafraichir, char
                 {selectionEstTotale ? 'Désélectionner tout' : 'Sélectionner tous les plannings validés'}
               </span>
             </label>
-            <span className="rh-edt-compteur">
-              {selection.size} planning{selection.size > 1 ? 's' : ''} sélectionné{selection.size > 1 ? 's' : ''}
-            </span>
-            <button
-              className="btn"
-              onClick={exporterEmploiDuTemps}
-              disabled={selection.size === 0 || exportEnCours}
-              title="Générer UN SEUL fichier Excel regroupant les plannings sélectionnés de la semaine"
-            >
-              {exportEnCours
-                ? <><Loader2 size={15} className="spin" aria-hidden="true" /> Génération du fichier Excel…</>
-                : <><FileSpreadsheet size={15} aria-hidden="true" /> Exporter l&apos;emploi du temps</>}
-            </button>
+            {exportAutorise && (
+              <button
+                className="btn"
+                onClick={exporterEmploiDuTemps}
+                disabled={selection.size === 0 || exportEnCours}
+                title="Générer UN SEUL fichier Excel regroupant les plannings sélectionnés de la semaine"
+              >
+                {exportEnCours
+                  ? <><Loader2 size={15} className="spin" aria-hidden="true" /> Génération du fichier Excel…</>
+                  : <><FileSpreadsheet size={15} aria-hidden="true" /> Exporter l&apos;emploi du temps</>}
+              </button>
+            )}
           </div>
 
           {message && (
@@ -273,8 +242,6 @@ export default function PlanningRhSemaineSection({ plannings, onRafraichir, char
                   <th>Service</th>
                   <th>Semaine</th>
                   <th>Période</th>
-                  <th>Employés</th>
-                  <th>Heures</th>
                   <th>Statut</th>
                   <th></th>
                 </tr>
@@ -296,23 +263,13 @@ export default function PlanningRhSemaineSection({ plannings, onRafraichir, char
                     <td>S{p.numero_semaine} / {p.annee}</td>
                     {/* date début / date fin : INFORMATIONS AFFICHÉES uniquement */}
                     <td>{formatPeriode(p)}</td>
-                    <td>
-                      {p.nb_employes != null ? (
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-                          <Users size={13} aria-hidden="true" /> {p.nb_employes}
-                        </span>
-                      ) : <span className="muted">—</span>}
-                    </td>
-                    <td style={{ whiteSpace: 'nowrap' }}>
-                      {p.total_heures != null ? `${Number(p.total_heures).toFixed(1)} h` : <span className="muted">—</span>}
-                    </td>
-                    <td><span className={`badge ${p.statut}`}>{LABELS_STATUT[p.statut] || p.statut}</span></td>
+                    <td><BadgeStatutPlanning statut={p.statut} /></td>
                     <td style={{ whiteSpace: 'nowrap' }}>
                       <div style={{ display: 'inline-flex', gap: 6 }}>
                         <Link href={`/planning/${p.id_planning}`} className="btn-icone" title="Consulter le planning">
                           <Eye size={15} aria-hidden="true" />
                         </Link>
-                        {p.statut === 'VALIDE' ? (
+                        {exportAutorise && p.statut === 'VALIDE' ? (
                           <button
                             className="btn-icone"
                             onClick={() => exporterLigne(p)}
@@ -323,11 +280,11 @@ export default function PlanningRhSemaineSection({ plannings, onRafraichir, char
                               ? <Loader2 size={15} className="spin" aria-hidden="true" />
                               : <FileSpreadsheet size={15} aria-hidden="true" />}
                           </button>
-                        ) : (
+                        ) : exportAutorise ? (
                           <span className="btn-icone rh-export-indispo" title="Export réservé aux plannings validés">
                             <FileSpreadsheet size={15} aria-hidden="true" />
                           </span>
-                        )}
+                        ) : null}
                       </div>
                     </td>
                   </tr>

@@ -14,6 +14,7 @@ import AppShell from '@/components/AppShell';
 import Modal from '@/components/Modal';
 import { api } from '@/lib/api';
 import { getToken, getUser } from '@/lib/auth';
+import { usePermissions } from '@/lib/permissions';
 
 const FORM_VIDE = {
   nom: '',
@@ -21,10 +22,10 @@ const FORM_VIDE = {
   statut: 'TITULAIRE',
   fonction: '',
   id_service: '',
-  reference_hebdo: 44,
 };
 
 export default function EmployeesPage() {
+  const { autorise } = usePermissions();
   const [employes, setEmployes] = useState([]);
   const [services, setServices] = useState([]);
   const [form, setForm] = useState(FORM_VIDE);
@@ -39,7 +40,7 @@ export default function EmployeesPage() {
   const [token, setToken] = useState(null);
   const router = useRouter();
 
-  const peutGerer = user?.role === 'RH' || user?.role === 'CHEF_SERVICE';
+  const peutGerer = autorise('employe.manage');
   const estChef = user?.role === 'CHEF_SERVICE';
 
   useEffect(() => {
@@ -112,7 +113,6 @@ export default function EmployeesPage() {
       statut: emp.statut || 'TITULAIRE',
       fonction: emp.fonction || '',
       id_service: emp.id_service ? String(emp.id_service) : '',
-      reference_hebdo: emp.reference_hebdo || 44,
     });
   }
 
@@ -160,12 +160,17 @@ export default function EmployeesPage() {
         {error && <div className="error">{error}</div>}
         {message && <div className="bandeau-succes">{message}</div>}
 
-        {(user?.role === 'RH' || user?.role === 'CHEF_SERVICE') && modalAjout && (
-          <Modal titre="Ajouter un employé" onClose={() => setModalAjout(false)} largeur={640}>
-            <form onSubmit={handleSubmit}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+        {autorise('employe.manage') && modalAjout && (
+          <Modal
+            titre="Ajouter un employé"
+            sousTitre="Créer la fiche d’un nouvel employé"
+            onClose={() => setModalAjout(false)}
+            largeur={560}
+          >
+            <form className="employe-ajout-form" onSubmit={handleSubmit}>
+              <div className="employe-ajout-grille">
                 <div className="form-row">
-                  <label>Nom</label>
+                  <label>Nom *</label>
                   <input
                     value={form.nom}
                     onChange={(e) => setForm((f) => ({ ...f, nom: e.target.value }))}
@@ -180,7 +185,7 @@ export default function EmployeesPage() {
                   />
                 </div>
                 <div className="form-row">
-                  <label>Statut</label>
+                  <label>Statut *</label>
                   <select
                     value={form.statut}
                     onChange={(e) => setForm((f) => ({ ...f, statut: e.target.value }))}
@@ -196,8 +201,8 @@ export default function EmployeesPage() {
                     onChange={(e) => setForm((f) => ({ ...f, fonction: e.target.value }))}
                   />
                 </div>
-                <div className="form-row">
-                  <label>Service {estChef && '(fixe : votre service)'}</label>
+                <div className="form-row employe-ajout-service">
+                  <label>Service * {estChef && '(fixe : votre service)'}</label>
                   <select
                     value={form.id_service}
                     onChange={(e) => setForm((f) => ({ ...f, id_service: e.target.value }))}
@@ -212,20 +217,8 @@ export default function EmployeesPage() {
                     ))}
                   </select>
                 </div>
-                <div className="form-row">
-                  <label>Référence hebdo (h)</label>
-                  <select
-                    value={form.reference_hebdo}
-                    onChange={(e) =>
-                      setForm((f) => ({ ...f, reference_hebdo: Number(e.target.value) }))
-                    }
-                  >
-                    <option value={44}>44</option>
-                    <option value={48}>48</option>
-                  </select>
-                </div>
               </div>
-              <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <div className="employe-ajout-actions">
                 <button className="btn secondary" type="button" onClick={() => setModalAjout(false)}>Annuler</button>
                 <button className="btn" type="submit">Ajouter</button>
               </div>
@@ -284,18 +277,6 @@ export default function EmployeesPage() {
                         {s.nom}
                       </option>
                     ))}
-                  </select>
-                </div>
-                <div className="form-row">
-                  <label>Référence hebdo (h)</label>
-                  <select
-                    value={edition.reference_hebdo}
-                    onChange={(e) =>
-                      setEdition((f) => ({ ...f, reference_hebdo: Number(e.target.value) }))
-                    }
-                  >
-                    <option value={44}>44</option>
-                    <option value={48}>48</option>
                   </select>
                 </div>
               </div>

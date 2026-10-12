@@ -13,9 +13,10 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Archive, Eye, Search } from 'lucide-react';
 import AppShell from '@/components/AppShell';
+import BadgeStatutPlanning from '@/components/BadgeStatutPlanning';
 import { api } from '@/lib/api';
 import { getToken } from '@/lib/auth';
-import { LABELS_STATUT } from '@/lib/dash';
+import { useI18n } from '@/lib/i18n';
 
 function finSemainePassee(dateFin) {
   const d = new Date(String(dateFin).slice(0, 10));
@@ -28,6 +29,7 @@ function periode(p) {
 }
 
 export default function ArchivesPage() {
+  const { t } = useI18n();
   const [plannings, setPlannings] = useState([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
@@ -84,10 +86,10 @@ export default function ArchivesPage() {
     <AppShell>
       <div className="container">
         <h1 style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <Archive size={20} aria-hidden="true" /> Archives
+          <Archive size={20} aria-hidden="true" /> {t('archives.title')}
         </h1>
         <p className="muted">
-          Plannings validés dont la semaine est passée. Consultation en lecture seule.
+          {t('archives.description')}
         </p>
         {error && <div className="error">{error}</div>}
 
@@ -95,41 +97,41 @@ export default function ArchivesPage() {
           <div className="arch-filtres">
             <div className="form-row" style={{ flex: 1, minWidth: 220 }}>
               <input
-                placeholder="Rechercher (service, semaine, année)…"
+                placeholder={t('archives.searchPlaceholder')}
                 value={recherche}
                 onChange={(e) => setRecherche(e.target.value)}
               />
             </div>
             <div className="form-row" style={{ width: 'auto' }}>
               <select value={anneeFiltre} onChange={(e) => setAnneeFiltre(e.target.value)}>
-                <option value="">Toutes les années</option>
+                <option value="">{t('dashboard.allYears')}</option>
                 {annees.map((a) => (
                   <option key={a} value={a}>{a}</option>
                 ))}
               </select>
             </div>
             <span className="muted" style={{ fontSize: 12.5, whiteSpace: 'nowrap' }}>
-              {archivesFiltrees.length} archive(s)
+              {archivesFiltrees.length} {t('archives.count')}
             </span>
           </div>
 
           {loading ? (
-            <p className="muted">Chargement...</p>
+            <p className="muted">{t('common.loading')}</p>
           ) : archivesFiltrees.length === 0 ? (
             <p className="muted" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
               <Search size={15} aria-hidden="true" />
-              Aucune archive{archives.length === 0 ? ' pour le moment (aucun planning validé passé).' : ' ne correspond à la recherche.'}
+              {archives.length === 0 ? t('archives.emptyNone') : t('archives.emptySearch')}
             </p>
           ) : (
             <div style={{ overflowX: 'auto' }}>
               <table>
                 <thead>
                   <tr>
-                    <th>Service</th>
-                    <th>Semaine</th>
-                    <th>Période</th>
-                    <th>Statut</th>
-                    <th>Heures</th>
+                    <th>{t('common.service')}</th>
+                    <th>{t('common.week')}</th>
+                    <th>{t('dashboard.period')}</th>
+                    <th>{t('common.status')}</th>
+                    <th>{t('planning.totalHours')}</th>
                     <th></th>
                   </tr>
                 </thead>
@@ -139,11 +141,7 @@ export default function ArchivesPage() {
                       <td>{p.service_nom}</td>
                       <td>S{p.numero_semaine} · {p.annee}</td>
                       <td>{periode(p)}</td>
-                      <td>
-                        <span className={`badge ${p.statut}`}>
-                          {LABELS_STATUT[p.statut] || p.statut}
-                        </span>
-                      </td>
+                      <td><BadgeStatutPlanning statut={p.statut} /></td>
                       <td>
                         {p.total_heures != null ? `${Number(p.total_heures).toFixed(1)} h` : <span className="muted">—</span>}
                       </td>
@@ -151,7 +149,7 @@ export default function ArchivesPage() {
                         <Link
                           href={`/planning/${p.id_planning}`}
                           className="btn-icone"
-                          title="Consulter l'archive"
+                          title={t('archives.viewArchive')}
                         >
                           <Eye size={15} aria-hidden="true" />
                         </Link>

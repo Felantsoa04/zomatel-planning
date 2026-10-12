@@ -38,6 +38,7 @@
  * Le fichier modèle original n'est JAMAIS modifié.
  */
 const path = require('path');
+const fs = require('fs');
 const AdmZip = require('adm-zip');
 
 const MODELE = path.resolve(__dirname, '..', '..', '..', 'document utiliise', 'EMPLOI DU TEMPS ZOMATEL WEEK 37_2026.xlsx');
@@ -45,24 +46,8 @@ const MODELE = path.resolve(__dirname, '..', '..', '..', 'document utiliise', 'E
 const JOURS_SEMAINE = ['LUNDI', 'MARDI', 'MERCREDI', 'JEUDI', 'VENDREDI', 'SAMEDI', 'DIMANCHE'];
 const PERIODES = ['MATIN', 'APRES_MIDI', 'SOIR'];
 const POSITIONS = { MATIN: ['C', 'D', 'E'], APRES_MIDI: ['F', 'G', 'H'], SOIR: ['I', 'J', 'K'] };
-
-/* ---------------- Détection du modèle de planning (multi-modèles) ---------
- * Le nom du service détermine le modèle (même résolution que le frontend) :
- *   SECURITE        -> modèle SHIFT_POSTE (ANDRO / SHIFT / postes)
- *   STOCK CONGEL..  -> modèle HORAIRES_COLONNES (JOURS / plages / REPOS /
- *                      CONGE / OBS.)
- *   autres          -> gabarit standard (périodes fixes) — inchangé.
- * Aucun if dispersé dans les contrôleurs : la détection est ICI, au niveau
- * du générateur, via des règles déclaratives. */
-function normaliserNomService(nom) {
-  return String(nom || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().trim();
-}
-function modeleDeService(nomService) {
-  const nom = normaliserNomService(nomService);
-  if (/SECURITE|GUARD/.test(nom)) return 'SHIFT_POSTE';
-  if (/CONGELATEUR/.test(nom)) return 'HORAIRES_COLONNES';
-  return 'PERIODES_FIXES';
-}
+const EMPLOYES_PAR_FEUILLE = 12;
+const LIGNES_PAR_JOUR = 17;
 
 /* Fenêtres des créneaux du modèle (bornes issues de la logique existante du
  * projet : periodeSelonEntree du contrôleur de grille — <12:00 matin,
@@ -178,8 +163,12 @@ function clonerCellule(celluleModele, refCible, valeur) {
   return `<c r="${refCible}"${attrs ? ' ' + attrs : ''} t="inlineStr"><is><t xml:space="preserve">${echapper(valeur)}</t></is></c>`;
 }
 
-/* Parse les attributs d'une <row> originale (ht, customHeight, s...). */
+/* Parse les attributs d'une <row> originale (ht, customHeight, s...).
+ * Le gabarit ne contient pas toutes les lignes générées (ex. 38, 55, 72,
+ * 89, 106, 123-125 absentes du modèle) : rowXml peut être undefined ->
+ * aucun attribut à reprendre (ligne à hauteur par défaut). */
 function attributsLigne(rowXml) {
+  if (!rowXml) return '';
   const m = rowXml.match(/^<row r="\d+"([^>]*)>/);
   let a = m ? m[1] : '';
   a = a.replace(/\s*r="\d+"/, '');
@@ -193,7 +182,7 @@ function attributsLigne(rowXml) {
 async function chargerPlanningComplet(pool, id_planning) {
   const [[planning]] = await pool.query(
     `SELECT p.id_planning, p.annee, p.numero_semaine, p.date_debut_semaine,
-            p.statut, s.nom_service
+            p.statut, s.nom_service, s.type_affichage
      FROM planning p JOIN service s ON s.id_service = p.service_id
      WHERE p.id_planning = ?`,
     [id_planning]
@@ -212,7 +201,7 @@ async function chargerPlanningComplet(pool, id_planning) {
   const [affectations] = await pool.query(
     `SELECT a.id_affectation, a.employe_id AS id_employe, a.date_jour AS jour,
             a.statut AS statut_jour, a.commentaire AS observation,
-            e.nom, e.matricule
+            e.nom, e.matricule, e.fonction
      FROM affectation a
      JOIN employe e ON e.id_employe = a.employe_id
      WHERE a.planning_id = ?
@@ -233,37 +222,28 @@ async function chargerPlanningComplet(pool, id_planning) {
   const grille = {};
   const employesMap = new Map();
   for (const a of affectations) {
-    if (!employesMap.has(a.id_employe)) employesMap.set(a.id_employe, { id_employe: a.id_employe, nom: a.nom, matricule: a.matricule || '' });
+    if (!employesMap.has(a.id_employe)) employesMap.set(a.id_employe, {
+      id_employe: a.id_employe,
+      nom: a.nom,
+      matricule: a.matricule || '',
+      fonction: a.fonction || '',
+    });
     grille[a.id_employe] = grille[a.id_employe] || {};
     grille[a.id_employe][String(a.jour).slice(0, 10)] = {
       statut_jour: a.statut_jour,
       observation: a.observation,
-      nomEmploye: a.nom, // nom réel (feuilles SHIFT_POSTE)
+      nomEmploye: a.nom,
+      fonction: a.fonction || '',
       creneaux: creneauxParAff[a.id_affectation] || [],
     };
   }
   return { planning, employes: [...employesMap.values()], grille };
 }
 
-/* ---------------- Gabarit SECURITE (structure de référence) ----------------- */
-/* La feuille SECURITE du modèle (sheet23.xml) sert de MODÈLE DE TABLEAU pour
- * les services STANDARD (périodes fixes). Pour les services au modèle
- * spécifique (SHIFT_POSTE, HORAIRES_COLONNES), le générateur construit une
- * feuille dédiée (plus bas) conservant le style général du classeur. :
- * le générateur clonne les cellules du gabarit (mêmes styles s2/s168-170/s7-9/s16/s11/s25/
- * s17/s29/s3/s15/s24/s21, mêmes fusions E2:I3 + 3 par bloc jour, même
- * pageSetup/zoom/colonnes via son head/tail) et n'y écrit QUE les données
- * réelles du planning. Cartographie exacte de la feuille du modèle :
- *   r2 titre E2:I3 (s171) · r4 espace (s4) · r5 C5 service (s2) + jour (G5
- *   s5, date H5 s6) · r6 périodes s168/169/170 (fusions C:E F:H I:K) ·
- *   r7 en-têtes s7/s8/s9/s16 · r8..r19 employés (A s3, B s24-26-27, heures
- *   s11 ; entrées AM s25 ; SOIR s17/s29 ; 12 cellules C..N) · r20 totaux
- *   (s15, formules SUM E..L + fantôme N s24) · r21 fantôme N s24 ·
- *   bloc suivant : +17 lignes · RECAP : SANS ligne de titre, lignes A s3 /
- *   B s24 / C s21 (formule +L8+L25+... recalculée ici en valeur réelle).
- * Particularité vs feuille 1 : PAS de colonne M (observations) et PAS de
- * ligne REPOS dédiée — un statut non-travail est écrit en colonne B.
- * Ligne employé canonique complète = r16 (13 cellules A..M ? non : A..L+N). */
+/* ---------------- Modèle Excel unique pour tous les services ---------------- */
+/* La feuille SECURITE (sheet23.xml) sert de gabarit à toutes les feuilles.
+ * Chaque onglet garde les positions fixes des jours et les 12 lignes prévues
+ * par jour ; les effectifs supplémentaires continuent sur un onglet identique. */
 const GABARIT_SECURITE = 'xl/worksheets/sheet23.xml';
 
 function construireXmlFeuilleSecurite(xmlModele, planning, employes, grille) {
@@ -279,28 +259,37 @@ function construireXmlFeuilleSecurite(xmlModele, planning, employes, grille) {
     jourDate: CEL['H5'],
     periodes: { C: CEL['C6'], D: CEL['D6'], E: CEL['E6'], F: CEL['F6'], G: CEL['G6'], H: CEL['H6'], I: CEL['I6'], J: CEL['J6'], K: CEL['K6'] },
     entetes: { B: CEL['B7'], C: CEL['C7'], D: CEL['D7'], E: CEL['E7'], F: CEL['F7'], G: CEL['G7'], H: CEL['H7'], I: CEL['I7'], J: CEL['J7'], K: CEL['K7'], L: CEL['L7'] },
-    // Lignes employés canoniques : r16/r17/r18/r19 = lignes COMPLÈTES (13
-    // cellules A..L + N s24), utilisées pour toutes les lignes du planning.
-    employe: [16, 17, 18, 19].map((rr) => ({
+    // Lignes employés canoniques : r8..r19 = les 12 positions employés du bloc
+    // jour du modèle (r8..r15 SANS colonne N, r16..r19 AVEC colonne N s24).
+    // Chaque position k du bloc reprend la ligne homologue du modèle : le
+    // rythme de styles du modèle (ombrage alterné de la colonne B, bordure de
+    // bas de bloc sur r19, etc.) est ainsi respecté exactement.
+    employe: Array.from({ length: EMPLOYES_PAR_FEUILLE }, (_, k) => 8 + k).map((rr) => ({
       A: CEL['A' + rr], B: CEL['B' + rr],
       C: CEL['C' + rr], D: CEL['D' + rr], E: CEL['E' + rr],
       F: CEL['F' + rr], G: CEL['G' + rr], H: CEL['H' + rr],
       I: CEL['I' + rr], J: CEL['J' + rr], K: CEL['K' + rr],
       L: CEL['L' + rr],
-      N: CEL['N' + rr] || null,
+      N: rr >= 16 ? CEL['N' + rr] : null,
     })),
     // Totaux : r20 (s15, formules SUM E..L + fantôme N s24) puis r21 (N seul)
     totaux: { C: CEL['C20'], D: CEL['D20'], E: CEL['E20'], F: CEL['F20'], G: CEL['G20'], H: CEL['H20'], I: CEL['I20'], J: CEL['J20'], K: CEL['K20'], L: CEL['L20'], N: CEL['N20'] },
     fantomeN: CEL['N21'],
-    // RECAP : lignes A s3 / B s24 / C s21 (style durée [h]:mm du modèle)
-    recapLigne: { A: CEL['A126'], B: CEL['B126'], C: CEL['C126'] },
+    // RECAP hebdo (lignes 126..137 du modèle) : A s3 / B (s24, s26, s27...)
+    // / C s21 (format durée du modèle). Chaque ligne RECAP garde le style de
+    // sa position d'origine (bordures de fin de tableau, alternance, etc.).
+    recapLignes: Array.from({ length: EMPLOYES_PAR_FEUILLE }, (_, k) => 126 + k).map((rr) => ({
+      A: CEL['A' + rr], B: CEL['B' + rr], C: CEL['C' + rr],
+    })),
   };
 
   const lignes = [];
   const merges = ['E2:I3'];
-  let maxR = 4;
 
-  const push = (r, cells) => { lignes.push(`<row r="${r}" spans="1:14">` + cells.join('') + `</row>`); if (r > maxR) maxR = r; };
+  const push = (r, cells) => {
+    const attrs = attributsLigne(LIGNES_MODELE[r]);
+    lignes.push(`<row r="${r}"${attrs ? ` ${attrs}` : ''} spans="1:14">${cells.join('')}</row>`);
+  };
 
   // ---- Titre (E2:I3) + espace (l.4) — XML du modèle, seule la valeur change
   push(2, [
@@ -351,9 +340,10 @@ function construireXmlFeuilleSecurite(xmlModele, planning, employes, grille) {
     ));
     r++;
 
-    // Lignes employés (données réelles) — styles des lignes complètes r16..r19
+    // Lignes employés (données réelles) — chaque position k garde le style de
+    // la ligne homologue du modèle (r8..r19 : alternance ombrage B, bordure finale r19)
     const debBloc = r;
-    for (let k = 0; k < employes.length; k++) {
+    for (let k = 0; k < Math.min(employes.length, EMPLOYES_PAR_FEUILLE); k++) {
       const emp = employes[k];
       const aff = (grille[emp.id_employe] || {})[datesJours[i]] || null;
       const creneauxJour = (aff && aff.creneaux) || [];
@@ -373,10 +363,11 @@ function construireXmlFeuilleSecurite(xmlModele, planning, employes, grille) {
       // sont masqués (durées 0) — le gabarit Sécurité n'a ni colonne M ni
       // ligne REPOS dédiée.
       const nonTravaille = statut !== '';
-      const canon = can.employe[k % can.employe.length];
+      const canon = can.employe[k] || can.employe[can.employe.length - 1];
       if (nonTravaille) { parPeriode.MATIN = null; parPeriode.APRES_MIDI = null; parPeriode.SOIR = null; totalMinutes = 0; }
 
-      const nomAffiche = nonTravaille ? `${emp.nom || ''} (${statut})` : (emp.nom || '');
+      const nomFonction = emp.fonction ? `${emp.nom || ''} (${emp.fonction})` : (emp.nom || '');
+      const nomAffiche = nonTravaille ? `${nomFonction} (${statut})` : nomFonction;
       const valeurs = { A: emp.matricule || '', B: nomAffiche, L: fractionJour(totalMinutes) };
       for (const p of PERIODES) {
         const c = parPeriode[p];
@@ -395,11 +386,26 @@ function construireXmlFeuilleSecurite(xmlModele, planning, employes, grille) {
       push(r, cells);
       r++;
     }
-    const finBloc = r - 1;
+    // COMPLÉMENT du modèle : les lignes employés NON UTILISÉES restent dans
+    // la feuille, avec leur style du modèle (cellules stylées vides). Le
+    // bloc dur reste donc 5 + 12 + 2 = 17 lignes, les 7 jours gardent EXACTEMENT
+    // les lignes du modèle (totaux à r20/23/40/.../122, RECAP à 126+).
+    for (; r <= debBloc + (EMPLOYES_PAR_FEUILLE - 1); r++) {
+      const k = r - debBloc;
+      const canon = can.employe[k];
+      const cells = [];
+      for (const col of ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'N']) {
+        const src = canon[col];
+        if (!src) continue;
+        cells.push(clonerCellule(src, col + r, ''));
+      }
+      push(r, cells);
+    }
+    const finBloc = r - 1; // toujours debBloc + 11 : plage complète du modèle
 
     // Totaux par période (formules SUM, plages réelles) — style r20 du modèle
     const minutesParCol = { E: 0, H: 0, K: 0, L: 0 };
-    for (const emp of employes) {
+    for (const emp of employes.slice(0, EMPLOYES_PAR_FEUILLE)) {
       const aff = (grille[emp.id_employe] || {})[datesJours[i]];
       for (const c of (aff && aff.creneaux) || []) {
         const rep = repartirDansCreneaux(c.heure_entree, c.heure_sortie);
@@ -424,20 +430,33 @@ function construireXmlFeuilleSecurite(xmlModele, planning, employes, grille) {
     r++;
   }
 
-  // ---- RECAP hebdomadaire (réels) — A s3 / B s24 / C s21, sans ligne de titre
-  for (const emp of employes) {
+  // Le modèle réserve les lignes 124-125 avant le récapitulatif 126-137.
+  while (r < 126) {
+    push(r, []);
+    r++;
+  }
+
+  // ---- RECAP hebdomadaire (réels) — chaque ligne garde le style du modèle
+  // (A s3 / B s24,s26,s27... / C s21 format durée [h]:mm). Les 12 lignes du
+  // tableau sont présentes comme dans le modèle, même si l'équipe est plus
+  // petite (lignes stylées vides) : le tableau ne change pas de hauteur.
+  for (let k = 0; k < EMPLOYES_PAR_FEUILLE; k++) {
+    const canon = can.recapLignes[k] || can.recapLignes[0];
+    const emp = employes[k] || null;
     let t = 0;
-    for (const d of Object.keys(grille[emp.id_employe] || {})) {
-      for (const c of grille[emp.id_employe][d].creneaux || []) {
-        const deb = enMinutes(c.heure_entree);
-        if (deb == null) continue;
-        t += Math.max(0, enMinutes(c.heure_sortie) - deb);
+    if (emp) {
+      for (const d of Object.keys(grille[emp.id_employe] || {})) {
+        for (const c of grille[emp.id_employe][d].creneaux || []) {
+          const deb = enMinutes(c.heure_entree);
+          if (deb == null) continue;
+          t += Math.max(0, enMinutes(c.heure_sortie) - deb);
+        }
       }
     }
     push(r, [
-      clonerCellule(can.recapLigne.A, 'A' + r, emp.matricule || ''),
-      clonerCellule(can.recapLigne.B, 'B' + r, emp.nom || ''),
-      clonerCellule(can.recapLigne.C, 'C' + r, fractionJour(t)),
+      clonerCellule(canon.A, 'A' + r, emp ? (emp.matricule || '') : ''),
+      clonerCellule(canon.B, 'B' + r, emp ? (emp.nom || '') : ''),
+      clonerCellule(canon.C, 'C' + r, emp ? fractionJour(t) : ''),
     ]);
     r++;
   }
@@ -453,7 +472,7 @@ function construireXmlFeuilleSecurite(xmlModele, planning, employes, grille) {
     .replace(/<mergeCells[\s\S]*?<\/mergeCells>/, mergeCellsXml)
     .replace(/<sortState[\s\S]*?<\/sortState>/, '') // plage du modèle obsolète
     .replace(/<dimension ref="[^"]*"\/>/, '');
-  const dimension = `<dimension ref="A2:N${maxR}"/>`;
+  const dimension = `<dimension ref="A2:N${Math.max(r - 1, 137)}"/>`;
   const headFinal = head.replace(/<dimension ref="[^"]*"\/>/, dimension);
   const sheetXml = headFinal + '<sheetData>' + lignes.join('') + '</sheetData>' + tailFinal;
 
@@ -577,11 +596,12 @@ function lettresCol(n) {
  *   PERIODES_FIXES      -> gabarit standard (comportement historique inchangé).
  */
 function construireXmlFeuille(xmlModele, planning, employes, grille) {
-  const modele = modeleDeService(planning.nom_service);
-  if (modele === 'SHIFT_POSTE') {
-    return construireXmlFeuilleShiftPoste(xmlModele, planning, employes, grille);
+  const lots = [];
+  for (let debut = 0; debut < Math.max(employes.length, 1); debut += EMPLOYES_PAR_FEUILLE) {
+    const lot = employes.slice(debut, debut + EMPLOYES_PAR_FEUILLE);
+    lots.push(construireXmlFeuilleSecurite(xmlModele, planning, lot, grille));
   }
-  return construireXmlFeuilleSecurite(xmlModele, planning, employes, grille);
+  return lots;
 }
 
 /* ---------------- Assemblage du CLASSEUR (1..n feuilles générées) ---------- */
@@ -701,7 +721,19 @@ function assemblerClasseur(feuilles, sortie) {
  * Tous les services exportés reproduisent ce tableau, rempli de leurs
  * données réelles — jamais les données d'exemple du modèle. */
 function chargerXmlGabarit() {
-  return new AdmZip(MODELE).getEntry(GABARIT_SECURITE).getData().toString('utf8');
+  if (!fs.existsSync(MODELE)) {
+    const err = new Error(`Modèle Excel introuvable sur le serveur : ${MODELE}.`);
+    err.status = 500;
+    throw err;
+  }
+  const zip = new AdmZip(MODELE);
+  const entree = zip.getEntry(GABARIT_SECURITE);
+  if (!entree) {
+    const err = new Error(`Gabarit « ${GABARIT_SECURITE} » absent du modèle Excel (feuille SECURITE renommée ou supprimée ?).`);
+    err.status = 500;
+    throw err;
+  }
+  return entree.getData().toString('utf8');
 }
 
 /* Export SIMPLE : 1 planning sélectionné par son ID -> 1 fichier (historique). */
@@ -710,9 +742,9 @@ async function genererEmploiDuTempsExcel({ id_planning, sortie }) {
   const { planning, employes, grille } = await chargerPlanningComplet(pool, id_planning);
 
   const xmlModele = chargerXmlGabarit();
-  const { sheetXml, nomFeuille } = construireXmlFeuille(xmlModele, planning, employes, grille);
+  const lots = construireXmlFeuille(xmlModele, planning, employes, grille);
 
-  assemblerClasseur([{ sheetXml, nomFeuille }], sortie);
+  assemblerClasseur(lots, sortie);
   return { sortie, planning, nbEmployes: employes.length };
 }
 
@@ -754,19 +786,23 @@ async function genererClasseursParSemaine({ ids_plannings, dossier }) {
   const path = require('path');
   const xmlModele = chargerXmlGabarit();
 
-  // Construction de la feuille de CHAQUE planning (données réelles uniquement)
+  // Construction de la feuille de CHAQUE planning (données réelles uniquement).
+  // construireXmlFeuille renvoie UN LOT PAR 12 EMPLOYES (tableau de feuilles
+  // { sheetXml, nomFeuille }) : chaque lot devient une feuille du classeur.
   const feuilles = [];
   for (const id of ids) {
     const { planning, employes, grille } = await chargerPlanningComplet(pool, id);
-    const f = construireXmlFeuille(xmlModele, planning, employes, grille);
-    feuilles.push({
-      ...f,
-      id_planning: planning.id_planning,
-      nom_service: planning.nom_service,
-      numero_semaine: planning.numero_semaine,
-      annee: planning.annee,
-      nbEmployes: employes.length,
-    });
+    const lots = construireXmlFeuille(xmlModele, planning, employes, grille);
+    for (const lot of lots) {
+      feuilles.push({
+        ...lot,
+        id_planning: planning.id_planning,
+        nom_service: planning.nom_service,
+        numero_semaine: planning.numero_semaine,
+        annee: planning.annee,
+        nbEmployes: employes.length,
+      });
+    }
   }
 
   // RÈGLE FINALE : regroupement automatique par WEEK — 1 WEEK = 1 fichier

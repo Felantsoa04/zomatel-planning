@@ -1,0 +1,22 @@
+@startuml
+skinparam defaultFontName "Times New Roman"
+skinparam defaultFontSize 20
+skinparam shadowing false
+start
+:Redaction du planning de chaque service\nsur Fichier Excel independant (1 fichier\npar service, redige chaque semaine par\nle responsable de service) ;
+if (Besoin d'une correction\nou d'un echangement ?) then (oui)
+  :Corrections manuelles directement dans le fichier\n(rien ne trace la personne ni l'heure de la modif) ;
+else (non)
+endif
+:Transmission du fichier par WhatsApp\n(capture d'ecran, photo ou partage de fichier) ;
+:Consolidation manuelle des heures\npar calcul mental ou calculatrice ;
+if (Erreur de total / de couverture ?) then (oui)
+  :Redecouverte tardive de l'erreur\n(retouche du fichier ou imprime) ;
+else (non)
+endif
+:Approvisionnement du planning papier\na l'entree du service ;
+:Extraction des heures pour la presentation\nfeuille de paie ;
+:Fichier consultable par la RH uniq.\n(apres l'avoir obtenu de proche en proche) ;
+:Archivage papier (deja desuai) ;
+stop
+@enduml

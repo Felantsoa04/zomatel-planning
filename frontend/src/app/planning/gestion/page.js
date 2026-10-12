@@ -8,23 +8,24 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { CalendarPlus, Pencil, XCircle } from 'lucide-react';
+import { CalendarPlus, Pencil, Trash2 } from 'lucide-react';
 import AppShell from '@/components/AppShell';
+import BadgeStatutPlanning from '@/components/BadgeStatutPlanning';
 import RetourButton from '@/components/RetourButton';
 import { api } from '@/lib/api';
 import SaisieHeureFloat from '@/components/SaisieHeureFloat';
 import Modal from '@/components/Modal';
 import PlanningModelEditor from '@/components/PlanningModelEditor';
-import { LABELS_STATUT, numeroSemaineISO } from '@/lib/dash';
+import { numeroSemaineISO } from '@/lib/dash';
 import { getToken, getUser } from '@/lib/auth';
-import { resoudreModele, MODELE_STANDARD_PAR_DEFAUT } from '@/lib/planningModels';
-import { versInterne, depuisInterne } from '@/lib/planningData';
+import { usePermissions } from '@/lib/permissions';
+import { resoudreModele, MODELE_STANDARD_PAR_DEFAUT, MODELES } from '@/lib/planningModels';
+import { versInterne, depuisInterne, totalHeuresEmploye } from '@/lib/planningData';
 
 const JOURS_LABEL = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
 const STATUTS_CELLULE = ['TRAVAIL', 'REPOS', 'CONGE', 'ABSENCE'];
 const PERIODES = ['MATIN', 'APRES_MIDI', 'SOIR'];
 const LIBELLE_PERIODE = { MATIN: 'Matin', APRES_MIDI: 'Apres-midi', SOIR: 'Soir' };
-
 // ---- Utilitaires dates/heures ----------------------------------------------
 
 // Liste les 7 jours d'une semaine ISO (lundi -> dimanche) depuis annee + numero
@@ -69,9 +70,28 @@ function libelleJour(jour) {
   return JOURS_LABEL[(j + 6) % 7];
 }
 
+// STOCK CONGÉLATEUR : modèle « jours × horaires » (REPOS/CONGÉ/OBS). Condition
+// propre à CE service, limitée à l'écran « Modifier le planning » : le service
+// utilise le modèle HORAIRE_LIBRE même si son type d'affichage n'a pas encore
+// été configuré dans la page Service. Les autres services ne sont pas concernés.
+function estStockCongelateur(service) {
+  if (!service) return false;
+  const nom = String(service.nom_service || service.nom || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+  return nom.includes('stock congelateur');
+}
+
+// "2026-08-17" -> "17/08" (titre du planning, données réelles uniquement)
+function dateJJMM(iso) {
+  return String(iso || '').slice(0, 10).split('-').reverse().join('/');
+}
+
 // ---- Page ------------------------------------------------------------------
 
 export default function GestionPlanningPage() {
+  const { autorise, permissions } = usePermissions();
   const router = useRouter();
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(null);
@@ -106,18 +126,21 @@ export default function GestionPlanningPage() {
   const [planningId, setPlanningId] = useState(null);
   const [cellules, setCellules] = useState({}); // "employe|jour" -> { statut_jour, entree, sortie }
   const [celluleActive, setCelluleActive] = useState(null); // { id_employe, nom, jour }
+  const [modalEdition, setModalEdition] = useState(false);
   const [form, setForm] = useState({ statut_jour: 'TRAVAIL', entree: '', sortie: '' });
   const [enregistrement, setEnregistrement] = useState(false);
   const [messagesCellules, setMessagesCellules] = useState({}); // "employe|jour" -> erreur API
   const [message, setMessage] = useState('');
   // Création EXPLICITE d'un planning (modale de confirmation) : la page ne
   // crée JAMAIS un planning automatiquement (plus de POST silencieux au
-  // changement de semaine) — le chef clique « Créer le planning ».
+  // changement de semaine) — le chef lance la creation depuis l'en-tete.
   const [modalCreation, setModalCreation] = useState(false);
   const [creationEnCours, setCreationEnCours] = useState(false);
   // Champs de la modale de création : Semaine, Service, Date début, Date fin
   // (préremplis avec les sélecteurs de la page, éditables dans la modale).
   const [formCreation, setFormCreation] = useState(null);
+  const [planningASupprimer, setPlanningASupprimer] = useState(null);
+  const [suppressionEnCours, setSuppressionEnCours] = useState(false);
 
   // --- Chargement session ----------------------------------------------------
   useEffect(() => {
@@ -134,6 +157,7 @@ export default function GestionPlanningPage() {
     const params = new URLSearchParams(window.location.search);
     const sid = params.get('service');
     const sem = params.get('semaine');
+    if (params.get('modifier') === '1') setModalEdition(true);
     if (sid) setServiceChoisi(String(sid));
     if (sem && /^(\d+)-W(\d{1,2})$/.test(sem)) setSemaine(`${Number(sem.split('-W')[0])}-W${String(Number(sem.split('-W')[1])).padStart(2, '0')}`);
   }, [router]);
@@ -144,10 +168,11 @@ export default function GestionPlanningPage() {
     (async () => {
       try {
         const liste = await api.get('/services', token);
-        const disponibles =
-          user?.role === 'CHEF_SERVICE' && user?.id_service
-            ? liste.filter((s) => String(s.id_service) === String(user.id_service))
-            : liste;
+        const limiteAuService = user?.role === 'CHEF_SERVICE'
+          || (user?.id_service && !permissions.includes('planning.view_all'));
+        const disponibles = limiteAuService
+          ? liste.filter((s) => String(s.id_service) === String(user.id_service))
+          : liste;
         setServices(disponibles);
         // Ne ecrase pas une pre-selection venue de l'URL (?service=...)
         if (disponibles.length > 0 && !serviceChoisi) setServiceChoisi(String(disponibles[0].id_service));
@@ -155,37 +180,64 @@ export default function GestionPlanningPage() {
         setErreur(err.message);
       }
     })();
-  }, [token, user]);
+  }, [token, user, permissions]);
 
-  const chargerGrille = useCallback(async () => {
-    if (!token || !serviceChoisi) return;
+  const chargerGrille = useCallback(async (options = {}) => {
+    const idService = String(options.serviceId ?? serviceChoisi);
+    const semaineCible = options.semaine ?? semaine;
+    if (!token || !idService) return;
+    if (!permissions.includes('planning.view')) {
+      setListePlannings([]);
+      setPlanningId(null);
+      setGrille(null);
+      setChargement(false);
+      if (options.planningId) {
+        setErreur('Votre compte ne dispose pas de la permission nécessaire pour ouvrir la grille.');
+      }
+      return false;
+    }
     setChargement(true);
     setErreur('');
     setMessage('');
     setMessagesCellules({});
     try {
-      const [annee, num] = semaine.split('-W');
+      const [annee, num] = semaineCible.split('-W');
       // Modèle du service (résolveur central — aucun if(service===...) ici)
-      const svc = (services || []).find((s) => String(s.id_service) === String(serviceChoisi));
-      const modeleResolu = resoudreModele(svc);
+      const svc = (services || []).find((s) => String(s.id_service) === idService);
+      // STOCK CONGÉLATEUR : condition spécifique à CE service, limitée à l'écran
+      // « Modifier le planning » — modèle jours × horaires (REPOS/CONGÉ/OBS)
+      // même sans configuration du type d'affichage ; une config explicite
+      // SHIFT_POSTE reste respectée. Aucun autre service n'est impacté.
+      const modeleResolu = estStockCongelateur(svc) && svc?.type_affichage !== 'SHIFT_POSTE'
+        ? MODELES.HORAIRE_LIBRE
+        : resoudreModele(svc);
       setModele(modeleResolu);
-      // Planning existant pour (service, semaine) ?
-      const existants = await api.get(`/plannings?id_service=${serviceChoisi}&annee=${annee}`, token);
-      const existant = (existants || []).find((p) => Number(p.numero_semaine) === Number(num));
-      if (!existant) {
-        // AUCUNE création automatique : la grille reste vide et la page
-        // propose le bouton « Créer le planning » (chef uniquement). RH/ADMIN
-        // voient un message clair, sans POST voué à un 403.
-        setPlanningId(null);
-        setGrille(null);
-        setCellules({});
-        setDonneesModele(modeleResolu.code === 'STANDARD' ? null : modeleResolu.code === 'SECURITE' ? { config: modeleResolu, donnees: {} } : { config: modeleResolu, donnees: { horaires: modeleResolu.horairesDefaut ? JSON.parse(JSON.stringify(modeleResolu.horairesDefaut)) : [], matrice: {}, statutsJour: {}, observations: {} } });
-        setChargement(false);
-        return;
+      let id;
+      let data;
+      if (options.planningId) {
+        // La création fournit l'ID réel : charger directement ce planning
+        // évite une recherche dépendante des sélecteurs React pas encore mis à jour.
+        id = options.planningId;
+        data = await api.get(`/plannings/${id}/grille`, token);
+      } else {
+        // Planning existant pour (service, semaine) ?
+        const existants = await api.get(`/plannings?id_service=${idService}&annee=${annee}`, token);
+        const existant = (existants || []).find((p) => Number(p.numero_semaine) === Number(num));
+        if (!existant) {
+          // AUCUNE création automatique : la grille reste vide et la page
+          // laisse la grille vide. Le bouton de creation reste dans l'en-tete
+          // pour les chefs; RH/ADMIN voient un message sans POST voue a un 403.
+          setPlanningId(null);
+          setGrille(null);
+          setCellules({});
+          setDonneesModele(modeleResolu.code === 'STANDARD' ? null : modeleResolu.code === 'SECURITE' ? { config: modeleResolu, donnees: {} } : { config: modeleResolu, donnees: { horaires: modeleResolu.horairesDefaut ? JSON.parse(JSON.stringify(modeleResolu.horairesDefaut)) : [], matrice: {}, statutsJour: {}, observations: {} } });
+          setChargement(false);
+          return false;
+        }
+        id = existant.id_planning;
+        data = await api.get(`/plannings/${id}/grille`, token);
       }
-      const id = existant.id_planning;
       setPlanningId(id);
-      const data = await api.get(`/plannings/${id}/grille`, token);
       setGrille(data);
 
       // Initialise l'état local selon le MODÈLE du service (conversion centralisée)
@@ -214,13 +266,16 @@ export default function GestionPlanningPage() {
         setCellules({});
         setDonneesModele({ config: modeleResolu, donnees: etatInterne });
       }
+      if (options.ouvrirEditeur) setModalEdition(true);
+      return true;
     } catch (err) {
       setErreur(err.message);
       setGrille(null);
+      return false;
     } finally {
       setChargement(false);
     }
-  }, [token, serviceChoisi, semaine, user, services]);
+  }, [token, serviceChoisi, semaine, user, services, permissions]);
 
   useEffect(() => {
     chargerGrille();
@@ -233,6 +288,10 @@ export default function GestionPlanningPage() {
   // logique dupliquée.
   useEffect(() => {
     if (!token || !serviceChoisi) return;
+    if (!permissions.includes('planning.view')) {
+      setListePlannings([]);
+      return;
+    }
     (async () => {
       try {
         const liste = await api.get(`/plannings?id_service=${serviceChoisi}`, token);
@@ -241,7 +300,7 @@ export default function GestionPlanningPage() {
         setListePlannings([]);
       }
     })();
-  }, [token, serviceChoisi, grille]);
+  }, [token, serviceChoisi, grille, permissions]);
 
   // --- Création explicite (modale) -------------------------------------------
   // Période exacte de la semaine sélectionnée, affichée dans la modale avant
@@ -318,6 +377,7 @@ export default function GestionPlanningPage() {
       const cr = await api.post(
         '/plannings',
         {
+          service_id: Number(f.id_service),
           annee: Number(f.annee),
           numero_semaine: Number(f.semaine),
           date_debut: f.date_debut,
@@ -325,15 +385,24 @@ export default function GestionPlanningPage() {
         },
         token
       );
-      // Succès : ferme la modale, ACTUALISE et AFFICHE le nouveau planning
-      // immédiatement — les sélecteurs sont synchronisés (le useEffect
-      // recharge aussi si ils ont changé) et la grille est rechargée
-      // explicitement (indispensable si ils n'ont pas changé).
-      setModalCreation(false);
+      if (!cr || !cr.id_planning) {
+        throw new Error('Le planning a été créé, mais l’API n’a pas retourné son identifiant.');
+      }
+      // Charger la grille sur l'ID retourné par le POST, sans refaire de POST
+      // ni dépendre de sélecteurs dont la mise à jour React est asynchrone.
       setServiceChoisi(String(f.id_service));
-      setSemaine(`${Number(f.annee)}-W${String(Number(f.semaine)).padStart(2, '0')}`);
-      await chargerGrille();
-      setMessage(`Planning #${cr.id_planning} créé (Brouillon) : saisissez les horaires puis enregistrez.`);
+      const semaineCreee = `${Number(f.annee)}-W${String(Number(f.semaine)).padStart(2, '0')}`;
+      setSemaine(semaineCreee);
+      setModalCreation(false);
+      const grilleChargee = await chargerGrille({
+        planningId: cr.id_planning,
+        serviceId: f.id_service,
+        semaine: semaineCreee,
+        ouvrirEditeur: true,
+      });
+      if (grilleChargee) {
+        setMessage(`Planning #${cr.id_planning} créé : saisissez les horaires puis enregistrez.`);
+      }
     } catch (err) {
       // La modale RESTE OUVERTE : l'erreur (doublon 409, rôle, serveur...)
       // s'affiche à l'intérieur, l'utilisateur peut corriger.
@@ -433,6 +502,59 @@ export default function GestionPlanningPage() {
       : (cel?.entree ? [{ entree: cel.entree, sortie: cel.sortie }] : []);
     setCelluleActive({ id_employe: idEmploye, nom, jour });
     setForm({ statut_jour: cel?.statut_jour || 'TRAVAIL', periodes: periodesInitiales });
+    setModalEdition(false);
+  }
+
+  function ouvrirModificationPlanning(planning) {
+    setErreur('');
+    setMessage('');
+    setCelluleActive(null);
+    const serviceCible = String(planning.id_service ?? serviceChoisi);
+    const semaineCible = `${planning.annee}-W${String(planning.numero_semaine).padStart(2, '0')}`;
+    const selectionIdentique = serviceCible === serviceChoisi && semaineCible === semaine;
+    const grilleDejaChargee = Number(grille?.planning?.id_planning) === Number(planning.id_planning);
+    if (!grilleDejaChargee) {
+      setGrille(null);
+      setPlanningId(null);
+      setChargement(true);
+    }
+    setServiceChoisi(serviceCible);
+    setSemaine(semaineCible);
+    setModalEdition(true);
+    if (!grilleDejaChargee && selectionIdentique) chargerGrille();
+  }
+
+  function fermerModification() {
+    if (enregistrement) return;
+    setCelluleActive(null);
+    setModalEdition(false);
+  }
+
+  async function supprimerPlanning() {
+    if (!planningASupprimer || suppressionEnCours) return;
+    setSuppressionEnCours(true);
+    setErreur('');
+    setMessage('');
+    try {
+      await api.delete(`/plannings/${planningASupprimer.id_planning}`, token);
+      setListePlannings((liste) => liste.filter(
+        (planning) => Number(planning.id_planning) !== Number(planningASupprimer.id_planning)
+      ));
+      if (Number(planningId) === Number(planningASupprimer.id_planning)) {
+        setPlanningId(null);
+        setGrille(null);
+        setCellules({});
+        setDonneesModele(null);
+        setModalEdition(false);
+        setCelluleActive(null);
+      }
+      setMessage(`Planning S${planningASupprimer.numero_semaine}/${planningASupprimer.annee} supprimé.`);
+      setPlanningASupprimer(null);
+    } catch (err) {
+      setErreur(err.message);
+    } finally {
+      setSuppressionEnCours(false);
+    }
   }
 
   // Ajout d'une période vide (aucune limite artificielle dans l'UI ; la base
@@ -491,6 +613,7 @@ export default function GestionPlanningPage() {
         : { statut_jour: form.statut_jour, periodes: [] },
     }));
     setCelluleActive(null);
+    setModalEdition(true);
   }
 
   function viderCellule(idEmploye, jour) {
@@ -501,6 +624,8 @@ export default function GestionPlanningPage() {
       return copie;
     });
     setMessagesCellules((m) => ({ ...m, [cle]: undefined }));
+    setCelluleActive(null);
+    setModalEdition(true);
   }
 
   function cellulesModifiees() {
@@ -577,13 +702,26 @@ export default function GestionPlanningPage() {
     for (const [cle, err] of Object.entries(messagesCellules)) {
       if (err) problemes.push(`${cle.replace('|', ' / ')} : ${err}`);
     }
-    for (const [cle, err] of Object.entries(calculs.anomalies || {})) {
-      problemes.push(`${cle.replace('|', ' / ')} : ${err.join(' ')}`);
-    }
-    for (const emp of grille?.employes || []) {
-      const c = calculs.parEmploye[emp.id_employe];
-      if (c?.depassement) {
-        problemes.push(`${emp.nom} : ${formatDuree(c.total)} prevues > reference ${Math.round(c.reference / 60)} h`);
+    if (modele.code !== 'STANDARD' && donneesModele) {
+      // Modèles dédiés (ex. STOCK CONGÉLATEUR, jours × horaires) : les contrôles
+      // réutilisent la fonction existante totalHeuresEmploye (mêmes données,
+      // même règle de référence hebdomadaire) — aucun calcul dupliqué.
+      for (const emp of grille?.employes || []) {
+        const total = totalHeuresEmploye(modele, donneesModele.donnees, emp.id_employe);
+        const reference = Number(emp.reference_hebdo || 44) * 60;
+        if (total > reference) {
+          problemes.push(`${emp.nom} : ${formatDuree(total)} prevues > reference ${Math.round(reference / 60)} h`);
+        }
+      }
+    } else {
+      for (const [cle, err] of Object.entries(calculs.anomalies || {})) {
+        problemes.push(`${cle.replace('|', ' / ')} : ${err.join(' ')}`);
+      }
+      for (const emp of grille?.employes || []) {
+        const c = calculs.parEmploye[emp.id_employe];
+        if (c?.depassement) {
+          problemes.push(`${emp.nom} : ${formatDuree(c.total)} prevues > reference ${Math.round(c.reference / 60)} h`);
+        }
       }
     }
     if (problemes.length === 0) {
@@ -622,24 +760,39 @@ export default function GestionPlanningPage() {
 
   // --- Rendu -----------------------------------------------------------------
   const jours = grille?.planning ? joursDeSemaine(grille.planning.annee, grille.planning.numero_semaine) : [];
-  const modifiable = grille?.planning?.statut === 'BROUILLON' || grille?.planning?.statut === 'REJETE';
+  const modifiable = autorise('planning.update')
+    && ['BROUILLON', 'REJETE'].includes(grille?.planning?.statut);
+  // STOCK CONGÉLATEUR : déclenche l'éditeur jours × horaires + titre + Vérifier.
+  const estStockConge = estStockCongelateur(serviceCreation);
 
   return (
 <AppShell>
       <div className="container">
         <RetourButton fallback="/dashboard" hasUnsaved={!!celluleActive} />
-        <h1>Gestion du planning</h1>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+          <h1 style={{ margin: 0 }}>Gestion du planning</h1>
+          {autorise('planning.create') && (
+            <button
+              type="button"
+              className="btn"
+              onClick={ouvrirModalCreation}
+              disabled={!serviceChoisi || chargement}
+              title="Ouvrir la fenêtre de création du planning"
+            >
+              <CalendarPlus size={15} aria-hidden="true" /> Créer un planning
+            </button>
+          )}
+        </div>
         <p className="muted">
-          Saisie directe : cliquez sur une cellule (employe x jour) pour saisir un horaire
-          ou poser REPOS / CONGE / ABSENCE.
+          Sélectionnez un planning pour consulter ou modifier les horaires et les affectations.
         </p>
-        {erreur && <div className="error">{erreur}</div>}
-        {message && <div className="card" style={{ whiteSpace: 'pre-line' }}>{message}</div>}
+        {!modalEdition && erreur && <div className="error">{erreur}</div>}
+        {!modalEdition && message && <div className="card" style={{ whiteSpace: 'pre-line' }}>{message}</div>}
 
         <div className="card" style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'flex-end' }}>
           <div className="form-row">
             <label>Service</label>
-            <select value={serviceChoisi} onChange={(e) => setServiceChoisi(e.target.value)} disabled={user?.role === 'CHEF_SERVICE'}>
+            <select value={serviceChoisi} onChange={(e) => setServiceChoisi(e.target.value)} disabled={!autorise('planning.view_all')}>
               {services.map((s) => (
                 <option key={s.id_service} value={s.id_service}>{s.nom_service || s.nom}</option>
               ))}
@@ -672,22 +825,17 @@ export default function GestionPlanningPage() {
             </select>
           </div>
           {grille?.planning && (
-            <span className={`badge ${grille.planning.statut}`}>
-              {grille.planning.statut}
-              {grille.planning.statut === 'REJETE' ? ' (modifiable)' : ''}
-            </span>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <BadgeStatutPlanning statut={grille.planning.statut} />
+              {grille.planning.statut === 'REJETE' && <span>(modifiable)</span>}
+            </div>
           )}
         </div>
 
-        {/* LISTE DES PLANNINGS DU SERVICE (tous modèles) : ligne = planning.
-            Le bouton Modifier (Pencil) positionne les sélecteurs Service +
-            Semaine sur CE planning : la grille ci-dessous se recharge alors
-            via le useEffect existant (aucune logique dupliquée). Le chef ne
-            peut modifier que SON service : périmètre déjà appliqué par l'API
-            et par le filtre service de la page. */}
+        {/* LISTE DES PLANNINGS DU SERVICE (tous modèles). */}
         {!chargement && listePlannings.length > 0 && (
           <div className="card" style={{ overflowX: 'auto' }}>
-            <h3 style={{ marginTop: 0 }}>Plannings du service — cliquez sur Modifier pour éditer la grille</h3>
+            <h3 style={{ marginTop: 0 }}>Plannings du service</h3>
             <table>
               <thead>
                 <tr>
@@ -700,22 +848,23 @@ export default function GestionPlanningPage() {
               <tbody>
                 {listePlannings.map((p) => (
                   <tr key={p.id_planning} style={
-                    grille?.planning?.id_planning === p.id_planning ? { background: 'var(--zom-creme, #FFF4C5)' } : undefined
+                    grille?.planning?.id_planning === p.id_planning ? { background: 'var(--zom-creme, #f2f2f2)' } : undefined
                   }>
                     <td><strong>S{p.numero_semaine} / {p.annee}</strong></td>
                     <td>{String(p.date_debut || '').slice(0, 10)} → {String(p.date_fin || '').slice(0, 10)}</td>
-                    <td><span className={`badge ${p.statut}`}>{LABELS_STATUT[p.statut] || p.statut}</span></td>
+                    <td><BadgeStatutPlanning statut={p.statut} /></td>
                     <td style={{ whiteSpace: 'nowrap' }}>
                       <div style={{ display: 'inline-flex', gap: 6 }}>
                         {/* MODIFIER : BROUILLON / REJETE uniquement (grille
                             éditable). SOUMIS/VALIDE ne sont jamais modifiables
                             directement (règle serveur : rouverture par RH). */}
-                        {['BROUILLON', 'REJETE'].includes(p.statut) ? (
+                        {autorise('planning.update') && ['BROUILLON', 'REJETE'].includes(p.statut) ? (
                           <button
                             className="btn-icone"
-                            onClick={() => setSemaine(`${p.annee}-W${String(p.numero_semaine).padStart(2, '0')}`)}
+                            onClick={() => ouvrirModificationPlanning(p)}
                             disabled={chargement}
-                            title={`Modifier le planning S${p.numero_semaine} — la grille ci-dessous s'ouvre sur ce planning`}
+                            title={`Modifier le planning S${p.numero_semaine}`}
+                            aria-label={`Modifier le planning S${p.numero_semaine} ${p.annee}`}
                           >
                             <Pencil size={15} aria-hidden="true" />
                           </button>
@@ -729,6 +878,18 @@ export default function GestionPlanningPage() {
                             <Pencil size={15} aria-hidden="true" />
                           </span>
                         )}
+                        {autorise('planning.delete') && ['BROUILLON', 'REJETE'].includes(p.statut) && (
+                          <button
+                            type="button"
+                            className="btn-icone danger"
+                            onClick={() => setPlanningASupprimer(p)}
+                            disabled={suppressionEnCours || chargement}
+                            title={`Supprimer le planning S${p.numero_semaine}`}
+                            aria-label={`Supprimer le planning S${p.numero_semaine} ${p.annee}`}
+                          >
+                            <Trash2 size={15} aria-hidden="true" />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -738,44 +899,73 @@ export default function GestionPlanningPage() {
           </div>
         )}
 
-        {chargement && <p className="muted">Chargement de la grille...</p>}
+        {planningASupprimer && (
+          <Modal
+            titre="Supprimer le planning"
+            onClose={() => { if (!suppressionEnCours) setPlanningASupprimer(null); }}
+            largeur={440}
+          >
+            <p>Voulez-vous vraiment supprimer ce planning ? Cette action est irréversible.</p>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                className="btn secondary"
+                onClick={() => setPlanningASupprimer(null)}
+                disabled={suppressionEnCours}
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                className="btn danger"
+                onClick={supprimerPlanning}
+                disabled={suppressionEnCours}
+              >
+                {suppressionEnCours ? 'Suppression...' : 'Supprimer'}
+              </button>
+            </div>
+          </Modal>
+        )}
+
+        {modalEdition && (
+          <Modal
+            titre={`Modifier le planning — ${grille?.planning?.service_nom || serviceCreation?.nom_service || serviceCreation?.nom || 'Planning'} · S${numSemaine}/${anneeSemaine}`}
+            onClose={fermerModification}
+            largeur={1200}
+          >
+            {chargement && <p className="muted">Chargement de la grille...</p>}
+            {erreur && <div className="error">{erreur}</div>}
+            {message && <div className="card" style={{ whiteSpace: 'pre-line' }}>{message}</div>}
+            {!chargement && grille && (
+              <>
 
         {/* MOTIF DE REJET (visible pendant la correction) : même source que la
             page consultation (dernier_rejet de validation_rh). Le chef corrige
             en sachant POURQUOI, puis resoumet. */}
         {grille?.planning?.statut === 'REJETE' && grille.dernier_rejet && (
           <div className="motif-rejet-box" role="alert">
-            <div className="motif-rejet-titre"><XCircle size={15} aria-hidden="true" /> Planning rejeté par la RH</div>
+            <div className="motif-rejet-titre"><BadgeStatutPlanning statut="REJETE" /> Décision de la RH</div>
             <div><strong>Motif :</strong> {grille.dernier_rejet.commentaire || <span className="muted">(motif non renseigné)</span>}</div>
           </div>
         )}
 
         {/* Nom du modèle actif (information professionnelle, aucune action) */}
-        {grille && !chargement && modele.code !== 'STANDARD' && (
+        {grille && !chargement && modele.code !== 'STANDARD' && !estStockConge && (
           <p className="muted" style={{ marginTop: -6 }}>
             Modèle de planning : <strong>{modele.nom}</strong>
           </p>
         )}
 
-        {/* Aucun planning pour ce service/semaine : création EXPLICITE —
-            le bouton ouvre une MODALE de confirmation (chef uniquement). */}
-        {!chargement && !grille && planningId === null && (
+        {/* Aucun planning pour ce service/semaine. La création reste disponible
+            depuis le bouton de l'en-tête pour choisir la période souhaitée. */}
+        {!modalEdition && !chargement && !grille && planningId === null && (
           <div className="card" style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-            <CalendarPlus size={18} aria-hidden="true" style={{ color: 'var(--zom-rouge, #b91c1c)' }} />
+            <CalendarPlus size={18} aria-hidden="true" style={{ color: 'var(--zom-texte-2)' }} />
             <span>
               Aucun planning pour <strong>{serviceCreation ? (serviceCreation.nom_service || serviceCreation.nom) : 'ce service'}</strong>{' '}
               — semaine {numSemaine}/{anneeSemaine}.
-              {user?.role !== 'CHEF_SERVICE' && ' Seul le chef de service peut le créer.'}
+              {!autorise('planning.create') && ' Vous ne disposez pas de la permission de création.'}
             </span>
-            {user?.role === 'CHEF_SERVICE' && (
-              <button
-                className="btn"
-                onClick={ouvrirModalCreation}
-                title="Ouvrir la fenêtre de création du planning"
-              >
-                <CalendarPlus size={15} aria-hidden="true" /> Créer le planning
-              </button>
-            )}
           </div>
         )}
 
@@ -839,7 +1029,7 @@ export default function GestionPlanningPage() {
                                 </div>
                               )}
                               {contraintes.length > 0 && (
-                                <div title={contraintes.join(' ; ')} style={{ fontSize: 11, color: '#b58900' }}>
+                                <div title={contraintes.join(' ; ')} style={{ fontSize: 11, color: 'var(--zom-texte-2)' }}>
                                   {contraintes[0]}
                                 </div>
                               )}
@@ -871,14 +1061,14 @@ export default function GestionPlanningPage() {
               <div style={{ display: 'flex', gap: 10, margin: '12px 0', flexWrap: 'wrap' }}>
                 <button className="btn" onClick={enregistrer} disabled={enregistrement}>Enregistrer le brouillon</button>
                 <button className="btn secondary" onClick={verifier} disabled={enregistrement}>Vérifier le planning</button>
-                <button className="btn success" onClick={soumettre} disabled={enregistrement}>Soumettre à la RH</button>
+                {autorise('planning.submit') && <button className="btn success" onClick={soumettre} disabled={enregistrement}>Soumettre à la RH</button>}
               </div>
             ) : (
               <p className="muted">
-                Planning {LABELS_STATUT[grille.planning.statut] || grille.planning.statut} : saisie verrouillée.
+                Planning <BadgeStatutPlanning statut={grille.planning.statut} /> : saisie verrouillée.
                 {grille.planning.statut === 'SOUMIS' ? ' En attente de décision RH.' : ''}
                 {grille.planning.statut === 'VALIDE'
-                  ? ' Planning officiel : demandez à la RH de le rouvrir pour le modifier (il repassera en Brouillon et devra être revalidé).'
+                  ? <> Planning officiel : demandez à la RH de le rouvrir pour le modifier (il repassera en <BadgeStatutPlanning statut="BROUILLON" /> et devra être revalidé).</>
                   : ''}
               </p>
             )}
@@ -890,6 +1080,13 @@ export default function GestionPlanningPage() {
             L'éditeur est choisi par le modèle, pas par un if(service===...). */}
         {grille && !chargement && modele.code !== 'STANDARD' && donneesModele && (
           <>
+            {/* STOCK CONGÉLATEUR : titre du modèle papier — service, semaine et
+                dates réels du planning (aucune valeur en dur). */}
+            {estStockConge && grille?.planning && (
+              <h3 className="pm-titre-hl">
+                PLANNING {String(grille.planning.service_nom || '').toUpperCase()} — WEEK {String(grille.planning.numero_semaine).padStart(2, '0')} — du {dateJJMM(grille.planning.date_debut)} au {dateJJMM(grille.planning.date_fin)}
+              </h3>
+            )}
             <div className="card" style={{ overflowX: 'auto' }}>
               <PlanningModelEditor
                 modele={modele}
@@ -903,15 +1100,22 @@ export default function GestionPlanningPage() {
             {modifiable ? (
               <div style={{ display: 'flex', gap: 10, margin: '12px 0', flexWrap: 'wrap' }}>
                 <button className="btn" onClick={enregistrer} disabled={enregistrement}>Enregistrer le brouillon</button>
-                <button className="btn success" onClick={soumettre} disabled={enregistrement}>Soumettre à la RH</button>
+                {estStockConge && (
+                  <button className="btn secondary" onClick={verifier} disabled={enregistrement}>Vérifier le planning</button>
+                )}
+                {autorise('planning.submit') && <button className="btn success" onClick={soumettre} disabled={enregistrement}>Soumettre à la RH</button>}
               </div>
             ) : (
               <p className="muted">
-                Planning {LABELS_STATUT[grille.planning.statut] || grille.planning.statut} : saisie verrouillée.
+                Planning <BadgeStatutPlanning statut={grille.planning.statut} /> : saisie verrouillée.
                 {grille.planning.statut === 'SOUMIS' ? ' En attente de décision RH.' : ''}
               </p>
             )}
           </>
+        )}
+              </>
+            )}
+          </Modal>
         )}
 
         {/* MODALE de création : champs Semaine / Service / Date début /
@@ -928,8 +1132,8 @@ export default function GestionPlanningPage() {
               <label>Service</label>
               <select
                 value={formCreation.id_service}
-                disabled
-                title="Le planning est créé pour votre service (règle serveur existante)"
+                disabled={!autorise('planning.view_all')}
+                title="Le service du planning doit respecter le périmètre de votre compte."
               >
                 {services.map((s) => (
                   <option key={s.id_service} value={s.id_service}>{s.nom_service || s.nom}</option>
@@ -979,7 +1183,7 @@ export default function GestionPlanningPage() {
               </div>
             </div>
             <p className="muted" style={{ fontSize: 12.5, marginTop: 0 }}>
-              Le planning naît au statut Brouillon : les horaires se saisissent ensuite
+              Le planning naît au statut <BadgeStatutPlanning statut="BROUILLON" /> : les horaires se saisissent ensuite
               directement dans la grille.
             </p>
             {erreur && <div className="error" style={{ marginBottom: 10 }}>{erreur}</div>}
@@ -999,7 +1203,7 @@ export default function GestionPlanningPage() {
         {celluleActive && (
           <Modal
             titre={`Ajouter un horaire — ${celluleActive.nom}`}
-            onClose={() => setCelluleActive(null)}
+            onClose={() => { setCelluleActive(null); setModalEdition(true); }}
             largeur={480}
           >
             <p style={{ marginTop: 0 }}>
@@ -1057,7 +1261,7 @@ export default function GestionPlanningPage() {
               >
                 Vider la cellule
               </button>
-              <button className="btn secondary" onClick={() => setCelluleActive(null)}>Annuler</button>
+              <button className="btn secondary" onClick={() => { setCelluleActive(null); setModalEdition(true); }}>Annuler</button>
               <button className="btn" onClick={appliquerCellule}>Enregistrer</button>
             </div>
           </Modal>

@@ -1,0 +1,99 @@
+@startuml
+skinparam defaultFontName "Times New Roman"
+skinparam defaultFontSize 16
+skinparam shadowing false
+hide circle
+hide methods
+
+class Service {
+  id_service
+  nom_service
+  type_affichage
+}
+class Utilisateur {
+  id_utilisateur
+  login
+  mot_de_passe (hash)
+  role
+}
+class Permission {}
+class Employe {
+  matricule
+  nom
+  statut
+  reference_hebdo
+}
+class Planning {
+  semaine
+  statut
+}
+class Affectation {
+  date
+  statut_jour
+}
+class CreneauTravail {
+  type_periode
+  heure_debut
+  heure_fin
+  duree (calculee)
+}
+class TypeHoraire {}
+class ValidationRH {
+  decision
+  commentaire
+  date_decision
+}
+class ControleCouverture {
+  effectif_requis
+  effectif_reel
+}
+class BesoinCouverture {
+  creneau
+  effectif_requis
+}
+class Conge {
+  date_debut
+  date_fin
+  type_conge
+  statut
+}
+class Recuperation {
+  date
+  heures
+}
+class Indisponibilite {
+  date
+}
+class HistoriqueModification {
+  table_modifiee
+  operation
+  horodatage
+}
+class JourFerie {
+  date
+  libelle
+}
+class Notification {
+  message
+  lu
+}
+
+Service "1" -- "0..*" Utilisateur : rattache
+Utilisateur "0..*" -- "0..*" Permission : dispose
+Service "1" *-- "0..*" Employe : emploie
+Service "1" -- "0..*" Planning : programme
+Planning "1" *-- "1..7" Affectation : "jours de la semaine"
+Employe "1" -- "0..*" Affectation : planifie
+Affectation "0..*" -- "0..3" CreneauTravail : "creneaux"
+Planning "1" -- "0..*" ValidationRH : decide par la RH
+Planning "1" -- "0..*" ControleCouverture : "controle"
+Service "1" -- "0..*" BesoinCouverture : exige
+Employe "1" -- "0..*" Conge : demande
+Employe "1" -- "0..*" Recuperation : saisie par chef/RH
+Employe "1" -- "0..*" Indisponibilite : declare
+Planning "1" -- "0..*" HistoriqueModification : trace
+Service "0..*" -- "0..*" JourFerie
+Utilisateur "1" -- "0..*" Notification : reoit
+TypeHoraire "0..*" -- "0..*" Affectation : modele
+Service "1" o-- "0..*" TypeHoraire : opcional\nservice
+@enduml

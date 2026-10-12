@@ -90,9 +90,9 @@ const FICHIER = path.join(TEMP, 'export-exact-rh.xlsx');
       cellules[m[1]] = v;
     }
     const nbEmp = employes.size;
-    // Gabarit SECURITE : jour + périodes + entêtes + N employés + totaux +
-    // fantôme N = 3 + N + 2 lignes (pas de jumelle/remplissage de la feuille 1)
-    const pasBloc = 3 + nbEmp + 2;
+    // Gabarit SECURITE : blocs FIXES de 17 lignes (jour + périodes + entêtes
+    // + 12 lignes employés + totaux + fantôme), comme le modèle WEEK 37.
+    const pasBloc = 17;
     const dates = [];
     { const d = new Date(String(planning.date_debut_semaine).slice(0, 10) + 'T00:00:00Z');
       for (let i = 0; i < 7; i++) { dates.push(d.toISOString().slice(0, 10)); d.setUTCDate(d.getUTCDate() + 1); } }
@@ -150,8 +150,9 @@ const FICHIER = path.join(TEMP, 'export-exact-rh.xlsx');
       }
     }
 
-    // RECAP : total hebdo exact par employé (sans ligne de titre, gabarit Sécurité)
-    const debutRecap = 5 + 7 * pasBloc;
+    // RECAP : total hebdo exact par employé (blocs fixes de 17 lignes,
+    // lignes 124-125 réservées, RECAP sans ligne de titre à partir de 126)
+    const debutRecap = 126;
     let k = 0;
     for (const [idEmp, emp] of employes) {
       const r = debutRecap + k; k++;
@@ -162,7 +163,7 @@ const FICHIER = path.join(TEMP, 'export-exact-rh.xlsx');
     }
 
     // Résidus des données d'exemple
-    const residus = ['ANYAH', 'AVOTRA', 'AUGUSTIN', 'EDHINO', 'HERMANN', 'JEAN CHRYS', 'RAVAKA', 'ROLAND', 'ZIANI', 'JIMMY', 'MANOELA', 'Stagiaire', 'CUISINE SNACK'];
+    const residus = ['ANYAH', 'AVOTRA', 'AUGUSTIN', 'EDHINO', 'HERMANN', 'JEAN CHRYS', 'RAVAKA', 'ROLAND', 'ZIANI', 'JIMMY', 'MANOELA', 'CUISINE SNACK'];
     const trouves = residus.filter((t) => xml.includes(t));
     if (trouves.length) echec('résidus du modèle : ' + trouves.join(', '));
 

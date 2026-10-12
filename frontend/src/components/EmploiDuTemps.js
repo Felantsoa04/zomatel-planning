@@ -56,7 +56,7 @@ function dateCourte(jour) {
 
 // imprimable = false par defaut (regle : seul un planning VALIDE par le RH
 // peut etre imprime — le parent doit passer imprimable={planning.statut === 'VALIDE'}).
-export default function EmploiDuTemps({ planning, affectations, employes, imprimable = false }) {
+export default function EmploiDuTemps({ planning, affectations, employes, imprimable = false, exportAutorise = false }) {
   const jours = listeJours(planning.date_debut, planning.date_fin);
 
   function affectationDe(employeId, jour) {
@@ -91,7 +91,7 @@ export default function EmploiDuTemps({ planning, affectations, employes, imprim
               Imprimer / PDF
             </button>
           )}
-          <button
+          {exportAutorise && <button
             className="btn secondary"
             onClick={async () => {
               try {
@@ -110,7 +110,7 @@ export default function EmploiDuTemps({ planning, affectations, employes, imprim
             }}
           >
             Export Excel
-          </button>
+          </button>}
         </div>
       </div>
 

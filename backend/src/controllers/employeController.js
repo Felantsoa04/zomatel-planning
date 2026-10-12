@@ -8,6 +8,11 @@ const pool = require('../config/db');
 async function list(req, res, next) {
   try {
     const { id_service } = req.query;
+    if (req.user.role !== 'CHEF_SERVICE'
+        && !req.permissions.includes('planning.view_all')
+        && !req.user.id_service) {
+      return res.status(403).json({ message: 'Aucun service n’est associé à votre compte.' });
+    }
     let sql = `SELECT e.id_employe, e.nom, e.matricule, e.statut, e.fonction,
                       e.service_id AS id_service, e.reference_hebdo,
                       e.date_entree, s.nom_service AS service_nom
@@ -15,14 +20,18 @@ async function list(req, res, next) {
                WHERE e.actif = 1`;
     const params = [];
 
-    if (req.user.role === 'CHEF_SERVICE') {
+    if (req.user.role === 'EMPLOYE') {
+      return res.status(403).json({ message: 'Acces refuse : un employe consulte uniquement ses propres donnees.' });
+    } else if (req.user.role === 'CHEF_SERVICE'
+        || (req.user.id_service && !req.permissions.includes('planning.view_all'))) {
       if (!req.user.id_service) {
         return res.status(403).json({ message: 'Ce compte n\'est rattache a aucun service.' });
       }
+      if (id_service && Number(id_service) !== Number(req.user.id_service)) {
+        return res.status(403).json({ message: 'Ce service ne fait pas partie de votre périmètre.' });
+      }
       sql += ' AND e.service_id = ?';
       params.push(req.user.id_service);
-    } else if (req.user.role === 'EMPLOYE') {
-      return res.status(403).json({ message: 'Acces refuse : un employe consulte uniquement ses propres donnees.' });
     } else if (id_service) {
       // NB : la colonne reelle est service_id (e.id_service n'existe pas)
       sql += ' AND e.service_id = ?';
@@ -151,29 +160,39 @@ async function monPlanningDetail(req, res, next) {
 // l'id_service du corps est ignore et remplace par celui du compte.
 async function create(req, res, next) {
   try {
-    let { matricule, nom, statut, fonction, id_service, reference_hebdo, date_entree } = req.body;
+    let { matricule, nom, statut, fonction, id_service, date_entree } = req.body;
     if (req.user.role === 'CHEF_SERVICE') {
       if (!req.user.id_service) {
         return res.status(403).json({ message: "Ce compte n'est rattache a aucun service." });
       }
       id_service = req.user.id_service;
+    } else if (!req.permissions.includes('planning.view_all')) {
+      if (!req.user.id_service || Number(id_service) !== Number(req.user.id_service)) {
+        return res.status(403).json({ message: 'Ce service ne fait pas partie de votre périmètre.' });
+      }
     }
     if (!nom || !id_service) {
       return res.status(400).json({ message: 'nom et id_service requis.' });
     }
     const [result] = await pool.query(
       `INSERT INTO employe (matricule, nom, statut, fonction, service_id, reference_hebdo, date_entree)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+       SELECT ?, ?, ?, ?, s.id_service,
+              CASE WHEN UPPER(TRIM(s.nom_service)) = 'ADMINISTRATION' THEN 44 ELSE 48 END,
+              ?
+       FROM service s
+       WHERE s.id_service = ?`,
       [
         matricule || null,
         nom,
         statut || 'TITULAIRE',
         fonction || null,
-        id_service,
-        reference_hebdo || 44,
         date_entree || null,
+        id_service,
       ]
     );
+    if (result.affectedRows === 0) {
+      return res.status(400).json({ message: 'Service introuvable.' });
+    }
     res.status(201).json({ id_employe: result.insertId });
   } catch (err) {
     next(err);
@@ -190,19 +209,19 @@ async function update(req, res, next) {
     if (req.user.role === 'EMPLOYE') {
       return res.status(403).json({ message: 'Acces refuse.' });
     }
-    if (req.user.role === 'CHEF_SERVICE') {
-      const [[emp]] = await pool.query(
-        'SELECT service_id FROM employe WHERE id_employe = ?',
-        [id]
-      );
-      if (!emp) return res.status(404).json({ message: 'Employe introuvable.' });
-      if (Number(emp.service_id) !== Number(req.user.id_service)) {
-        return res.status(403).json({ message: 'Cet employe ne fait pas partie de votre service.' });
-      }
-      // Un chef ne peut pas transferer un employe vers un autre service
-      if (id_service && Number(id_service) !== Number(req.user.id_service)) {
-        return res.status(403).json({ message: 'Un chef de service ne peut pas transferer un employe vers un autre service.' });
-      }
+    const [[emp]] = await pool.query(
+      'SELECT service_id FROM employe WHERE id_employe = ?',
+      [id]
+    );
+    if (!emp) return res.status(404).json({ message: 'Employe introuvable.' });
+    const accesGlobal = req.permissions.includes('planning.view_all');
+    if ((req.user.role === 'CHEF_SERVICE' || !accesGlobal)
+        && Number(emp.service_id) !== Number(req.user.id_service)) {
+      return res.status(403).json({ message: 'Cet employe ne fait pas partie de votre service.' });
+    }
+    if ((req.user.role === 'CHEF_SERVICE' || !accesGlobal)
+        && id_service && Number(id_service) !== Number(req.user.id_service)) {
+      return res.status(403).json({ message: 'Cet employe ne peut pas être transféré hors de votre périmètre.' });
     }
 
     await pool.query(
@@ -237,7 +256,7 @@ async function desactiver(req, res, next) {
     );
     if (!emp) return res.status(404).json({ message: 'Employe introuvable.' });
 
-    if (req.user.role === 'CHEF_SERVICE') {
+    if (req.user.role === 'CHEF_SERVICE' || !req.permissions.includes('planning.view_all')) {
       if (Number(emp.service_id) !== Number(req.user.id_service)) {
         return res.status(403).json({ message: 'Cet employe ne fait pas partie de votre service.' });
       }

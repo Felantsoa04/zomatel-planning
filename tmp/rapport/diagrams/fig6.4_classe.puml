@@ -1,0 +1,88 @@
+@startuml
+skinparam defaultFontName "Times New Roman"
+skinparam defaultFontSize 16
+skinparam shadowing false
+
+class AuthController {
+  +login(req, res)
+  +me(req, res)
+  +createUser(req, res)
+  +updateUser(req, res)
+  +desactivateUser(req, res)
+}
+class PlanningController {
+  +liste(req, res)
+  +create(req, res)
+  +soumettre(req, res)
+  +rouvrir(req, res)
+  +statistiques
+}
+class PlanningGrilleController {
+  +getGrille(req, res)
+  +putGrille(req, res) : reponse 207
+  +isModifiable(req, res)
+}
+class ValidationController {
+  +fileValidations(req, res)
+  +decider(req, res)
+  +historique(req, res)
+}
+class CouvertureController {
+  +calculer(req, res)
+}
+class EmployeController {
+  +liste / create / update / delete
+  +profilEmploye
+}
+class ExportEdtController {
+  +exportSimple(req, res)
+  +exportMulti(req, res)
+}
+class StatistiquesHeuresController {
+  +calculHeures(req, res)
+}
+class MessengerController {
+  +conversations / messages / fichiers
+}
+class NotificationController {
+  +liste / nonLues / marquerLu
+}
+
+class AuthRequired <<middleware>> {
+  +verifie JWT et charge req.user
+}
+class RequirePermission <<middleware>> {
+  +verifie la permission requise
+  sur /api/auth/me (permissions effectives)
+}
+class ServiceEmploiDuTempsExcel {
+  -construction du classeur Excel
+  +export une semaine
+  +export multi-semaines
+  +feuille par service
+}
+class ServiceEmailService {
+  +envoi email mot de passe oublie
+}
+class Db <<mysql2 pool>> {
+  -connection MariaDB
+  +query(sql, params)
+}
+
+AuthRequired ..> PlanningController
+AuthRequired ..> ValidationController
+RequirePermission ..> PlanningGrilleController
+RequirePermission ..> ExportEdtController
+PlanningController ..> Db
+PlanningGrilleController ..> Db
+ValidationController ..> Db
+CouvertureController ..> Db
+EmployeController ..> Db
+StatistiquesHeuresController ..> Db
+MessengerController ..> Db
+NotificationController ..> Db
+ExportEdtController ..> ServiceEmploiDuTempsExcel
+ServiceEmploiDuTempsExcel ..> Db
+AuthController ..> Db
+AuthController ..> ServiceEmailService
+@enduml

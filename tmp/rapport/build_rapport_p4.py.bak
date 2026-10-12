@@ -1,0 +1,163 @@
+chapitre('CHAPITRE 3 : PRÉSENTATION DU PROJET')
+section_h('3.1. Formulation du projet')
+P('Le projet consiste à concevoir et développer une application web de digitalisation de la gestion des plannings du personnel de l’établissement ZOMATEL. Concrètement, il s’agit de remplacer les fichiers Excel indépendants par une application centralisée permettant :')
+PU(['la création, par service, de plannings hebdomadaires avec saisie des statuts de chaque jour (travail, repos, absence) et jusqu’à trois créneaux horaires par journée (matin, après-midi, soir) ;',
+    'le calcul automatique des heures travaillées, journalier et hebdomadaire, sans aucune saisie manuelle de totaux ;',
+    'un circuit de validation formel BROUILLON → SOUMIS → VALIDÉ / REJETÉ entre le chef de service et la RH ;',
+    'la traçabilité horodatée de toute création ou modification significative d’un planning ;',
+    'le contrôle automatique de la couverture de service, par comparaison entre l’effectif requis et l’effectif planifié.'])
+section_h('3.2. Justification de l’importance du sujet')
+P('La gestion des plannings influence directement la qualité de service —un créneau sous-effectif complique le travail de toute l’équipe—, la paie —les heures travaillées doivent être exactes—, et le climat social, puisque les repos et récupérations doivent être appliqués de manière régulière. Aujourd’hui, tout repose sur la rigueur individuelle de chaque responsable, ce qui rend le processus fragile. Le rendu fiable, traçable et automatisable de ces plannings constitue donc un besoin réel, récurrent et quotidien pour l’établissement.')
+section_h('3.3. Objectifs et besoins utilisateurs')
+ssection('3.3.1. Objectif général')
+P('Digitaliser de bout en bout la gestion des plannings hebdomadaires du personnel de l’établissement ZOMATEL, en automatisant les calculs d’heures et en garantissant un circuit de validation fiable entre chefs de service et RH.')
+ssection('3.3.2. Objectifs spécifiques')
+Num(['Remplacer les plannings papier/Excel par un outil numérique centralisé ;',
+     'Automatiser le calcul des heures travaillées (aucune saisie manuelle de totaux) ;',
+     'Mettre en place un circuit de validation formel entre le chef de service et la RH ;',
+     'Assurer une traçabilité des modifications apportées à un planning ;',
+     'Contrôler la couverture de service par créneau horaire.'])
+ssection('3.3.3. Besoins utilisateurs')
+P('Les besoins utilisateurs sont recueillis auprès des deux acteurs concernés :')
+PU(['Côté chef de service : élaborer en peu de temps le planning de la semaine, en mode « tableur », voir immédiatement les totaux d’heures et les alertes, soumettre le planning à la RH, gérer les fiches de ses employés, saisir les récupérations.',
+    'Côté RH : consulter tous les plannings, contrôler les heures, valider ou rejeter avec un commentaire, créer des comptes utilisateurs, consulter l’historique, exporter les emplois du temps en Excel.'])
+section_h('3.4. Moyens nécessaires à la réalisation du projet')
+table_caption('Tableau 3.1 — Moyens humains, matériels et logiciels nécessaires au projet')
+add_table(['Catégorie', 'Moyens'],
+ [ ['Humains', 'Étudiant stagiaire (analyse, conception, développement) ; maître de stage ; personnel concerné (chefs de service, RH) pour les phases d’interview et de validation'],
+   ['Matériels', 'Ordinateur portable de développement ; serveur local de développement (Laragon) ; poste de test du navigateur web'],
+   ['Logiciels', 'Node.js (runtime) ; Next.js 14 ; Express ; MariaDB ; Git pour la gestion des versions ; PlantUML et Visual Studio Code pour l’outillage'],
+   ['Jeu de données', 'Import des plannings de référence du fichier « EMPLOI DU TEMPS ZOMATEL WEEK 37_2026.xlsx » et script d’import en base'],
+ ], col_widths_cm=[3.5, 13])
+section_h('3.5. Chronogramme de réalisation du projet (diagramme de Gantt)')
+P('Le stage s’est déroulé sur plusieurs semaines, selon l’enchainement analyse → conception → développement → tests. Le chronogramme ci-dessous récapitule les principales phases ; les dates exactes, ajustables, sont à confirmer avec le carnet de bord du stagiaire.')
+add_figure('fig1.1_gantt.png', 'Figure 1.1 — Chronogramme de réalisation du projet (diagramme de Gantt)', width_cm=16.5)
+P(f'(Dates exactes du stage : {ADOC}.)')
+section_h('3.6. Résultat attendu')
+table_caption('Tableau 3.2 — Résultat attendu (livrables)')
+add_table(['N°', 'Livrable'],
+ [ ['1', 'Script de création de la base de données MariaDB (schéma + vues + triggers + jeu de données de démonstration)'],
+   ['2', 'API backend Node.js/Express documentée, avec authentification JWT et permissions par rôle'],
+   ['3', 'Application frontend Next.js (authentification, gestion des plannings, empledur, validation RH, gestion des employés, messagerie interne, notifications)'],
+   ['4', 'Jeu de données de démonstration et scripts de migration'],
+   ['5', 'Le présent rapport de stage'],
+ ], col_widths_cm=[1.5, 15])
+
+partie('PARTIE 2 : ANALYSE ET CONCEPTION')
+
+chapitre('CHAPITRE 4 : ANALYSE PRÉALABLE')
+section_h('4.1. Analyse de l’existant')
+ssection('4.1.1. Organisation actuelle (diagramme de flux)')
+P('L’observation du processus actuel, réalisée à partir des fichiers de l’établissement (fichier « EMPLOI DU TEMPS ZOMATEL WEEK 37_2026.xlsx », feuilles « CUISINE SNACK », « SALLE SNACK », « PATISS-PIZZA », etc.), et de la pratique de terrain a permis d’identifier le flux suivant :')
+P('1. Chaque responsable de service établit, chaque semaine, un emploi du temps de son équipe dans une feuille du fichier Excel de la semaine ;')
+P('2. Pour chaque employé, et pour chaque créneau (matin, après-midi, soir), sont indiqués les heures d’entrée et de sortie, avec le calcul manuel de la durée ;')
+P('3. Le fichier circule (WhatsApp, impression, dépôt papier) pour consultation et renseignement de la couverture de service ;')
+P('4. La RH consolide manuellement les heures travaillées hebdomadaires par employé pour la paie.')
+add_figure('fig4.1_flux_existant.png', 'Figure 4.1 — Diagramme de flux du processus actuel de gestion des plannings', width_cm=11)
+ssection('4.1.2. Critique de l’existant')
+table_caption('Tableau 4.1 — Critique de l’existant')
+add_table(['Aspect', 'Fonctionnalité actuelle', 'Limites ensuite'],
+ [ ['Support', 'Fichier Excel par service, feuilles hebdomadaires', 'Autant de fichiers que de services x semaines ; pas de vue d’ensemble'],
+   ['Calcul des heures', 'Formules de tableur, parfois calcul mental', 'Erreurs de copier-coller ou d’arrondi ; rien en cas de cellule vide ; coût de la correction manuelle'],
+   ['Repos / absence', 'Mention manuelle dans la cellule', 'Pas de suivi systématique des repos hebdomadaires et des congés'],
+   ['Circuit de validation', 'Échange de fichiers ou d’impressions', 'Pas de circuit formalisé ; pas de statut clair (brouillon / soumis / valide) ; pas d’avis motivé'],
+   ['Traçabilité', 'Aucune', 'Impossible de savoir qui a modifié quoi et quand'],
+   ['Couverture de service', 'Vérification visuelle', 'Aucun réglage formalisé de l’effectif requis par créneau'],
+   ['Export à la paie', 'Consolidation manuelle à partir des feuilles Excel', 'Risque de divergence par rapport aux plannings réellement modifiés'],
+ ], col_widths_cm=[3.2, 6.2, 7.2])
+ssection('4.1.3. Moyens existants pour la réalisation du projet')
+PU(['Moyens humains : chefs de service connaisseurs des besoins réels, bureau RH disponible, équipe informatique légère interne (partagée avec d’autres projets) ;',
+    'Moyens matériels : un parc informatique de gestion existant, des ordinateurs portables personnels, le réseau local de l’établissement ;',
+    'Moyens logiciels : suite bureautique déjà utilisée (Excel), serveur local de développement Laragon, outil de gestion de versions Git.'])
+section_h('4.2. Choix de la solution')
+P('Face à ces limites, deux grandes solutions ont été examinées : (1) rester sur des fichiers Excel partagés, en les homogénéisant par des modèles de feuilles, et (2) développer une application web dédiée. La première solution ne règle ni le calcul fiable des heures, ni le circuit de validation, ni la traçabilité. La seconde demande un investissement de développement plus important, mais adresse précisément tous les reproches formulés ci-dessus, et permet de faire évoluer les règles de gestion (ajouter un service, un créneau, un indicateur) sans avoir à refaire un modèle de fichier. La solution retenue est donc la deuxième.')
+section_h('4.3. Choix de la méthode de conception / gestion de projet')
+P('Le projet a été conduit de manière incrémentale : l’analyse de l’existant et la collecte des besoins ont fourni une base de règles de gestion formalisées dans un cahier des charges ; la conception a été menée selon la méthode UML (Unified Modeling Language), avec une approche orientée objets cohérente avec le développement en JavaScript ; les développements se sont faits par itérations courtes, chaque lot de fonctionnalités étant testé et corrige avant le suivant. Le canevas impose en effet la production d’une série de diagrammes UML (cas d’utilisation, séquence, classes, activité, paquetage, déploiement), ce qui a guidé la méthode de conception.')
+section_h('4.4. Choix des outils de conception')
+PU(['PlantUML pour les diagrammes (canevas conforme) et Visual Studio Code / IntelliJ comme environnement d’édition ;',
+    'Draw.io et StarUML comme alternatives testées, écartées au profit de solutions en textual-généré (plus faciles à versionner avec Git).'])
+section_h('4.5. Choix du langage de programmation')
+P('Le langage retenu est JavaScript, exécuté côté serveur par Node.js et côté client par React. Ce choix canalise un certain nombre d’avantages concrets :')
+PU(['un langage unique pour le frontend et le backend, ce qui simplifie les échanges autour d’une API REST en JSON ;',
+    'un grand toucher de libraries modernes pour la construction rapide d’interfaces riches ;',
+    'un runtime Node.js adapté au développement d’une API REST évolutive et l’accès natif aux bases de données SQL par des libraries dédiées (mysql2).'])
+P('PHP aurait pu être envisagé (Laragon est un serveur Apache/PHP/MySQL), mais il ne permet pas de partager un design d’application aussi bien arrondi entre le client et le serveur, et l’écosystème actuel autour de React/Next.js est plus favorable au développement d’interfaces de saisie en grille de type tableur.')
+section_h('4.6. Choix du Framework')
+PU(['Next.js 14 (React) côté frontend : framework officiel recommandé par React pour la construction d’applications web, avec routeur applicatif (App Router), rendu côté serveur pratique, et organisation de code en composants réutilisables ;',
+    'Express côté backend : framework minimaliste et de référence en Node.js pour servir une API REST, avec un écosystème de middlewares adapté (authentification JWT, autorisation par permission, chargement de fichiers, journalisation Morgan).'])
+section_h('4.7. Choix de l’environnement de développement')
+P('Le développement s’est fait sous Windows avec l’environnement local Laragon (Apache, MariaDB, Node.js), Visual Studio Code comme éditeur, Git pour la gestion de versions, et Google Chrome pour les tests d’affichage. Le frontend est servi sur le port 3000 (next dev), l’API Express sur le port 4000.')
+section_h('4.8. Choix du système de gestion de base de données')
+P('Le système retenu est MariaDB, la variante communautaire de MySQL, pleinement pris en charge par Laragon et accessible via la library Node.js mysql2. Ce choix est justifié par :')
+PU(['la compatibilité avec le serveur Laragon déjà installé au sein de l’établissement ;',
+    'la maîtrise des bases relationnelles pour modéliser les plannings d’affectations et créneaux ;',
+    'la présence, dans MariaDB, de fonctionnalités clés pour faire appliquer les règles de gestion en base : vues (pour le calcul automatique des heures) et triggers (pour les contraintes métier avancées – interdiction de chevauchement de créneaux, contrôle du rattachement chef/service…).'])
+
+chapitre('CHAPITRE 5 : CONCEPTION DU PROJET')
+section_h('5.1. Présentation de la méthode de conception')
+P('La conception du projet a été réalisée avec la notation UML et une approche orientée objets. Le modèle du domaine est d’abord construit à partir du vocabulaire métier (service, employé, planning, affectation, créneau), puis les cas d’utilisation sont décrits, les diagrammes de séquence système précisent les échanges entre acteurs et le système, et la conception détaillée traduit ces éléments en architecture logicielle (routes, contrôleurs, accès base) et en modèle de données relationnel.')
+section_h('5.2. Dictionnaire des données')
+P('Le tableau ci-dessous présente un extrait significatif du dictionnaire de données. L’intégralité des tables est décrite dans la partie base de données (Chapitre 6).')
+table_caption('Tableau 5.1 — Extrait du dictionnaire de données')
+add_table(['Entité / Attribut', 'Type', 'Signification / Contraintes'],
+ [ ['service.nom_service', 'VARCHAR(100) UNIQUE', 'Nom du service (Cuisine Snack, Salle Snack, Patisserie & Pizza…)'],
+   ['service.type_affichage', 'ENUM', 'Format de planning du service : PERIODES_FIXES, HORAIRE_LIBRE, SHIFT_POSTE'],
+   ['utilisateur.login / mot_de_passe', 'VARCHAR UNIQUE / VARCHAR(255)', 'Identifiant de connexion et mot de passe haché (bcrypt)'],
+   ['utilisateur.role', 'ENUM', 'ADMIN, RH ou CHEF_SERVICE'],
+   ['employe.matricule', 'VARCHAR(50) UNIQUE optionnel', 'Matricule ; les stagiaires n’en possèdent pas'],
+   ['employe.statut', 'ENUM', 'TITULAIRE ou STAGIAIRE'],
+   ['employe.reference_hebdo', 'DECIMAL(5,2) > 0 et ≤ 60', 'Référence hebdomadaire de comparaison (44 h ou 48 h)'],
+   ['planning.semaine / statut', 'DATE / ENUM', 'Semaine concernée ; BROUILLON, SOUMIS, VALIDE ou REJETE'],
+   ['affectation.statut_jour', 'ENUM', 'TRAVAIL, REPOS ou ABSENCE'],
+   ['creneau_travail.type_periode', 'ENUM', 'matin, apres-midi ou soir'],
+   ['creneau_travail.heure_debut / heure_fin', 'TIME', 'Bornes du créneau (le trigger interdit l’inversion)'],
+   ['validation_rh.decision / commentaire', 'ENUM / TEXT', 'VALIDE ou REJETE, accompagné d’un commenté motivé en cas de rejet'],
+   ['besoin_couverture.effectif_requis', 'INT', 'Effectif souhaité pour un jour et un créneau donnés'],
+   ['historique_modification.operation', 'VARCHAR', 'Nature de l’action tracée (création, affectation, soumission, validation…)'],
+ ], col_widths_cm=[5.2, 4.0, 7.4])
+section_h('5.3. Règles de gestion')
+table_caption('Tableau 5.2 — Règles de gestion')
+add_table(['N°', 'Règle'],
+ [ ['RG1', 'Chaque employé est identifié par un seul champ nom ; le matricule est optionnel (campagnes de stagiaires) ; statuts TITULAIRE ou STAGIAIRE'],
+   ['RG2', 'Chaque jour d’un employé dans un planning a un statut parmi TRAVAIL, REPOS, ABSENCE ; une absence peut être précisée par un commentaire libre, sans sous-catégorie'],
+   ['RG3', 'Une journée de travail peut comporter jusqu’à 3 créneaux (matin, après-midi, soir), chacun avec heure d’entrée et heure de sortie'],
+   ['RG4', 'Chaque employé possède une référence hebdomadaire de 44 h ou 48 h, utilisée uniquement pour comparaison, sans blocage'],
+   ['RG5', 'Les totaux d’heures journalier et hebdomadaire ne sont jamais saisis : ils sont calculés automatiquement par des vues SQL (v_duree_creneau, v_duree_jour, v_total_hebdo_employe)'],
+   ['RG6', 'Cycle de vie du planning : BROUILLON → (soumission chef) → SOUMIS → (décision RH) → VALIDE ou REJETE ; SOUMIS et VALIDE sont non modifiables par le chef'],
+   ['RG7', 'Un dépassement de la référence hebdomadaire est signalé automatiquement, sans bloquer la saisie'],
+   ['RG8', 'Pour chaque jour et chaque créneau, un effectif requis peut être défini ; l’effectif réel affecté est comparé automatiquement pour détecter sous- ou sur-couverture'],
+   ['RG9', 'Les récupérations sont saisies uniquement par le chef de service ou la RH'],
+   ['RG10', 'Toute création ou modification significative d’un planning est enregistrée dans un historique horodaté, associée à l’utilisateur qui a réalisé l’action'],
+   ['RG11', 'Un planning est unique par service et par semaine'],
+   ['RG12', 'Un chef de service est rattaché à exactement un service (générée par colonne calculée et triggers trg_utilisateur_bi/bu)'],
+ ], col_widths_cm=[1.5, 15])
+section_h('5.4. Diagramme de cas d’utilisation')
+P('Le diagramme ci-dessous synthétise les cas d’utilisation identifiés. Les acteurs sont le chef de service et la RH, regroupés au sens large sous un acteur « utilisateur connecté » pour les cas communs (connexion, profil, messagerie). Les permissions sont ensuite affinées côté serveur par la matrice de permissions (Chapitre 7).')
+add_figure('fig4.2_cas_utilisation.png', 'Figure 4.2 — Diagramme de cas d’utilisation de l’application', width_cm=11.8)
+section_h('5.5. Description textuelle des cas d’utilisation')
+table_caption('Tableau 5.3 — Description textuelle du cas d’utilisation « Soumettre un planning à la RH »')
+add_table(['Élément', 'Description'],
+ [ ['Cas d’utilisation', 'Soumettre un planning à la RH (cas du chef de service)'],
+   ['Acteur', 'Chef de service'],
+   ['Précondition', 'Le planning existe, statut BROUILLON ou REJETE, et appartient au service du chef'],
+   ['Scénario nominal', '1) Le chef ouvre la grille hebdomadaire ; 2) Il clique « Soumettre à la RH » ; 3) Le système vérifie le statut et les contrôles automatiques ; 4) Le statut passe à SOUMIS ; 5) Une notification est envoyée à tous les comptes RH'],
+   ['Scénarios alternatifs', '4a) Le planning contient des erreurs bloquantes (créneau invalide) : le système refuse la soumission et affiche le détail ; 5a) La RH rejette avec un motif : le planning repasse à REJETE et devient à nouveau modifiable'],
+   ['Postcondition', 'Le planning est au statut SOUMIS ; le chef ne peut plus le modifier'],
+ ], col_widths_cm=[4.2, 12.4])
+table_caption('Tableau 5.4 — Description textuelle du cas d’utilisation « Valider ou rejeter un planning soumis »')
+add_table(['Élément', 'Description'],
+ [ ['Cas d’utilisation', 'Valider ou rejeter un planning soumis (cas de la RH)'],
+   ['Acteur', 'RH'],
+   ['Précondition', 'Le planning est au statut SOUMIS'],
+   ['Scénario nominal', '1) La RH ouvre la file de validations ; 2) Elle consulte le planning, les heures calculées et la couverture ; 3) Elle approuve ou rejette avec un commentaire ; 4) Le résultat est enregistré dans validation_rh ; le statut du planning passe à VALIDE ou REJETE ; 5) Une notification est adressée au chef créateur'],
+   ['Scénarios alternatifs', '3a) Le planning Valve devient l’emploi du temps officiel et n’est plus modifiable ; 3b) Un planning rejeté peut être rouvert par la RH'],
+   ['Postcondition', 'La décision est enregistrée et horodatée ; l’historique est mis à jour'],
+ ], col_widths_cm=[4.2, 12.4])
+section_h('5.6. Diagrammes de séquence système')
+ssection('5.6.1. Soumission et validation d’un planning')
+add_figure('fig5.1_seq_soumission.png', 'Figure 5.1 — Diagramme de séquence système : soumission et validation d’un planning', width_cm=14.5)
+ssection('5.6.2. Authentification (login)')
+add_figure('fig5.2_seq_connexion.png', 'Figure 5.2 — Diagramme de séquence système : authentification', width_cm=14)
+section_h('5.7. Modèle de domaine')
+P('Le modèle du domaine traduit le vocabulaire métier retenu. Le diagramme de classes détaillé au niveau de la base de données est présenté au chapitre 6.')
+add_figure('fig5.3_domaine.png', 'Figure 5.3 — Modèle de domaine', width_cm=16)

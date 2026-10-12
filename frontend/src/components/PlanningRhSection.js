@@ -14,11 +14,13 @@ import Link from 'next/link';
 import {
   Hotel, Users, CalendarDays, ChevronRight, Download, RefreshCw, Eye, Layers,
 } from 'lucide-react';
+import BadgeStatutPlanning from '@/components/BadgeStatutPlanning';
 import { api } from '@/lib/api';
 import { getToken } from '@/lib/auth';
-import { LABELS_STATUT } from '@/lib/dash';
+import { useI18n } from '@/lib/i18n';
 
-export default function PlanningRhSection({ services, plannings, onRafraichir, chargement }) {
+export default function PlanningRhSection({ services, plannings, onRafraichir, chargement, exportAutorise = false }) {
+  const { t } = useI18n();
   const [serviceChoisi, setServiceChoisi] = useState(null);
   const [exportEnCours, setExportEnCours] = useState(null);
   // Export groupé : plannings VALIDÉS cochés -> UN classeur Excel, une feuille
@@ -138,29 +140,29 @@ export default function PlanningRhSection({ services, plannings, onRafraichir, c
       {!serviceChoisi ? (
         <>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10, marginBottom: 12 }}>
-            <h3 style={{ margin: 0 }}>Plannings par service</h3>
+            <h3 style={{ margin: 0 }}>{t('planning.byService')}</h3>
             <div style={{ display: 'inline-flex', gap: 8 }}>
-              <button
+              {exportAutorise && <button
                 className="btn"
                 onClick={toutExporter}
                 disabled={listeValides.length === 0 || exportMultiEnCours}
-                title="Exporter tous les plannings validés : un fichier Excel par semaine, tous les services de la semaine regroupés"
+                title={t('planning.exportAllHint')}
               >
                 <Layers size={14} aria-hidden="true" />
-                Tout exporter{listeValides.length > 0 ? ` (${listeValides.length})` : ''}
-              </button>
+                {t('planning.exportAll')}{listeValides.length > 0 ? ` (${listeValides.length})` : ''}
+              </button>}
               <button
                 className="btn secondary"
                 onClick={onRafraichir}
                 disabled={chargement}
-                title="Actualiser les plannings"
+                title={t('dashboard.refreshPlans')}
               >
-                <RefreshCw size={14} aria-hidden="true" /> Actualiser
+                <RefreshCw size={14} aria-hidden="true" /> {t('common.refresh')}
               </button>
             </div>
           </div>
           {listeServices.length === 0 ? (
-            <p className="muted">Aucun service enregistré.</p>
+            <p className="muted">{t('services.noService')}</p>
           ) : (
             <div className="rh-services-grille">
               {listeServices.map((s) => {
@@ -179,12 +181,28 @@ export default function PlanningRhSection({ services, plannings, onRafraichir, c
                       <div className="rh-service-meta">
                         {st.total > 0 ? (
                           <>
-                            {st.total} planning{st.total > 1 ? 's' : ''}
-                            {st.VALIDE > 0 && <span className="rh-mini-badge rh-mini-valide">{st.VALIDE} validé{st.VALIDE > 1 ? 's' : ''}</span>}
-                            {st.SOUMIS > 0 && <span className="rh-mini-badge rh-mini-soumis">{st.SOUMIS} soumis</span>}
+                            {st.total} {t('dashboard.planCount')}
+                            {st.VALIDE > 0 && (
+                              <BadgeStatutPlanning
+                                statut="VALIDE"
+                                className="rh-mini-badge rh-mini-valide"
+                                size={13}
+                                compteur={st.VALIDE}
+                                ariaLabel={`${st.VALIDE} ${t('status.VALIDE')}`}
+                              />
+                            )}
+                            {st.SOUMIS > 0 && (
+                              <BadgeStatutPlanning
+                                statut="SOUMIS"
+                                className="rh-mini-badge rh-mini-soumis"
+                                size={13}
+                                compteur={st.SOUMIS}
+                                ariaLabel={`${st.SOUMIS} ${t('status.SOUMIS')}`}
+                              />
+                            )}
                           </>
                         ) : (
-                          <span className="muted">Aucun planning</span>
+                          <span className="muted">{t('dashboard.noPlansYet')}</span>
                         )}
                       </div>
                     </div>
@@ -203,20 +221,20 @@ export default function PlanningRhSection({ services, plannings, onRafraichir, c
                 type="button"
                 className="btn-icone"
                 onClick={() => { setServiceChoisi(null); setSelection(new Set()); }}
-                title="Retour aux services"
+                title={t('services.backToServices')}
               >
                 <ChevronRight size={15} style={{ transform: 'rotate(180deg)' }} aria-hidden="true" />
               </button>
               {serviceChoisi.nom}
               <span className="muted" style={{ fontSize: 12.5, fontWeight: 400 }}>
-                {planningsService.length} planning{planningsService.length > 1 ? 's' : ''}
+                {planningsService.length} {t('dashboard.planCount')}
               </span>
             </h3>
             <button
               className="btn secondary"
               onClick={onRafraichir}
               disabled={chargement}
-              title="Actualiser les plannings"
+              title={t('dashboard.refreshPlans')}
             >
               <RefreshCw size={14} aria-hidden="true" /> Actualiser
             </button>
@@ -231,7 +249,7 @@ export default function PlanningRhSection({ services, plannings, onRafraichir, c
                   Aucun planning validé disponible pour ce service — l'export Excel est réservé aux plannings validés.
                 </p>
               )}
-              {planningsValides.length > 0 && (
+              {exportAutorise && planningsValides.length > 0 && (
                 <div className="rh-export-multi">
                   <input
                     type="checkbox"
@@ -258,7 +276,7 @@ export default function PlanningRhSection({ services, plannings, onRafraichir, c
               <table className="dash-table">
                 <thead>
                   <tr>
-                    <th style={{ width: 36 }}></th>
+                    {exportAutorise && <th style={{ width: 36 }}></th>}
                     <th>Semaine</th>
                     <th>Période</th>
                     <th>Heures</th>
@@ -269,7 +287,7 @@ export default function PlanningRhSection({ services, plannings, onRafraichir, c
                 <tbody>
                   {planningsService.map((p) => (
                     <tr key={p.id_planning}>
-                      <td>
+                      {exportAutorise && <td>
                         <input
                           type="checkbox"
                           className="rh-case-coche"
@@ -278,19 +296,19 @@ export default function PlanningRhSection({ services, plannings, onRafraichir, c
                           onChange={() => basculerSelection(p.id_planning)}
                           title={p.statut === 'VALIDE' ? 'Inclure dans l\'export groupé' : 'Export réservé aux plannings validés'}
                         />
-                      </td>
+                      </td>}
                       <td>S{p.numero_semaine} / {p.annee}</td>
                       <td>{p.date_debut_semaine ? `${String(p.date_debut_semaine).slice(0, 10)} → ${String(p.date_fin_semaine || '').slice(0, 10)}` : '—'}</td>
                       <td style={{ whiteSpace: 'nowrap' }}>
                         {p.total_heures != null ? `${Number(p.total_heures).toFixed(1)} h` : <span className="muted">—</span>}
                       </td>
-                      <td><span className={`badge ${p.statut}`}>{LABELS_STATUT[p.statut] || p.statut}</span></td>
+                      <td><BadgeStatutPlanning statut={p.statut} /></td>
                       <td style={{ whiteSpace: 'nowrap' }}>
                         <div style={{ display: 'inline-flex', gap: 6 }}>
                           <Link href={`/planning/${p.id_planning}`} className="btn-icone" title="Consulter le planning">
                             <Eye size={15} aria-hidden="true" />
                           </Link>
-                          {p.statut === 'VALIDE' ? (
+                          {exportAutorise && p.statut === 'VALIDE' ? (
                             <button
                               className="btn-icone"
                               onClick={() => exporterExcel(p)}
@@ -299,11 +317,11 @@ export default function PlanningRhSection({ services, plannings, onRafraichir, c
                             >
                               <Download size={15} aria-hidden="true" />
                             </button>
-                          ) : (
+                          ) : exportAutorise ? (
                             <span className="btn-icone rh-export-indispo" title="Export réservé aux plannings validés">
                               <Download size={15} aria-hidden="true" />
                             </span>
-                            )}
+                          ) : null}
                         </div>
                       </td>
                     </tr>

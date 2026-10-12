@@ -6,8 +6,8 @@
  * - RÈGLE MÉTIER : seuls les plannings VALIDÉS peuvent être exportés (contrôle
  *   serveur, pas seulement côté interface) — BROUILLON / SOUMIS / REJETE sont
  *   refusés avec 403 ;
- * - restriction existante conservée : un CHEF_SERVICE n'exporte que les
- *   plannings de SON service ;
+ * - les routes limitent l'export au rôle RH avec la permission
+ *   planning.export_edt ;
  * - regroupement automatique par WEEK : les services d'une même semaine vont
  *   dans UN SEUL fichier (WEEK_39.xlsx) ; des semaines différentes donnent des
  *   fichiers différents — plusieurs semaines => une archive ZIP des fichiers ;
@@ -20,8 +20,8 @@ const AdmZip = require('adm-zip');
 const { genererEmploiDuTempsExcel, genererClasseursParSemaine } = require('../services/emploiDuTempsExcel');
 const pool = require('../config/db');
 
-/* Contrôles communs GET/POST : existence, périmètre CHEF_SERVICE, statut
- * VALIDE. Retourne le planning ou une réponse d'erreur déjà formée. */
+/* Contrôles communs GET/POST : existence, périmètre et statut VALIDE.
+ * Retourne le planning ou une réponse d'erreur déjà formée. */
 async function controlerAcces(req, id) {
   const [[planning]] = await pool.query(
     `SELECT p.id_planning, p.service_id, s.nom_service, p.numero_semaine, p.annee, p.statut
@@ -31,7 +31,8 @@ async function controlerAcces(req, id) {
   );
   if (!planning) return { erreur: [404, 'Planning introuvable.'] };
   // Le chef ne doit exporter que SON service (identique aux autres routes).
-  if (req.user.role === 'CHEF_SERVICE' && Number(planning.service_id) !== Number(req.user.id_service)) {
+  if ((req.user.role === 'CHEF_SERVICE' || !req.permissions.includes('planning.view_all'))
+      && Number(planning.service_id) !== Number(req.user.id_service)) {
     return { erreur: [403, 'Ce planning ne concerne pas votre service.'] };
   }
   // RÈGLE MÉTIER : l'export Excel est réservé aux plannings VALIDÉS.
@@ -107,7 +108,10 @@ async function exporterMulti(req, res, next) {
     if (!idsFinaleux) {
       let sql = `SELECT p.id_planning FROM planning p JOIN service s ON s.id_service = p.service_id WHERE p.statut = 'VALIDE'`;
       const params = [];
-      if (req.user.role === 'CHEF_SERVICE' && req.user.id_service) {
+      if (req.user.role === 'CHEF_SERVICE' || !req.permissions.includes('planning.view_all')) {
+        if (!req.user.id_service) {
+          return res.status(403).json({ message: 'Aucun service n’est associé à votre compte.' });
+        }
         sql += ' AND p.service_id = ?';
         params.push(req.user.id_service);
       }

@@ -1,0 +1,143 @@
+@startuml
+skinparam defaultFontName "Times New Roman"
+skinparam defaultFontSize 16
+skinparam shadowing false
+hide circle
+skinparam linetype ortho
+
+entity "service" as service {
+  #id_service (PK)
+  nom_service
+  type_affichage
+}
+entity "utilisateur" as user {
+  *id_utilisateur (PK)
+  login
+  mot_de_passe (hash)
+  role
+  #service_id (FK)
+}
+entity "permission" as perm {
+  *id_permission (PK)
+  code
+}
+entity "role_permission" as role_perm {
+  #role (PK,FK)
+  #id_permission (PK,FK)
+}
+entity "employe" as emp {
+  *id_employe (PK)
+  matricule (UNIQUE)
+  nom
+  statut
+  #service_id (FK)
+  reference_hebdo
+}
+entity "planning" as plan {
+  *id_planning (PK)
+  #service_id (FK)
+  semaine
+  statut
+}
+entity "affectation" as aff {
+  *id_affectation (PK)
+  #planning_id (FK)
+  #employe_id (FK)
+  date
+  statut_jour
+}
+entity "creneau_travail" as cre {
+  *id_creneau (PK)
+  #affectation_id (FK)
+  type_periode
+  heure_debut
+  heure_fin
+}
+entity "type_horaire" as th {
+  *id_type (PK)
+  libelle
+  periodes / bringes
+}
+entity "validation_rh" as val {
+  *id_validation (PK)
+  #planning_id (FK)
+  #valide_par (FK)
+  decision
+  commentaire
+}
+entity "controle_couverture" as cc {
+  *id_controle (PK)
+  #planning_id (FK)
+  date / creneau
+  effectif_requis
+  effectif_reel
+  ecart
+}
+entity "besoin_couverture" as bc {
+  *id_besoin (PK)
+  #service_id (FK)
+  jour / creneau
+  effectif_requis
+}
+entity "conge" as con {
+  *id_conge (PK)
+  #employe_id (FK)
+  date_debut / date_fin
+  statut
+}
+entity "recuperation" as rec {
+  *id_recuperation (PK)
+  #employe_id (FK)
+  date
+  heures
+}
+entity "indisponibilite" as ind {
+  *id_indisp (PK)
+  #employe_id (FK)
+  date
+}
+entity "historique_modification" as hist {
+  *id_histo (PK)
+  #planning_id (FK)
+  #utilisateur_id (FK)
+  operation
+  date_modification
+}
+entity "jour_ferie" as jf {
+  *id_ferie (PK)
+  date
+  libelle
+}
+entity "notification" as notif {
+  *id_notification (PK)
+  #destinataire (FK)
+  message
+  lu
+}
+entity "vue : v_duree_creneau" as v1
+entity "vue : v_duree_jour" as v2
+entity "vue : v_total_hebdo_employe" as v3
+
+service ||--o{ user
+service ||--o{ emp
+service ||--o{ plan
+service ||--o{ bc
+service ||--o{ th
+plan ||--o{ aff
+plan ||--o{ val
+plan ||--o{ cc
+plan ||--o{ hist
+emp ||--o{ aff
+aff ||--o{ cre
+aff }o--o| th
+emp ||--o{ con
+emp ||--o{ rec
+emp ||--o{ ind
+user ||--o{ hist
+user ||--o{ notif
+user ||--o{ val
+role_perm ||--|| perm
+cre .. v1
+pre計 ... v2
+aff .. v3
+@enduml

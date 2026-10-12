@@ -354,7 +354,7 @@ export default function MessengerPage() {
     }
     const mime = (fichier.type || '').toLowerCase();
     const estMedia = mime.startsWith('image/') || mime.startsWith('video/') || mime.startsWith('audio/');
-    if (!estMedia && mime && !/pdf|msword|officedocument|text\/plain|text\/csv|zip/.test(mime)) {
+    if (!estMedia && mime && !/pdf|msword|officedocument|text\/plain|zip/.test(mime)) {
       setErreur('Type de fichier non accepté (image, vidéo, audio ou document).');
       return;
     }
@@ -1016,7 +1016,7 @@ export default function MessengerPage() {
                       <button onClick={() => choisirFichier('video/mp4,video/webm,video/quicktime')}>
                         <Film size={15} aria-hidden="true" /> Vidéo
                       </button>
-                      <button onClick={() => choisirFichier('.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.zip')}>
+                      <button onClick={() => choisirFichier('.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip')}>
                         <FileText size={15} aria-hidden="true" /> Fichier
                       </button>
                     </div>

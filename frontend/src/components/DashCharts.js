@@ -4,6 +4,8 @@
 // - DashBars  : barres horizontales (ex. employes par service)
 // - DashDonut : anneau de repartition (ex. plannings par statut)
 
+import BadgeStatutPlanning from '@/components/BadgeStatutPlanning';
+
 export function DashBars({ data, unite = '' }) {
   const items = (data || []).filter((d) => d.valeur > 0);
   if (items.length === 0) {
@@ -46,7 +48,7 @@ export function DashDonut({ data, centreHaut, centreBas }) {
           {(data || []).map((d) => (
             <li key={d.label} className="muted">
               <span className="dash-pastille" style={{ background: d.couleur, opacity: 0.3 }} />
-              {d.label} <strong>0</strong>
+              {d.statut ? <BadgeStatutPlanning statut={d.statut} /> : d.label} <strong>0</strong>
             </li>
           ))}
         </ul>
@@ -80,7 +82,7 @@ export function DashDonut({ data, centreHaut, centreBas }) {
         {items.map((d) => (
           <li key={d.label}>
             <span className="dash-pastille" style={{ background: d.couleur }} />
-            {d.label} <strong>{d.valeur}</strong>
+            {d.statut ? <BadgeStatutPlanning statut={d.statut} /> : d.label} <strong>{d.valeur}</strong>
           </li>
         ))}
       </ul>

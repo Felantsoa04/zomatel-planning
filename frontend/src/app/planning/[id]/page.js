@@ -2,8 +2,10 @@
 
 import { useEffect, useState, useCallback, Fragment } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { Printer, XCircle, Check, TriangleAlert, CircleAlert, CircleCheck } from 'lucide-react';
+import { Printer, XCircle, Check, TriangleAlert, CircleAlert, CircleCheck, History } from 'lucide-react';
 import AppShell from '@/components/AppShell';
+import BadgeStatutPlanning from '@/components/BadgeStatutPlanning';
+import Modal from '@/components/Modal';
 import RetourButton from '@/components/RetourButton';
 import LegendeStatuts from '@/components/LegendeStatuts';
 import { api } from '@/lib/api';
@@ -12,6 +14,8 @@ import SaisieHeureFloat from '@/components/SaisieHeureFloat';
 import PlanningModelEditor from '@/components/PlanningModelEditor';
 import { resoudreModele, MODELE_STANDARD_PAR_DEFAUT } from '@/lib/planningModels';
 import { versInterne } from '@/lib/planningData';
+import { usePermissions } from '@/lib/permissions';
+import { useI18n } from '@/lib/i18n';
 
 const PERIODES = ['MATIN', 'APRES_MIDI', 'SOIR'];
 const PERIODE_LABEL = { MATIN: 'Matin', APRES_MIDI: 'Apres-midi', SOIR: 'Soir' };
@@ -55,6 +59,16 @@ function formatDuree(minutes) {
   return `${h}h${String(m).padStart(2, '0')}`;
 }
 
+function dateAffichage(valeur, avecHeure = false) {
+  if (!valeur) return '—';
+  const texte = String(valeur);
+  if (!avecHeure) return texte.slice(0, 10).split('-').reverse().join('/');
+  const date = new Date(texte.replace(' ', 'T'));
+  return Number.isNaN(date.getTime())
+    ? '—'
+    : date.toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' });
+}
+
 // REGLE METIER — controle des heures hebdomadaires (affichage uniquement) :
 // Administration -> minimum 44 h/semaine ; tous les autres services -> 48 h.
 // Depassement important : +8 h au-dessus du seuil du service (alerte rouge).
@@ -81,6 +95,8 @@ function alerteHeures(total, seuilMin) {
 }
 
 export default function PlanningDetailPage() {
+  const { langue, t } = useI18n();
+  const { autorise } = usePermissions();
   const { id } = useParams();
   const router = useRouter();
   const [data, setData] = useState(null);
@@ -94,6 +110,8 @@ export default function PlanningDetailPage() {
   const [modalRejet, setModalRejet] = useState(false);
   const [motif, setMotif] = useState('');
   const [motifErreur, setMotifErreur] = useState('');
+  const [decisionEnCours, setDecisionEnCours] = useState(false);
+  const [historique, setHistorique] = useState([]);
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(null);
   // MULTI-MODÈLES : modèle du service + données converties (null = STANDARD)
@@ -115,15 +133,22 @@ export default function PlanningDetailPage() {
   const charger = useCallback(async () => {
     if (!token) return; // attend la lecture de la session au montage
     try {
-      const planningData = await api.get(`/plannings/${id}`, token);
+      const [planningData, historiqueData] = await Promise.all([
+        api.get(`/plannings/${id}`, token),
+        api.get(`/plannings/${id}/validations`, token),
+      ]);
       setData(planningData);
+      setHistorique(Array.isArray(historiqueData) ? historiqueData : []);
       // Fallback : selon la version du backend, la cle peut etre id_service
       // ou service_id (getById renvoie p.service_id sans alias).
       const idService = planningData.planning.id_service ?? planningData.planning.service_id;
       const emps = await api.get(`/employes?id_service=${idService}`, token);
       setEmployes(emps);
       // Modèle du service du planning + conversion des données réelles
-      const m = resoudreModele({ nom_service: planningData.planning.service_nom });
+      const m = resoudreModele({
+        nom_service: planningData.planning.service_nom,
+        type_affichage: planningData.planning.type_affichage,
+      });
       setModele(m);
       if (m.code !== 'STANDARD') {
         const interne = versInterne(m, planningData.affectations || [],
@@ -253,6 +278,9 @@ export default function PlanningDetailPage() {
 
   // Validation RH : VALIDE direct ; REJETE -> ouvre la modal exigeant un motif.
   async function validerRH(decision, commentaire = '') {
+    if (decision === 'VALIDE' && !window.confirm('Confirmer la validation officielle de ce planning ?')) return;
+    setDecisionEnCours(true);
+    setError('');
     try {
       await api.post(`/plannings/${id}/validation`, { decision, commentaire }, token);
       setModalRejet(false);
@@ -261,6 +289,8 @@ export default function PlanningDetailPage() {
       await charger();
     } catch (err) {
       setError(err.message);
+    } finally {
+      setDecisionEnCours(false);
     }
   }
 
@@ -280,8 +310,8 @@ export default function PlanningDetailPage() {
   }
 
   // BROUILLON ou REJETE : le chef peut corriger (cellules) et resoumettre
-  const peutModifier = ['BROUILLON', 'REJETE'].includes(planning.statut) && user?.role === 'CHEF_SERVICE';
-  const estRH = user?.role === 'RH';
+  const peutModifier = ['BROUILLON', 'REJETE'].includes(planning.statut) && autorise('planning.update');
+  const estRH = autorise('planning.validate');
 
   return (
     <PageShell bloquerImpression={planning.statut !== 'VALIDE'}>
@@ -318,7 +348,7 @@ export default function PlanningDetailPage() {
               <Printer size={14} aria-hidden="true" /> Imprimer / PDF
             </button>
           )}
-          <span className={`badge ${planning.statut}`}>{planning.statut}</span>
+          <BadgeStatutPlanning statut={planning.statut} />
         </div>
       </div>
 
@@ -328,12 +358,12 @@ export default function PlanningDetailPage() {
           Reservé au service concerne (chef du service et RH). */}
       {planning.statut === 'REJETE' && (
         <div className="motif-rejet-box" role="alert">
-          <div className="motif-rejet-titre"><XCircle size={15} aria-hidden="true" /> Planning rejeté</div>
+          <div className="motif-rejet-titre"><BadgeStatutPlanning statut="REJETE" /> Motif du rejet</div>
           <div>
             <strong>Motif du rejet :</strong>{' '}
             {motifRejet?.commentaire || <span className="muted">(motif non renseigné)</span>}
           </div>
-          {user?.role === 'CHEF_SERVICE' && (
+          {autorise('planning.update') && planning.statut === 'REJETE' && (
             <div className="muted" style={{ marginTop: 6 }}>
               Corrigez le planning (grille de gestion), puis soumettez-le à nouveau à la RH.
             </div>
@@ -357,21 +387,21 @@ export default function PlanningDetailPage() {
       )}
 
       <div style={{ margin: '12px 0', display: modele.code !== 'STANDARD' ? 'none' : undefined }}>
-        {peutModifier && (
+        {peutModifier && autorise('planning.submit') && (
           <button className="btn success" onClick={soumettre}>Soumettre a la RH</button>
         )}
-        {planning.statut === 'SOUMIS' && user?.role === 'RH' && (
+        {planning.statut === 'SOUMIS' && autorise('planning.validate') && (
           <>
-            <button className="btn success" onClick={() => validerRH('VALIDE')} style={{ marginRight: 8 }}>
+            <button className="btn success" onClick={() => validerRH('VALIDE')} style={{ marginRight: 8 }} disabled={decisionEnCours}>
               <Check size={14} aria-hidden="true" /> Valider
             </button>
-            <button className="btn danger" onClick={demanderRejet}><XCircle size={14} aria-hidden="true" /> Rejeter</button>
+            <button className="btn danger" onClick={demanderRejet} disabled={decisionEnCours}><XCircle size={14} aria-hidden="true" /> Rejeter</button>
           </>
         )}
       </div>
 
       {estRH && vueEmploiDuTemps ? (
-        <VueEmploiDuTemps jours={jours} employes={employes} trouverAffectation={trouverAffectation} totaux={totaux} seuilMin={seuilMin} idPlanning={Number(id)} imprimable={planning.statut === 'VALIDE'} />
+        <VueEmploiDuTemps jours={jours} employes={employes} trouverAffectation={trouverAffectation} totaux={totaux} seuilMin={seuilMin} idPlanning={Number(id)} imprimable={planning.statut === 'VALIDE'} exportAutorise={user?.role === 'RH' && autorise('planning.export_edt')} />
       ) : modele.code === 'STANDARD' && (
         <div className="card" style={{ overflowX: 'auto' }}>
           <table>
@@ -386,7 +416,10 @@ export default function PlanningDetailPage() {
             <tbody>
               {employes.map((emp) => (
                 <tr key={emp.id_employe}>
-                  <td>{emp.nom}{emp.matricule ? ` (${emp.matricule})` : ''} {emp.statut === 'STAGIAIRE' && <span className="muted">(stagiaire)</span>}</td>
+                  <td>
+                    {emp.nom}{emp.matricule ? ` (${emp.matricule})` : ''} {emp.statut === 'STAGIAIRE' && <span className="muted">(stagiaire)</span>}
+                    {emp.fonction && <div className="muted" style={{ fontSize: 12 }}>{emp.fonction}</div>}
+                  </td>
                   {jours.map((jour) => {
                     const aff = trouverAffectation(emp.id_employe, jour);
                     return (
@@ -490,11 +523,47 @@ export default function PlanningDetailPage() {
         </table>
       </div>
 
-      {/* Modal de rejet : motif OBLIGATOIRE (bouton Confirmer inactif sinon) */}
+      {(data.contraintes?.conges?.length > 0 || data.contraintes?.indisponibilites?.length > 0) && (
+        <div className="card">
+          <h3 style={{ marginTop: 0 }}>Absences et indisponibilités</h3>
+          {data.contraintes.conges.map((conge, index) => (
+            <p key={`conge-${conge.id_employe}-${index}`} style={{ margin: '6px 0' }}>
+              <strong>{conge.employe_nom}</strong> · Congé {conge.type_conge} · {dateAffichage(conge.date_debut)} au {dateAffichage(conge.date_fin)}
+            </p>
+          ))}
+          {data.contraintes.indisponibilites.map((indispo, index) => (
+            <p key={`indispo-${indispo.id_employe}-${index}`} style={{ margin: '6px 0' }}>
+              <strong>{indispo.employe_nom}</strong> · {indispo.type_indispo} · {dateAffichage(indispo.date_debut)} au {dateAffichage(indispo.date_fin)}
+              {indispo.motif ? ` · ${indispo.motif}` : ''}
+            </p>
+          ))}
+        </div>
+      )}
+
+      <div className="card">
+        <h3 style={{ marginTop: 0, display: 'flex', alignItems: 'center', gap: 7 }}>
+          <History size={16} aria-hidden="true" /> Historique des validations
+        </h3>
+        {historique.length === 0 ? (
+          <p className="muted" style={{ margin: 0 }}>Aucune action enregistrée.</p>
+        ) : (
+          <div style={{ display: 'grid', gap: 10 }}>
+            {historique.map((evenement) => (
+              <div key={`${evenement.action}-${evenement.id_evenement}`} style={{ borderLeft: '3px solid var(--zom-bordure)', paddingLeft: 12 }}>
+                <BadgeStatutPlanning statut={evenement.action} />
+                <span className="muted"> · {[evenement.prenom, evenement.nom].filter(Boolean).join(' ') || 'Utilisateur'} · {dateAffichage(evenement.date_decision, true)}</span>
+                {evenement.action === 'REJETE' && evenement.commentaire && (
+                  <div style={{ marginTop: 3 }}>Motif : {evenement.commentaire}</div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Modal de rejet : le motif est obligatoire. */}
       {modalRejet && (
-        <div className="modal-overlay" onClick={() => setModalRejet(false)}>
-          <div className="motif-modal" onClick={(e) => e.stopPropagation()}>
-            <h3 style={{ marginTop: 0 }}>Rejeter le planning</h3>
+        <Modal titre="Rejeter le planning" onClose={() => setModalRejet(false)}>
             <p className="muted" style={{ marginTop: 0 }}>
               Le planning sera renvoyé au chef de service pour correction.
             </p>
@@ -512,11 +581,12 @@ export default function PlanningDetailPage() {
             />
             {motifErreur && <div className="error">{motifErreur}</div>}
             <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-              <button className="btn danger" onClick={confirmerRejet}>Confirmer le rejet</button>
-              <button className="btn secondary" onClick={() => setModalRejet(false)}>Annuler</button>
+              <button className="btn secondary" onClick={() => setModalRejet(false)} disabled={decisionEnCours}>Annuler</button>
+              <button className="btn danger" onClick={confirmerRejet} disabled={!motif.trim() || decisionEnCours}>
+                {decisionEnCours ? 'Rejet en cours…' : 'Rejeter le planning'}
+              </button>
             </div>
-          </div>
-        </div>
+        </Modal>
       )}
 
       {couverture.length > 0 && (
@@ -544,7 +614,7 @@ export default function PlanningDetailPage() {
   );
 }
 
-function VueEmploiDuTemps({ jours, employes, trouverAffectation, totaux, seuilMin = SEUIL_AUTRES_HEURES, idPlanning = null, imprimable = false }) {
+function VueEmploiDuTemps({ jours, employes, trouverAffectation, totaux, seuilMin = SEUIL_AUTRES_HEURES, idPlanning = null, imprimable = false, exportAutorise = false }) {
   function totalDe(id_employe) {
     return totaux.find((t) => t.id_employe === id_employe);
   }
@@ -569,7 +639,7 @@ function VueEmploiDuTemps({ jours, employes, trouverAffectation, totaux, seuilMi
     <div className="card" style={{ overflowX: 'auto' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
         <LegendeStatuts />
-        {imprimable && (
+        {imprimable && exportAutorise && (
           <button className="btn secondary" onClick={exporterExcel}>Export Excel</button>
         )}
       </div>

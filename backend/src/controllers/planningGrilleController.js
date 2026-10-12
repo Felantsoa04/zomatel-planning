@@ -31,6 +31,9 @@ function hmin(h) {
 // contraintes RH (conges valides, indisponibilites, recuperations) sur la semaine.
 async function getGrille(req, res, next) {
   try {
+    if (req.user.role === 'EMPLOYE') {
+      return res.status(403).json({ message: 'Acces refuse.' });
+    }
     const { id } = req.params;
 
     const [[planning]] = await pool.query(
@@ -38,14 +41,15 @@ async function getGrille(req, res, next) {
               p.date_debut_semaine AS date_debut,
               p.date_fin_semaine   AS date_fin,
               p.statut, p.service_id AS id_service,
-              s.nom_service AS service_nom
+              s.nom_service AS service_nom, s.type_affichage
        FROM planning p JOIN service s ON s.id_service = p.service_id
        WHERE p.id_planning = ?`,
       [id]
     );
     if (!planning) return res.status(404).json({ message: 'Planning introuvable.' });
     // Un chef ne manipule que les grilles de son service
-    if (req.user.role === 'CHEF_SERVICE' && planning.id_service !== req.user.id_service) {
+    if ((req.user.role === 'CHEF_SERVICE' || !req.permissions.includes('planning.view_all'))
+        && Number(planning.id_service) !== Number(req.user.id_service)) {
       return res.status(403).json({ message: 'Ce planning ne concerne pas votre service.' });
     }
 
@@ -142,6 +146,9 @@ async function getGrille(req, res, next) {
 // Les cellules en erreur n'annulent PAS les autres (sauvegarde partielle visible).
 async function saveGrille(req, res, next) {
   try {
+    if (req.user.role === 'EMPLOYE') {
+      return res.status(403).json({ message: 'Acces refuse.' });
+    }
     const { id } = req.params;
     const cellules = Array.isArray(req.body.cellules) ? req.body.cellules : null;
     if (!cellules) {
@@ -154,7 +161,8 @@ async function saveGrille(req, res, next) {
       [id]
     );
     if (!planning) return res.status(404).json({ message: 'Planning introuvable.' });
-    if (req.user.role === 'CHEF_SERVICE' && planning.service_id !== req.user.id_service) {
+    if ((req.user.role === 'CHEF_SERVICE' || !req.permissions.includes('planning.view_all'))
+        && Number(planning.service_id) !== Number(req.user.id_service)) {
       return res.status(403).json({ message: 'Ce planning ne concerne pas votre service.' });
     }
     if (planning.statut === 'VALIDE' || planning.statut === 'SOUMIS') {
@@ -341,13 +349,17 @@ async function saveGrille(req, res, next) {
 // Indique si le chef peut modifier la grille (BROUILLON ou REJETE).
 async function modifiable(req, res, next) {
   try {
+    if (req.user.role === 'EMPLOYE') {
+      return res.status(403).json({ message: 'Acces refuse.' });
+    }
     const { id } = req.params;
     const [[planning]] = await pool.query(
       'SELECT statut, service_id FROM planning WHERE id_planning = ?',
       [id]
     );
     if (!planning) return res.status(404).json({ message: 'Planning introuvable.' });
-    if (req.user.role === 'CHEF_SERVICE' && planning.service_id !== req.user.id_service) {
+    if ((req.user.role === 'CHEF_SERVICE' || !req.permissions.includes('planning.view_all'))
+        && Number(planning.service_id) !== Number(req.user.id_service)) {
       return res.status(403).json({ message: 'Ce planning ne concerne pas votre service.' });
     }
     res.json({
@@ -364,20 +376,28 @@ async function modifiable(req, res, next) {
 // Une REJETE resoumise est un planning MODIFIE : la notification RH le precise
 // (meme circuit, meme endpoint — aucun chemin parallele de validation).
 async function soumettre(req, res, next) {
+  const connection = await pool.getConnection();
   try {
     const { id } = req.params;
-    const [[planning]] = await pool.query(
+    await connection.beginTransaction();
+    const [[planning]] = await connection.query(
       `SELECT p.id_planning, p.statut, p.service_id, p.numero_semaine, p.annee,
-              s.nom_service
+              p.cree_par, s.nom_service
        FROM planning p JOIN service s ON s.id_service = p.service_id
-       WHERE p.id_planning = ?`,
+       WHERE p.id_planning = ? FOR UPDATE`,
       [id]
     );
-    if (!planning) return res.status(404).json({ message: 'Planning introuvable.' });
-    if (req.user.role === 'CHEF_SERVICE' && planning.service_id !== req.user.id_service) {
+    if (!planning) {
+      await connection.rollback();
+      return res.status(404).json({ message: 'Planning introuvable.' });
+    }
+    if ((req.user.role === 'CHEF_SERVICE' || !req.permissions.includes('planning.view_all'))
+        && Number(planning.service_id) !== Number(req.user.id_service)) {
+      await connection.rollback();
       return res.status(403).json({ message: 'Ce planning ne concerne pas votre service.' });
     }
     if (planning.statut !== 'BROUILLON' && planning.statut !== 'REJETE') {
+      await connection.rollback();
       return res.status(409).json({
         message: 'Seul un planning BROUILLON ou REJETE peut etre soumis.',
       });
@@ -386,15 +406,21 @@ async function soumettre(req, res, next) {
     // REJETE avant passage) ; après rouverture d'un VALIDÉ, le statut
     // BROUILLON se resoumet comme une correction d'un planning déjà validé.
     const estResoumission = planning.statut === 'REJETE';
-    await pool.query(
-      "UPDATE planning SET statut = 'SOUMIS' WHERE id_planning = ?",
+    await connection.query(
+      "UPDATE planning SET statut = 'SOUMIS', date_modification = NOW() WHERE id_planning = ?",
       [id]
     );
-    await logAction(
-      id,
-      req.user.id_utilisateur,
-      estResoumission ? 'Resoumission apres modification (correction du rejet RH)' : 'Soumission pour validation RH'
+    await connection.query(
+      `INSERT INTO historique_modification (planning_id, utilisateur_id, action, description)
+       VALUES (?, ?, ?, ?)`,
+      [
+        id,
+        req.user.id_utilisateur,
+        estResoumission ? 'Resoumission apres modification (correction du rejet RH)' : 'Soumission pour validation RH',
+        estResoumission ? 'Planning resoumis apres correction du rejet RH.' : 'Planning soumis a la RH pour validation.',
+      ]
     );
+    await connection.commit();
 
     // Notification aux RH (systeme existant) : un planning attend leur
     // validation — le libelle distingue une resoumission d'une premiere fois.
@@ -410,7 +436,10 @@ async function soumettre(req, res, next) {
 
     res.json({ message: estResoumission ? 'Planning modifié et resoumis à la RH.' : 'Planning soumis a la RH.' });
   } catch (err) {
+    await connection.rollback();
     next(err);
+  } finally {
+    connection.release();
   }
 }
 

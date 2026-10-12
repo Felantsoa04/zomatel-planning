@@ -34,8 +34,15 @@
 [data-theme='sombre'] .dash-lien.actif { background: rgba(192, 52, 52, 0.3); color: #fff; }
 [data-theme='sombre'] .dash-lien.actif .dash-icone { color: var(--zom-or); }
 [data-theme='sombre'] .dash-sidebar-pied { border-top-color: rgba(255, 255, 255, 0.09); }
-[data-theme='sombre'] .dash-deconnexion { border-color: rgba(255, 255, 255, 0.22); }
-[data-theme='sombre'] .dash-deconnexion:hover { background: rgba(255, 255, 255, 0.07); }
+[data-theme='sombre'] .dash-deconnexion {
+  border-color: rgba(253, 164, 164, 0.35);
+  color: #fecaca;
+}
+[data-theme='sombre'] .dash-deconnexion:hover {
+  border-color: rgba(253, 164, 164, 0.7);
+  background: rgba(127, 29, 29, 0.28);
+  color: #fff;
+}
 [data-theme='sombre'] .dash-reduire { border-color: rgba(255, 255, 255, 0.22); }
 [data-theme='sombre'] .dash-profil-role { color: rgba(239, 233, 223, 0.6); }
 [data-theme='sombre'] .dash-avatar { background: var(--zom-rouge); }

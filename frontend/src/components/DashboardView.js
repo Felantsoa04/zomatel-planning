@@ -5,53 +5,38 @@
 // Garde double : la page verifie le role AVANT le rendu, et ce composant le
 // reverifie apres montage (un chef ne peut pas voir la vue RH en changeant l'URL).
 // Donnees 100 % reelles via les API existantes ; l'EMPLOYE n'a pas d'espace.
-// Regles heures reutilisees : Administration 44 h min, autres 48 h min,
-// depassement important = nb_exces calcule par l'API (seuil + 8 h).
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
-  Users, KeyRound, Hotel, FileText, Upload, XCircle,
-  CalendarPlus, Eye, Pencil, Trash2, Unlock, Send,
-  RefreshCw, Download, TriangleAlert, CircleAlert, CircleCheck,
-  X, ChevronLeft, ChevronRight, ChevronsUpDown, ChevronUp, ChevronDown,
+  ArrowRight, CalendarDays, Eye, Pencil, Trash2, Unlock, Send,
+  RefreshCw, X, ChevronLeft, ChevronRight,
+  ChevronsUpDown, ChevronUp, ChevronDown,
 } from 'lucide-react';
 import DashShell from '@/components/DashShell';
-import ModalNouveauPlanning from '@/components/ModalNouveauPlanning';
+import BadgeStatutPlanning, { IconeStatutPlanning } from '@/components/BadgeStatutPlanning';
+import CalendarWidget from '@/components/CalendarWidget';
 import PlanningRhSemaineSection from '@/components/PlanningRhSemaineSection';
 import { api } from '@/lib/api';
 import { getToken, getUser, logout } from '@/lib/auth';
-import { LABELS_STATUT, periodeCourte, dashboardDe } from '@/lib/dash';
+import { periodeCourte, dashboardDe } from '@/lib/dash';
+import { useI18n } from '@/lib/i18n';
 
-// Annonce des filtres portés par un lien (?statut=&annee=&service=) pour que
-// le dashboard les applique même SANS remontage (clic carte statut alors qu'on
-// est déjà sur la page — corrige le filtre qui n'était lu qu'au montage).
-function annoncerFiltres(href) {
-  try {
-    const q = new URL(href, 'http://local').searchParams;
-    window.dispatchEvent(
-      new CustomEvent('zomatel:filtres', {
-        detail: {
-          annee: q.get('annee') || '',
-          statut: q.get('statut') || '',
-          service: q.get('service') || '',
-        },
-      })
-    );
-  } catch (_) {
-    /* href non parsable : ignoré */
-  }
+function libelleStatut(statut, traduire) {
+  if (!statut) return '—';
+  const cle = `status.${statut}`;
+  const libelle = traduire(cle);
+  return libelle === cle ? statut : libelle;
 }
 
 export default function DashboardView({ roleAutorise }) {
+  const { t } = useI18n();
   const [user, setUser] = useState(null);
+  const [permissions, setPermissions] = useState([]);
   const [plannings, setPlannings] = useState([]);
-  const [employes, setEmployes] = useState([]);
   const [services, setServices] = useState([]);
-  const [nbUtilisateurs, setNbUtilisateurs] = useState(null);
-  const [nbChefs, setNbChefs] = useState(null);
-  const [erreurServices, setErreurServices] = useState('');
+  const [semaineFiltre, setSemaineFiltre] = useState('');
   const [anneeFiltre, setAnneeFiltre] = useState('');
   const [statutFiltre, setStatutFiltre] = useState('');
   const [serviceFiltre, setServiceFiltre] = useState('');
@@ -59,33 +44,14 @@ export default function DashboardView({ roleAutorise }) {
   const [pagePlannings, setPagePlannings] = useState(1);
   const [error, setError] = useState('');
   const [loadingPlannings, setLoadingPlannings] = useState(true);
-  const [derniereMaj, setDerniereMaj] = useState(null);
-  const [modalPlanningOuvert, setModalPlanningOuvert] = useState(false);
   const router = useRouter();
 
-  // Employes + services : necessaires aux cartes statistiques et au filtre
-  // par service (le filtrage reel reste cote backend sur /plannings).
-  const chargerEmployesEtServices = useCallback(async () => {
-    try {
-      const tokenActuel = getToken();
-      const [emps, srv] = await Promise.all([
-        api.get('/employes', tokenActuel),
-        api.get('/services', tokenActuel),
-      ]);
-      setEmployes(Array.isArray(emps) ? emps : []);
-      setServices(Array.isArray(srv) ? srv : []);
-    } catch (err) {
-      setErreurServices(err.message);
-    }
-  }, []);
-
-  // Plannings : chargeur dédié (état de chargement + horodatage de fraîcheur).
+  // Les plannings alimentent la liste et les outils opérationnels du dashboard.
   const chargerPlannings = useCallback(async () => {
     setLoadingPlannings(true);
     try {
       const liste = await api.get('/plannings', getToken());
       setPlannings(Array.isArray(liste) ? liste : []);
-      setDerniereMaj(new Date());
       return true;
     } catch (err) {
       setError(err.message);
@@ -116,82 +82,64 @@ export default function DashboardView({ roleAutorise }) {
       return;
     }
     setUser(u);
-
     // Filtre statut depuis l'URL (acces rapides "A valider" / "A soumettre")
     const s = new URLSearchParams(window.location.search).get('statut');
     if (s) setStatutFiltre(s);
 
     (async () => {
       try {
-        // Plannings (backend : chef -> son service uniquement, EMPLOYE -> 403)
-        await chargerPlannings();
-
-        // Employes + services (compteurs + filtre)
-        chargerEmployesEtServices();
-
-        // Specifique ADMIN : comptes utilisateurs
-        if (u.role === 'ADMIN') {
-          const users = await api.get('/auth/users', token);
-          const usersList = Array.isArray(users) ? users : [];
-          setNbUtilisateurs(usersList.length);
-          setNbChefs(usersList.filter((x) => x.role === 'CHEF_SERVICE').length);
+        const session = await api.get('/auth/me', token);
+        const compte = session?.user;
+        if (!compte || !Array.isArray(compte.permissions)) {
+          throw new Error('Les autorisations du compte ne sont pas disponibles.');
         }
+        const compteActuel = { ...u, ...compte };
+        const permissionsActuelles = compte.permissions;
+        setUser(compteActuel);
+        setPermissions(permissionsActuelles);
+
+        // Plannings (backend : chef -> son service uniquement, EMPLOYE -> 403)
+        if (permissionsActuelles.includes('planning.view')) {
+          await chargerPlannings();
+        } else {
+          setLoadingPlannings(false);
+        }
+
+        // La liste des services sert uniquement au filtre des plannings.
+        const srv = await api.get('/services', token);
+        setServices(Array.isArray(srv) ? srv : []);
       } catch (err) {
         setError(err.message);
+        setLoadingPlannings(false);
       }
     })();
-  }, [router, roleAutorise, chargerPlannings, chargerEmployesEtServices]);
+  }, [router, roleAutorise, chargerPlannings]);
 
-  // Filtres reçus via événement (clic carte statut sans remontage) ou via
-  // l'URL au montage ; les changements sont reflétés dans l'URL (partageable).
-  useEffect(() => {
-    function onFiltres(ev) {
-      const d = ev.detail || {};
-      if (d.annee !== undefined) setAnneeFiltre(d.annee);
-      if (d.statut !== undefined) setStatutFiltre(d.statut);
-      if (d.service !== undefined) setServiceFiltre(d.service);
-      setPagePlannings(1);
-      // L'URL devient partageable (sans recharger la page).
-      const u = new URL(window.location.href);
-      const q = u.searchParams;
-      if (d.statut !== undefined) {
-        if (d.statut) q.set('statut', d.statut);
-        else q.delete('statut');
-      }
-      if (d.annee !== undefined) {
-        if (d.annee) q.set('annee', d.annee);
-        else q.delete('annee');
-      }
-      if (d.service !== undefined) {
-        if (d.service) q.set('service', d.service);
-        else q.delete('service');
-      }
-      window.history.replaceState(null, '', u.toString());
-    }
-    window.addEventListener('zomatel:filtres', onFiltres);
-    return () => window.removeEventListener('zomatel:filtres', onFiltres);
-  }, []);
+  const autorise = (...codes) => codes.every((code) => permissions.includes(code));
 
   // Tableaux sûrs : les useMemo travaillent toujours sur des tableaux, même
   // quand les données API ne sont pas encore chargées (useState([]) initial).
   const listePlannings = Array.isArray(plannings) ? plannings : [];
 
-  // ---- Statistiques derivees des donnees reelles --------------------------
-  const stats = useMemo(() => {
-    const parStatut = { BROUILLON: 0, SOUMIS: 0, VALIDE: 0, REJETE: 0 };
-    for (const p of listePlannings) {
-      if (parStatut[p.statut] !== undefined) parStatut[p.statut] += 1;
-    }
-    // Annees disponibles : depuis les donnees + annee courante (aucune en dur)
-    const annees = [...new Set([...listePlannings.map((p) => p.annee), new Date().getFullYear()])]
-      .sort((a, b) => b - a);
-    return { parStatut, annees };
-  }, [listePlannings]);
+  const annees = useMemo(
+    () => [...new Set([...listePlannings.map((p) => p.annee), new Date().getFullYear()])]
+      .sort((a, b) => b - a),
+    [listePlannings]
+  );
+  const semaines = useMemo(
+    () => [...new Map(listePlannings.map((p) => {
+      const cle = `${p.annee}-W${String(p.numero_semaine).padStart(2, '0')}`;
+      return [cle, { cle, annee: p.annee, numero: p.numero_semaine }];
+    })).values()].sort((a, b) => b.annee - a.annee || b.numero - a.numero),
+    [listePlannings]
+  );
 
   // Filtre + tri de la liste des plannings (mémorisé). NB : ce hook DOIT être
   // appelé AVANT tout return conditionnel (règle des Hooks de React).
   const planningsFiltres = useMemo(() => {
     let liste = listePlannings.filter((p) => {
+      const cleSemaine = `${p.annee}-W${String(p.numero_semaine).padStart(2, '0')}`;
+      if (semaineFiltre && cleSemaine !== semaineFiltre) return false;
       if (anneeFiltre && String(p.annee) !== String(anneeFiltre)) return false;
       if (statutFiltre && p.statut !== statutFiltre) return false;
       if (serviceFiltre && String(p.id_service) !== String(serviceFiltre)) return false;
@@ -210,8 +158,6 @@ export default function DashboardView({ roleAutorise }) {
             return dir * String(a.date_debut_semaine || a.date_debut || '').localeCompare(
               String(b.date_debut_semaine || b.date_debut || '')
             );
-          case 'heures':
-            return dir * ((Number(a.total_heures) || -1) - (Number(b.total_heures) || -1));
           case 'statut':
             return dir * String(a.statut || '').localeCompare(String(b.statut || ''));
           default:
@@ -220,7 +166,7 @@ export default function DashboardView({ roleAutorise }) {
       });
     }
     return liste;
-  }, [listePlannings, anneeFiltre, statutFiltre, serviceFiltre, tri]);
+  }, [listePlannings, semaineFiltre, anneeFiltre, statutFiltre, serviceFiltre, tri]);
 
   // ---- Actions sur un planning (conservees de l'ancien dashboard) ---------
   async function supprimerPlanning(p) {
@@ -256,47 +202,15 @@ export default function DashboardView({ roleAutorise }) {
     }
   }
 
-  // Export CSV de la liste filtrée + triée (généré côté client, aucun appel API).
-  function exportCsv() {
-    const sep = ';';
-    const entetes = ['Service', 'Semaine', 'Annee', 'Debut', 'Fin', 'Total heures', 'Heures insuff.', 'Depassements', 'Statut'];
-    const lignes = planningsFiltres.map((p) => [
-      p.service_nom || '',
-      `S${p.numero_semaine}`,
-      p.annee,
-      String(p.date_debut_semaine || p.date_debut || '').slice(0, 10),
-      String(p.date_fin_semaine || p.date_fin || '').slice(0, 10),
-      p.total_heures != null ? Number(p.total_heures).toFixed(1) : '',
-      Number(p.nb_manques) || 0,
-      Number(p.nb_exces) || 0,
-      LABELS_STATUT[p.statut] || p.statut,
-    ]);
-    // BOM : les accents passent correctement dans Excel.
-    const csv = '\ufeff' + [entetes, ...lignes].map((l) => l.join(sep)).join('\r\n');
-    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `plannings_zomatel_${new Date().toISOString().slice(0, 10)}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-  }
-
   if (!user) {
     return (
       <DashShell user={null}>
         <div className="container">
-          <p className="muted">Chargement...</p>
+          <p className="muted">{t('common.loading')}</p>
         </div>
       </DashShell>
     );
   }
-
-  const estChef = user.role === 'CHEF_SERVICE';
-  // Nom du service du chef déduit de la liste (le JWT ne contient que id_service).
-  // NB : l'API /services retourne `nom` (alias du contrôleur), pas nom_service.
-  const nomService = user.id_service
-    ? (services.find((s) => Number(s.id_service) === Number(user.id_service)) || {}).nom || null
-    : null;
 
   // Pagination du tableau (8 par page) — retour page 1 quand un filtre change.
   const PAR_PAGE = 8;
@@ -319,335 +233,266 @@ export default function DashboardView({ roleAutorise }) {
   }
 
   return (
-    <DashShell user={{ ...user, service_nom: nomService }}>
-      <h1 className="dash-titre">
-        Bonjour, {[user.prenom, user.nom].filter(Boolean).join(' ') || user.nom_utilisateur || user.login}
-      </h1>
-      <p className="dash-soustitre">
-        {estChef
-          ? `Vue de votre service${nomService ? ` : ${nomService}` : ''}`
-          : "Vue globale de l'établissement"}
-      </p>
+    <DashShell user={user}>
+      <div className="dashboard-main-layout">
+        <div className="dashboard-main">
+          {error && <div className="error">{error}</div>}
 
-      {error && <div className="error">{error}</div>}
-      {erreurServices && <div className="error">{erreurServices}</div>}
-
-      {/* ===== Cartes statistiques (cliquables vers les filtres existants) =====
-          DASHBOARD RH : masquées — son contenu principal est l'EMPLOI DU
-          TEMPS uniquement (les accès restent disponibles via la sidebar). */}
-      {user.role !== 'RH' && (
-      <div className="dash-stats">
-        {user.role === 'ADMIN' && (
-          <>
-            <Stat valeur={nbUtilisateurs ?? '…'} libelle="Utilisateurs" classe="dash-stat-bleu" icone={KeyRound} href="/utilisateurs" />
-            <Stat valeur={nbChefs ?? '…'} libelle="Chefs de service" classe="dash-stat-gris" icone={Users} href="/utilisateurs" />
-          </>
-        )}
-        <Stat
-          valeur={employes.length}
-          libelle={estChef ? 'Employés du service' : 'Employés'}
-          classe="dash-stat"
-          icone={Users}
-          href="/employees"
-        />
-        <Stat valeur={services.length} libelle="Services" classe="dash-stat" icone={Hotel} href="/service" />
-        <Stat
-          valeur={stats.parStatut.BROUILLON}
-          libelle="Brouillons"
-          classe="dash-stat-gris"
-          icone={FileText}
-          href={estChef ? '/dashboard/chef?statut=BROUILLON' : `/dashboard/${user.role === 'RH' ? 'rh' : 'admin'}?statut=BROUILLON`}
-        />
-        <Stat
-          valeur={stats.parStatut['SOUMIS'] || 0}
-          libelle="Soumis"
-          classe="dash-stat-orange"
-          icone={Upload}
-          href={estChef ? '/dashboard/chef?statut=SOUMIS' : `/dashboard/${user.role === 'RH' ? 'rh' : 'admin'}?statut=SOUMIS`}
-        />
-        <Stat
-          valeur={stats.parStatut.VALIDE}
-          libelle="Validés"
-          classe="dash-stat-vert"
-          icone={CircleCheck}
-          href={estChef ? '/dashboard/chef?statut=VALIDE' : `/dashboard/${user.role === 'RH' ? 'rh' : 'admin'}?statut=VALIDE`}
-        />
-        {stats.parStatut.REJETE > 0 && (
-          <Stat
-            valeur={stats.parStatut.REJETE}
-            libelle="Rejetés"
-            classe="dash-stat-rouge"
-            icone={XCircle}
-            href={estChef ? '/dashboard/chef?statut=REJETE' : `/dashboard/${user.role === 'RH' ? 'rh' : 'admin'}?statut=REJETE`}
-          />
-        )}
-      </div>
-      )}
-      {/* ===== Répartition des plannings par statut =====
-          DASHBOARD RH : masquée (contenu principal = Emploi du temps). */}
-      {user.role !== 'RH' && (
-      <div className="dash-carte" style={{ marginBottom: 20 }}>
-        <h3>Répartition des plannings par statut</h3>
-        <div className="stat-repartition">
-          {[
-            { statut: 'BROUILLON', label: 'Brouillon', nombre: stats.parStatut.BROUILLON, couleur: 'var(--zom-texte-2)' },
-            { statut: 'SOUMIS', label: 'Soumis', nombre: stats.parStatut['SOUMIS'] || 0, couleur: 'var(--c-warn)' },
-            { statut: 'VALIDE', label: 'Validé', nombre: stats.parStatut.VALIDE, couleur: 'var(--c-ok)' },
-            { statut: 'REJETE', label: 'Rejeté', nombre: stats.parStatut.REJETE, couleur: 'var(--c-danger)' },
-          ].map((s) => {
-            const cible = estChef ? '/dashboard/chef' : `/dashboard/${user.role === 'RH' ? 'rh' : 'admin'}`;
-            const href = `${cible}?statut=${s.statut}`;
-            return (
-              <Link
-                key={s.statut}
-                href={href}
-                className="stat-repartition-item"
-                onClick={() => annoncerFiltres(href)}
-              >
-                <span className="stat-repartition-pastille" style={{ background: s.couleur }} />
-                <span className="stat-repartition-nombre">{s.nombre}</span>
-                <span className="stat-repartition-label">{s.label}</span>
-              </Link>
-            );
-          })}
-        </div>
-      </div>
-      )}
-
-      {/* ===== EMPLOI DU TEMPS RH : sélection PAR SEMAINE -> export Excel =====
-          Semaine = critère de sélection/export (plusieurs services d'une même
-          semaine exportables ensemble dans UN seul fichier) ; dates début/fin
-          = informations affichées uniquement. */}
-      {user.role === 'RH' && (
+      {/* Outil RH de sélection et d'export des emplois du temps. */}
+      {user.role === 'RH' && autorise('planning.export_edt') && autorise('planning.view') && (
         <PlanningRhSemaineSection
           plannings={listePlannings}
-          onRafraichir={chargerPlannings}
           chargement={loadingPlannings}
+          exportAutorise={user.role === 'RH' && autorise('planning.export_edt')}
         />
       )}
 
-      {/* ===== Derniers plannings =====
-          DASHBOARD RH : masquée — l'Emploi du temps liste déjà tous les
-          plannings (toutes semaines, tous services, actions consulter /
-          rouvrir). Le RH garde tout dans SON bloc Emploi du temps. */}
-      {user.role !== 'RH' && (
-      <div className="dash-carte">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10, marginBottom: 12 }}>
-          <h3 style={{ margin: 0 }}>
-            {estChef ? 'Mes plannings' : 'Plannings'}
-            {loadingPlannings ? (
-              <span className="muted" style={{ fontSize: 12, fontWeight: 400 }}> · chargement…</span>
-            ) : (
-              derniereMaj && (
-                <span className="muted" style={{ fontSize: 12, fontWeight: 400 }}>
-                  {' '}· maj {derniereMaj.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
-                </span>
-              )
-            )}
-          </h3>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-            {planningsFiltres.length > 0 && (
-              <button className="btn secondary" onClick={exportCsv} title="Exporter la liste filtrée en CSV">
-                <Download size={14} aria-hidden="true" /> CSV
-              </button>
-            )}
-            <button
-              className="btn secondary"
-              onClick={chargerPlannings}
-              disabled={loadingPlannings}
-              title="Actualiser la liste des plannings"
-            >
-              <RefreshCw size={14} aria-hidden="true" /> Actualiser
-            </button>
-            <select
-              value={anneeFiltre}
-              onChange={(e) => {
-                setAnneeFiltre(e.target.value);
-                setPagePlannings(1);
-              }}
-              style={{ width: 'auto' }}
-            >
-              <option value="">Toutes les années</option>
-              {stats.annees.map((a) => (
-                <option key={a} value={a}>{a}</option>
-              ))}
-            </select>
-            {!estChef && services.length > 1 && (
-              <select
-                value={serviceFiltre}
-                onChange={(e) => {
-                  setServiceFiltre(e.target.value);
-                  setPagePlannings(1);
-                }}
-                style={{ width: 'auto' }}
-              >
-                <option value="">Tous les services</option>
-                {services.map((s) => (
-                  <option key={s.id_service} value={s.id_service}>
-                    {s.nom || s.nom_service}
-                  </option>
-                ))}
-              </select>
-            )}
-            {estChef && (
+      {/* Liste opérationnelle des plannings et actions disponibles selon le rôle. */}
+      {autorise('planning.view') && (
+        <section className="dash-carte dashboard-plannings" aria-labelledby="dashboard-plannings-title">
+          <div className="dashboard-plannings-heading">
+            <h3 id="dashboard-plannings-title">{t('dashboard.myPlannings')}</h3>
+            <div className="dashboard-plannings-primary-actions">
               <button
                 type="button"
-                className="btn"
-                onClick={() => setModalPlanningOuvert(true)}
+                className="btn secondary dashboard-refresh"
+                onClick={chargerPlannings}
+                disabled={loadingPlannings}
+                title={t('dashboard.refreshPlans')}
+                aria-label={t('dashboard.refreshPlans')}
               >
-                <CalendarPlus size={15} aria-hidden="true" /> Ajouter un planning
+                <RefreshCw size={14} aria-hidden="true" /> <span>{t('common.refresh')}</span>
               </button>
-            )}
+              <Link href="/planning/gestion" className="btn">
+                {t('dashboard.viewPlans')} <ArrowRight size={15} aria-hidden="true" />
+              </Link>
+            </div>
           </div>
-        </div>
-
-        {statutFiltre && (
-          <p style={{ marginTop: 0 }}>
-            <span className="alerte-heures alerte-manque">
-              Filtre : {LABELS_STATUT[statutFiltre] || statutFiltre}{' '}
-              <button
-                onClick={() => {
-                  setStatutFiltre('');
+          <div className="dashboard-plannings-filters" role="group" aria-label={t('dashboard.filter')}>
+            <label>
+              <span>{t('common.week')}</span>
+              <select
+                value={semaineFiltre}
+                onChange={(e) => {
+                  setSemaineFiltre(e.target.value);
                   setPagePlannings(1);
                 }}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'inline-flex', padding: 2, verticalAlign: 'middle' }}
-                title="Retirer le filtre"
+                aria-label={t('common.week')}
               >
-                <X size={12} aria-hidden="true" />
-              </button>
-            </span>
-          </p>
+                <option value="">{t('dashboard.allWeeks')}</option>
+                {semaines.map(({ cle, annee, numero }) => (
+                  <option key={cle} value={cle}>S{String(numero).padStart(2, '0')} / {annee}</option>
+                ))}
+              </select>
+            </label>
+            <label>
+              <span>{t('common.year')}</span>
+              <select
+                value={anneeFiltre}
+                onChange={(e) => {
+                  setAnneeFiltre(e.target.value);
+                  setPagePlannings(1);
+                }}
+                aria-label={t('dashboard.allYears')}
+              >
+                <option value="">{t('dashboard.allYears')}</option>
+                {annees.map((a) => (
+                  <option key={a} value={a}>{a}</option>
+                ))}
+              </select>
+            </label>
+            {autorise('planning.view_all') && services.length > 1 && (
+              <label>
+                <span>{t('common.service')}</span>
+                <select
+                  value={serviceFiltre}
+                  onChange={(e) => {
+                    setServiceFiltre(e.target.value);
+                    setPagePlannings(1);
+                  }}
+                  aria-label={t('dashboard.allServices')}
+                >
+                  <option value="">{t('dashboard.allServices')}</option>
+                  {services.map((s) => (
+                    <option key={s.id_service} value={s.id_service}>
+                      {s.nom || s.nom_service}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+          </div>
+
+        {statutFiltre && (
+          <div className="dashboard-plannings-active-filter">
+            <BadgeStatutPlanning statut={statutFiltre} title={`${t('dashboard.filter')}: ${t(`status.${statutFiltre}`)}`} />
+            <button
+              type="button"
+              className="dashboard-plannings-clear-filter"
+              onClick={() => {
+                setStatutFiltre('');
+                setPagePlannings(1);
+              }}
+              title={t('dashboard.clearFilter')}
+              aria-label={t('dashboard.clearFilter')}
+            >
+              <X size={13} aria-hidden="true" />
+            </button>
+          </div>
         )}
 
-        {plannings.length === 0 ? (
-          <p className="muted">Aucun planning pour le moment.</p>
+        {loadingPlannings && plannings.length === 0 ? (
+          <p className="dashboard-plannings-loading muted">{t('common.loading')}</p>
+        ) : plannings.length === 0 ? (
+          <div className="dashboard-plannings-empty">
+            <CalendarDays size={19} aria-hidden="true" />
+            <span>{t('dashboard.noPlansYet')}</span>
+          </div>
         ) : planningsFiltres.length === 0 ? (
-          <p className="muted">Aucun planning ne correspond au filtre.</p>
+          <div className="dashboard-plannings-empty">
+            <CalendarDays size={19} aria-hidden="true" />
+            <span>{t('dashboard.noPlansForFilter')}</span>
+          </div>
         ) : (
-          <div style={{ overflowX: 'auto' }}>
-            <table className="dash-table">
-              <thead>
-                <tr>
-                  {!estChef && (
-                    <th className="th-tri" onClick={() => basculerTri('service')}>
-                      Service {iconeTri(tri, 'service')}
-                    </th>
-                  )}
-                  <th className="th-tri" onClick={() => basculerTri('semaine')}>
-                    Semaine {iconeTri(tri, 'semaine')}
-                  </th>
-                  <th className="th-tri" onClick={() => basculerTri('periode')}>
-                    Période {iconeTri(tri, 'periode')}
-                  </th>
-                  <th className="th-tri" onClick={() => basculerTri('heures')}>
-                    Heures {iconeTri(tri, 'heures')}
-                  </th>
-                  <th className="th-tri" onClick={() => basculerTri('statut')}>
-                    Statut {iconeTri(tri, 'statut')}
-                  </th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {planningsPage.map((p) => (
-                  <tr key={p.id_planning}>
-                    {!estChef && <td>{p.service_nom}</td>}
-                    <td>S{p.numero_semaine} / {p.annee}</td>
-                    <td>{periodeCourte(p).split(' · ')[1] || periodeCourte(p)}</td>
-                    <td style={{ whiteSpace: 'nowrap' }}>
-                      {p.total_heures != null ? (
-                        <>
-                          {Number(p.total_heures).toFixed(1)} h
-                          {Number(p.nb_manques) > 0 && (
-                            <span className="alerte-heures alerte-manque" title="Heures insuffisantes">
-                              <TriangleAlert size={11} aria-hidden="true" /> −{p.nb_manques}
-                            </span>
-                          )}
-                          {Number(p.nb_exces) > 0 && (
-                            <span className="alerte-heures alerte-exces" title="Dépassement important">
-                              <CircleAlert size={11} aria-hidden="true" /> +{p.nb_exces}
-                            </span>
-                          )}
-                          {Number(p.nb_manques) === 0 && Number(p.nb_exces) === 0 && (
-                            <span className="alerte-heures alerte-ok" title="Conforme">
-                              <CircleCheck size={11} aria-hidden="true" /> OK
-                            </span>
-                          )}
-                        </>
-                      ) : (
-                        <span className="muted">—</span>
-                      )}
-                    </td>
-                    <td><span className={`badge ${p.statut}`}>{LABELS_STATUT[p.statut] || p.statut}</span></td>
-                    <td style={{ whiteSpace: 'nowrap' }}>
-                      <div style={{ display: 'inline-flex', gap: 6 }}>
-                        <Link href={`/planning/${p.id_planning}`} className="btn-icone" title="Consulter">
+          <div className="dashboard-plannings-list" role="table" aria-label={t('dashboard.myPlannings')}>
+            <div className="dashboard-plannings-columns" role="row">
+              {[
+                { colonne: 'service', label: t('common.service') },
+                { colonne: 'periode', label: t('dashboard.period') },
+              ].map(({ colonne, label }) => (
+                <div
+                  className={`dashboard-plannings-column dashboard-plannings-column-${colonne}`}
+                  role="columnheader"
+                  aria-sort={tri.colonne === colonne ? (tri.direction === 'asc' ? 'ascending' : 'descending') : 'none'}
+                  key={colonne}
+                >
+                  <button type="button" onClick={() => basculerTri(colonne)}>
+                    {label} {iconeTri(tri, colonne)}
+                  </button>
+                </div>
+              ))}
+              <div className="dashboard-plannings-column dashboard-plannings-column-heures" role="columnheader">
+                {t('planning.hours')}
+              </div>
+              <div
+                className="dashboard-plannings-column dashboard-plannings-column-statut"
+                role="columnheader"
+                aria-sort={tri.colonne === 'statut' ? (tri.direction === 'asc' ? 'ascending' : 'descending') : 'none'}
+              >
+                <button type="button" onClick={() => basculerTri('statut')}>
+                  {t('common.status')} {iconeTri(tri, 'statut')}
+                </button>
+              </div>
+              <div className="dashboard-plannings-column dashboard-plannings-column-actions" role="columnheader" aria-label={t('common.actions')} />
+            </div>
+            <div role="rowgroup">
+              {planningsPage.map((p) => (
+                <div className="dashboard-planning-row" role="row" key={p.id_planning}>
+                  <div className="dashboard-planning-service" role="cell">
+                    {p.service_nom || t('common.service')}
+                  </div>
+                  <div className="dashboard-planning-period" role="cell">
+                    {periodeCourte(p)}
+                  </div>
+                  <div className="dashboard-planning-hours" role="cell">
+                    {p.total_heures != null
+                      ? <span className="dashboard-hours-value">{Number(p.total_heures).toFixed(1)} h</span>
+                      : <span className="muted">—</span>}
+                  </div>
+                  <div className="dashboard-planning-status" role="cell">
+                    <span
+                      className={`dashboard-status-badge dashboard-status-${String(p.statut || '').toLowerCase()}`}
+                      role="img"
+                      title={p.statut ? libelleStatut(p.statut, t) : undefined}
+                      aria-label={libelleStatut(p.statut, t)}
+                    >
+                      <IconeStatutPlanning statut={p.statut} size={14} />
+                      <span>{libelleStatut(p.statut, t)}</span>
+                    </span>
+                  </div>
+                  <div className="dashboard-planning-actions" role="cell">
+                      {autorise('planning.view') && (
+                        <Link
+                          href={`/planning/${p.id_planning}`}
+                          className="btn-icone"
+                          title={t('common.view')}
+                          aria-label={t('common.view')}
+                        >
                           <Eye size={15} aria-hidden="true" />
                         </Link>
-                        {estChef && ['BROUILLON', 'REJETE'].includes(p.statut) && (
-                          <>
-                            <Link
-                              href={`/planning/gestion?service=${p.id_service ?? ''}&semaine=${p.annee}-W${String(p.numero_semaine).padStart(2, '0')}`}
-                              className="btn-icone"
-                              title="Modifier la grille"
-                            >
-                              <Pencil size={15} aria-hidden="true" />
-                            </Link>
-                            <button className="btn-icone danger" onClick={() => supprimerPlanning(p)} title="Supprimer">
-                              <Trash2 size={15} aria-hidden="true" />
-                            </button>
-                            <button className="btn-icone" onClick={() => soumettrePlanning(p)} title="Soumettre à la RH">
-                              <Send size={15} aria-hidden="true" />
-                            </button>
-                          </>
-                        )}
-                        {!estChef && p.statut === 'VALIDE' && (
-                          <button className="btn-icone" onClick={() => rouvrirPlanning(p)} title="Rouvrir : nouvelle validation requise">
-                            <Unlock size={15} aria-hidden="true" />
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
+                      )}
+                      {autorise('planning.update') && ['BROUILLON', 'REJETE'].includes(p.statut) && (
+                        <Link
+                          href={`/planning/gestion?service=${p.id_service ?? ''}&semaine=${p.annee}-W${String(p.numero_semaine).padStart(2, '0')}&modifier=1`}
+                          className="btn-icone"
+                          title={t('planning.edit')}
+                          aria-label={t('planning.edit')}
+                        >
+                          <Pencil size={15} aria-hidden="true" />
+                        </Link>
+                      )}
+                      {autorise('planning.delete') && ['BROUILLON', 'REJETE'].includes(p.statut) && (
+                        <button
+                          className="btn-icone danger"
+                          onClick={() => supprimerPlanning(p)}
+                          title={t('common.delete')}
+                          aria-label={t('common.delete')}
+                        >
+                          <Trash2 size={15} aria-hidden="true" />
+                        </button>
+                      )}
+                      {autorise('planning.submit') && ['BROUILLON', 'REJETE'].includes(p.statut) && (
+                        <button
+                          className="btn-icone"
+                          onClick={() => soumettrePlanning(p)}
+                          title={t('planning.submit')}
+                          aria-label={t('planning.submit')}
+                        >
+                          <Send size={15} aria-hidden="true" />
+                        </button>
+                      )}
+                      {autorise('planning.reopen') && p.statut === 'VALIDE' && (
+                        <button
+                          className="btn-icone"
+                          onClick={() => rouvrirPlanning(p)}
+                          title={t('planning.reopen')}
+                          aria-label={t('planning.reopen')}
+                        >
+                          <Unlock size={15} aria-hidden="true" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
                 ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+              </div>
+            </div>
+          )}
 
-        {/* Pagination (si plus d'une page) */}
-        {nbPages > 1 && (
-          <div className="dash-pagination">
-            <button
-              className="btn secondary"
-              disabled={pageCourante <= 1}
-              onClick={() => setPagePlannings(pageCourante - 1)}
-            >
-              <ChevronLeft size={14} aria-hidden="true" /> Précédent
-            </button>
-            <span className="muted">
-              Page {pageCourante} / {nbPages} · {planningsFiltres.length} planning(s)
-            </span>
-            <button
-              className="btn secondary"
-              disabled={pageCourante >= nbPages}
-              onClick={() => setPagePlannings(pageCourante + 1)}
-            >
-              Suivant <ChevronRight size={14} aria-hidden="true" />
-            </button>
-          </div>
-        )}
-        {/* MODAL Nouveau planning (chef uniquement) : formulaire existant,
-            meme endpoint POST /plannings ; la liste est reactualisee apres creation */}
-        {modalPlanningOuvert && (
-          <ModalNouveauPlanning
-            onClose={() => setModalPlanningOuvert(false)}
-            onCree={() => chargerPlannings()}
-          />
-        )}
-
-      </div>
+          {nbPages > 1 && (
+            <div className="dash-pagination">
+              <button
+                className="btn secondary"
+                disabled={pageCourante <= 1}
+                onClick={() => setPagePlannings(pageCourante - 1)}
+              >
+                <ChevronLeft size={14} aria-hidden="true" /> {t('common.previous')}
+              </button>
+              <button
+                className="btn secondary"
+                disabled={pageCourante >= nbPages}
+                onClick={() => setPagePlannings(pageCourante + 1)}
+              >
+                {t('common.next')} <ChevronRight size={14} aria-hidden="true" />
+              </button>
+            </div>
+          )}
+        </section>
       )}
+        </div>
+        <aside className="dashboard-calendar">
+          <CalendarWidget plannings={listePlannings} />
+        </aside>
+      </div>
     </DashShell>
   );
 }
@@ -659,29 +504,4 @@ function iconeTri(tri, colonne) {
   return tri.direction === 'asc'
     ? <ChevronUp size={taille} aria-hidden="true" />
     : <ChevronDown size={taille} aria-hidden="true" />;
-}
-
-// Carte statistique. Si `href` est fourni ET que la page cible existe reellement,
-// la carte devient un lien (aucun bouton decoratif : on ne passe href que vers
-// des routes existantes — /employees, /service, /utilisateurs, filtres ?statut=).
-function Stat({ valeur, libelle, classe = '', icone: Icone, href }) {
-  const contenu = (
-    <>
-      {Icone && <div className="stat-icone"><Icone size={18} aria-hidden="true" /></div>}
-      <div className="valeur">{valeur}</div>
-      <div className="libelle">{libelle}</div>
-    </>
-  );
-  if (href) {
-    return (
-      <Link
-        href={href}
-        className={`dash-stat dash-stat-lien ${classe}`}
-        onClick={() => annoncerFiltres(href)}
-      >
-        {contenu}
-      </Link>
-    );
-  }
-  return <div className={`dash-stat ${classe}`}>{contenu}</div>;
 }

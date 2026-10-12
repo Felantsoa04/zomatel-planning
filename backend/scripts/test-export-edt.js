@@ -64,25 +64,26 @@ function lireFeuille(fichier, entree) {
     const M = lireFeuille(MODELE, GABARIT);
     const E = lireFeuille(SORTIE, 'xl/worksheets/sheet1.xml');
 
-    // Cartographie des lignes homologues (gabarit Sécurité) :
-    // bloc = jour(5) + périodes(6) + entêtes(7) + N employés + totaux(20) +
-    // fantôme(21) = 3 + N + 2 lignes ; employés canoniques = r16..r19 (complètes).
-    const nb = res.nbEmployes;
-    const pasExport = 3 + nb + 2;
+    // Cartographie des lignes homologues (gabarit Sécurité, blocs FIXES de
+    // 17 lignes comme le modèle) : jour(r5) + périodes(r6) + entêtes(r7) +
+    // 12 lignes employés (r8..r19) + totaux(r20) + fantôme(r21) ; bloc
+    // suivant +17 lignes. RECAP : 126..137 du modèle.
+    const nb = res.nbEmployes; // nb employés affichés dans le lot (≤ 12)
+    const pasExport = 17;
     const homologues = [[2, 2, 'titre'], [4, 4, 'espace']];
     for (let i = 0; i < 7; i++) {
       const re = 5 + i * pasExport;
       homologues.push([5, re, 'jour']);
       homologues.push([6, re + 1, 'periodes']);
       homologues.push([7, re + 2, 'entetes']);
-      for (let k = 0; k < nb; k++) {
-        homologues.push([16 + (k % 4), re + 3 + k, 'employe']);
+      for (let k = 0; k < 12; k++) {
+        homologues.push([8 + k, re + 3 + k, 'employe']);
       }
-      homologues.push([20, re + 3 + nb, 'totaux']);
-      homologues.push([21, re + 4 + nb, 'fantome']);
+      homologues.push([20, re + 15, 'totaux']);
+      homologues.push([21, re + 16, 'fantome']);
     }
-    const recapE = 5 + 7 * pasExport;
-    for (let k = 0; k < nb; k++) homologues.push([126, recapE + k, 'recap']);
+    const recapE = 5 + 7 * pasExport + 2; // 124-125 réservées, récap à 126
+    for (let k = 0; k < 12; k++) homologues.push([126 + k, recapE + k, 'recap']);
 
     let ecarts = 0;
     for (const [rm, re, type] of homologues) {

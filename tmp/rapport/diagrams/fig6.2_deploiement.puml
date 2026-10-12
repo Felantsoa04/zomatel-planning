@@ -1,0 +1,24 @@
+@startuml
+skinparam defaultFontName "Times New Roman"
+skinparam defaultFontSize 18
+skinparam shadowing false
+
+node "Poste utilisateur\n(navigateur web)" as pc {
+  artifact "Application Next.js\n(serve de l'UI,\nappel des API REST)"
+}
+node "Serveur local de developpement\n(Laragon, Windows)" as srv {
+  artifact "Node.js" as node {
+    artifact "API Express (port 4000)" as api
+    artifact "socket.io (notifications temps rel)" as sio
+  }
+  artifact "Next.js dev (port 3000)" as nextd
+}
+database "MariaDB 12.3\n(port 3306)\ngestion_plannings_hotel" as db
+
+pc --> nextd : http://localhost:3000
+nextd --> api : /api/* (JSON + JWT)
+sio --> pc : notifications temps rel
+api --> db : mysql2 / SQL
+nextd --> pc : interface React
+api <--> sio
+@enduml

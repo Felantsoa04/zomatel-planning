@@ -2,14 +2,18 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { Eye, EyeOff, LockKeyhole, LoaderCircle, UserRound } from 'lucide-react';
 import { api } from '@/lib/api';
 import { saveSession, getUser } from '@/lib/auth';
 import { dashboardDe } from '@/lib/dash';
 import ThemeToggle, { appliquerTheme, lireTheme } from '@/components/ThemeToggle';
+import { useI18n } from '@/lib/i18n';
 
 export default function LoginPage() {
+  const { t } = useI18n();
   const [login, setLogin] = useState('');
   const [motDePasse, setMotDePasse] = useState('');
+  const [motDePasseVisible, setMotDePasseVisible] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const router = useRouter();
@@ -39,7 +43,13 @@ export default function LoginPage() {
       const cible = dashboardDe(data.user?.role || getUser()?.role);
       router.push(cible || '/dashboard');
     } catch (err) {
-      setError(err.message);
+      if (err.message === 'Identifiants incorrects.') {
+        setError(t('login.invalidCredentials'));
+      } else if (err.message.includes("Les employés n'ont pas d'accès")) {
+        setError(t('login.noAccess'));
+      } else {
+        setError(t('login.unavailable'));
+      }
     } finally {
       setLoading(false);
     }
@@ -52,27 +62,77 @@ export default function LoginPage() {
         <ThemeToggle variante="login" />
       </div>
       <div className="login-carte">
-        <img src="/logo-zomatel.svg" alt="Zomatel — L'évasion au naturel" className="login-logo" />
-        <p className="login-soustitre">Gestion des plannings — Espace Chef de service / RH</p>
-        <form onSubmit={handleSubmit}>
-          <div className="form-row">
-            <label>Email</label>
-            <input value={login} onChange={(e) => setLogin(e.target.value)} required autoFocus />
+        <section className="login-marque" aria-label="Présentation de Zomatel Planning">
+          <div className="login-identite">
+            <img src="/logo-zomatel-embleme.svg" alt="Zomatel" className="login-embleme" />
           </div>
-          <div className="form-row">
-            <label>Mot de passe</label>
-            <input
-              type="password"
-              value={motDePasse}
-              onChange={(e) => setMotDePasse(e.target.value)}
-              required
-            />
+          <div className="login-presentation">
+            <h1>{t('app.name')}</h1>
+            <p>{t('login.tagline')}</p>
           </div>
-          <button className="btn" type="submit" disabled={loading} style={{ width: '100%' }}>
-            {loading ? 'Connexion...' : 'Se connecter'}
-          </button>
-          {error && <div className="error">{error}</div>}
-        </form>
+        </section>
+
+        <section className="login-formulaire">
+          <div className="login-formulaire-entete">
+            <p className="login-soustitre">{t('login.title')}</p>
+          </div>
+          <form onSubmit={handleSubmit}>
+            <div className="login-champ">
+              <label htmlFor="login-identifiant">{t('login.username')}</label>
+              <div className="login-champ-controle">
+                <UserRound size={18} aria-hidden="true" />
+                <input
+                  id="login-identifiant"
+                  name="username"
+                  type="text"
+                  placeholder={t('login.username')}
+                  value={login}
+                  onChange={(e) => setLogin(e.target.value)}
+                  autoComplete="username"
+                  required
+                  autoFocus
+                  disabled={loading}
+                />
+              </div>
+            </div>
+            <div className="login-champ">
+              <label htmlFor="login-mot-de-passe">{t('login.password')}</label>
+              <div className="login-champ-controle">
+                <LockKeyhole size={18} aria-hidden="true" />
+                <input
+                  id="login-mot-de-passe"
+                  name="password"
+                  type={motDePasseVisible ? 'text' : 'password'}
+                  placeholder={t('login.password')}
+                  value={motDePasse}
+                  onChange={(e) => setMotDePasse(e.target.value)}
+                  autoComplete="current-password"
+                  required
+                  disabled={loading}
+                />
+                <button
+                  className="login-visibilite"
+                  type="button"
+                  onClick={() => setMotDePasseVisible((visible) => !visible)}
+                  aria-label={motDePasseVisible ? t('login.hidePassword') : t('login.showPassword')}
+                  aria-pressed={motDePasseVisible}
+                  disabled={loading}
+                >
+                  {motDePasseVisible
+                    ? <EyeOff size={18} aria-hidden="true" />
+                    : <Eye size={18} aria-hidden="true" />}
+                </button>
+              </div>
+            </div>
+            <button className="login-submit" type="submit" disabled={loading || !login || !motDePasse}>
+              {loading
+                ? <><LoaderCircle size={18} className="login-spinner" aria-hidden="true" /> {t('login.loading')}</>
+                : t('login.submit')}
+            </button>
+            {error && <div className="login-erreur" role="alert">{error}</div>}
+          </form>
+          <p className="login-acces-note">{t('login.accessNote')}</p>
+        </section>
       </div>
     </div>
   );

@@ -17,6 +17,14 @@ function cle(jour, horaireId) {
   return `${jour}__${horaireId}`;
 }
 
+// Libellé complet d'une colonne horaire : plage simple ("18:00 - FS") ou
+// double ("10:00 - 14:00 / 18:00 - FS") — lu depuis la configuration réelle,
+// jamais recalculé ni figé.
+function libelleHoraire(h) {
+  if (!h) return '';
+  return `${h.debut} - ${h.fin || 'FS'}${h.double ? ` / ${h.double} - ${h.finDouble || 'FS'}` : ''}`;
+}
+
 export default function PlanningEditorHoraireLibre({ jours, employes, valeur, onChange, lectureSeule }) {
   // { horaires: [{id, debut, fin, libelle}], matrice, statutsJour, observations }
   const donnees = valeur.donnees || { horaires: [], matrice: {}, statutsJour: {}, observations: {} };
@@ -112,7 +120,7 @@ export default function PlanningEditorHoraireLibre({ jours, employes, valeur, on
             <th>JOURS</th>
             {horaires.map((h) => (
               <th key={h.id}>
-                {h.debut} - {h.fin || 'FS'}
+                {libelleHoraire(h)}
               </th>
             ))}
             <th>REPOS</th>
@@ -170,7 +178,7 @@ export default function PlanningEditorHoraireLibre({ jours, employes, valeur, on
             <div className="pm-popover-titre">
               {libelleJourModel(caseOuverte.jour, 'NORM')}
               {caseOuverte.type === 'HORAIRE'
-                ? ` · ${horaires.find((h) => h.id === caseOuverte.colId)?.debut} - ${horaires.find((h) => h.id === caseOuverte.colId)?.fin || 'FS'}`
+                ? ` · ${libelleHoraire(horaires.find((h) => h.id === caseOuverte.colId))}`
                 : ` · ${caseOuverte.type === 'REST' ? 'REPOS' : 'CONGE'}`}
             </div>
             {(employes || []).map((e) => {

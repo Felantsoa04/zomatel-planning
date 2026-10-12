@@ -21,17 +21,25 @@ export function etatHeures(total, seuilMin) {
 }
 
 export const LABELS_STATUT = {
-  BROUILLON: 'Brouillon',
-  SOUMIS: 'Soumis',
-  VALIDE: 'Validé',
-  REJETE: 'Rejeté',
+  BROUILLON: 'status.BROUILLON',
+  SOUMIS: 'status.SOUMIS',
+  VALIDE: 'status.VALIDE',
+  REJETE: 'status.REJETE',
 };
 
+export function libelleStatut(statut, t) {
+  const cle = LABELS_STATUT[statut] || statut;
+  if (typeof t === 'function') {
+    return t(cle) || cle;
+  }
+  return cle;
+}
+
 export const COULEURS_STATUT = {
-  BROUILLON: '#9ca3af',
-  SOUMIS: '#f59e0b',
-  VALIDE: '#16a34a',
-  REJETE: '#dc2626',
+  BROUILLON: '#9c958c',
+  SOUMIS: '#d9a441',
+  VALIDE: '#4e9a61',
+  REJETE: '#c0564f',
 };
 
 // "S37 · 07/09 → 13/09" (annees dynamiques, aucune valeur en dur)
@@ -61,54 +69,22 @@ export function dashboardDe(role) {
 }
 
 // ---------------------------------------------------------------------------
-// MENU PRINCIPAL PARTAGE — une seule definition des liens de navigation par
-// role, utilisee par la sidebar (DashShell) et la barre haute (Navbar).
-// Les icones sont referencees par leur NOM lucide-react et resolues dans les
-// composants (ce module reste sans JSX).
+// Catalogue unique de navigation. Les permissions filtrent les liens ;
+// le service ne modifie jamais la structure du menu.
 // ---------------------------------------------------------------------------
-export const MENU_PAR_ROLE = {
-  ADMIN: [
-    { href: '/dashboard/admin', label: 'Tableau de bord', icone: 'LayoutDashboard' },
-    { href: '/planning/gestion', label: 'Plannings', icone: 'CalendarDays' },
-    { href: '/planning/new', label: 'Créer un planning', icone: 'CalendarPlus' },
-    { href: '/employees', label: 'Employés', icone: 'Users' },
-    { href: '/service', label: 'Services', icone: 'Hotel' },
-    { href: '/messagerie', label: 'Messagerie', icone: 'MessageCircle' },
-    { href: '/statistiques', label: 'Statistiques', icone: 'BarChart3' },
-    { href: '/archives', label: 'Archives', icone: 'Archive' },
-    { href: '/historique', label: 'Historique', icone: 'History' },
-    { href: '/utilisateurs', label: 'Gestion utilisateurs', icone: 'KeyRound' },
-    { href: '/parametres', label: 'Paramètres', icone: 'Settings' },
-  ],
-  // NB : /planning/new est reserve au CHEF_SERVICE — le contrôleur POST /plannings
-  // rattache le planning au service du compte connecte (req.user.id_service),
-  // un compte ADMIN/RH (sans service) obtiendrait une erreur 400.
-  RH: [
-    { href: '/dashboard/rh', label: 'Tableau de bord', icone: 'LayoutDashboard' },
-    { href: '/planning/gestion', label: 'Plannings', icone: 'CalendarDays' },
-    { href: '/employees', label: 'Employés', icone: 'Users' },
-    { href: '/utilisateurs', label: 'Gestion utilisateurs', icone: 'KeyRound' },
-    { href: '/service', label: 'Services', icone: 'Hotel' },
-    { href: '/messagerie', label: 'Messagerie', icone: 'MessageCircle' },
-    { href: '/statistiques', label: 'Statistiques', icone: 'BarChart3' },
-    { href: '/archives', label: 'Archives', icone: 'Archive' },
-    { href: '/historique', label: 'Historique', icone: 'History' },
-    { href: '/parametres', label: 'Paramètres', icone: 'Settings' },
-  ],
-  // REGLE PROJET : la CREATION de planning est reservee au chef de service
-  // (permission planning.create — cf. backend/src/utils/permissions.js).
-  CHEF_SERVICE: [
-    { href: '/dashboard/chef', label: 'Tableau de bord', icone: 'LayoutDashboard' },
-    { href: '/planning/gestion', label: 'Plannings', icone: 'CalendarDays' },
-    { href: '/planning/new', label: 'Créer un planning', icone: 'CalendarPlus' },
-    { href: '/employees', label: 'Employés', icone: 'Users' },
-    { href: '/messagerie', label: 'Messagerie', icone: 'MessageCircle' },
-    { href: '/statistiques', label: 'Statistiques', icone: 'BarChart3' },
-    { href: '/archives', label: 'Archives', icone: 'Archive' },
-    { href: '/historique', label: 'Historique', icone: 'History' },
-    { href: '/parametres', label: 'Paramètres', icone: 'Settings' },
-  ],
-};
+export const MENU_PRINCIPAL = [
+  { href: '/dashboard', label: 'Tableau de bord', icone: 'LayoutDashboard' },
+  { href: '/validations', label: 'Gestion des validations', icone: 'ClipboardCheck', permission: 'planning.validate' },
+  { href: '/planning/gestion', label: 'Planning', icone: 'CalendarDays', permissionsAny: ['planning.view', 'planning.create'] },
+  { href: '/employees', label: 'Employés', icone: 'Users', permission: 'employe.view' },
+  { href: '/service', label: 'Services', icone: 'Hotel', permission: 'service.manage' },
+  { href: '/messagerie', label: 'Messagerie', icone: 'MessageCircle', permission: 'messenger.use' },
+  { href: '/statistiques', label: 'Statistiques', icone: 'BarChart3', permissions: ['planning.view', 'employe.view'] },
+  { href: '/archives', label: 'Archives', icone: 'Archive', permission: 'planning.view' },
+  { href: '/historique', label: 'Historique', icone: 'History' },
+  { href: '/utilisateurs', label: 'Gestion utilisateurs', icone: 'KeyRound', permission: 'user.view' },
+  { href: '/parametres', label: 'Paramètres', icone: 'Settings' },
+];
 
 // ---------------------------------------------------------------------------
 // SEMAINES ISO — calcul dynamique (aucune date/annee en dur) pour le widget

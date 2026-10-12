@@ -1,0 +1,19 @@
+@startgantt
+skinparam defaultFontName "Times New Roman"
+skinparam defaultFontSize 24
+skinparam shadowing false
+printscale weekly
+Project starts 2026-09-07
+-- Phase d'analyse --
+[Analyse de l'existant et collecte des besoins] starts 2026-09-07 and lasts 1 week
+[Redaction du cahier des charges] starts 2026-09-14 and lasts 1 week
+-- Phase de conception --
+[Conception de la base de donnees] starts 2026-09-21 and lasts 1 week
+[Conception des diagrammes UML] starts 2026-09-28 and lasts 1 week
+-- Phase de developpement --
+[Developpement backend API] starts 2026-09-28 and lasts 2 weeks
+[Developpement frontend] starts 2026-10-05 and lasts 2 weeks
+-- Phase de tests et deploiement --
+[Tests et correctifs] starts 2026-10-05 and lasts 2 weeks
+[Migration et Jeu de donnees de demonstration] starts 2026-10-10 and lasts 3 days
+@endgantt

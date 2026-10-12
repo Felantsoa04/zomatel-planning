@@ -19,13 +19,14 @@ SET FOREIGN_KEY_CHECKS = 0;
 
 -- ---------------------------------------------------------------------
 -- 1. SERVICE : type d'affichage du planning
---    PERIODES_FIXES  = matin / après-midi / soir (modèle Excel Zomatel)
+--    PERIODES_FIXES  = matin / après-midi / soir
 --    HORAIRE_LIBRE   = grille jours x créneaux libres
+--    SHIFT_POSTE     = grille jour x shift x poste
 -- ---------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS service (
   id_service     INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   nom_service    VARCHAR(100) NOT NULL,
-  type_affichage ENUM('PERIODES_FIXES','HORAIRE_LIBRE') NOT NULL DEFAULT 'PERIODES_FIXES',
+  type_affichage ENUM('PERIODES_FIXES','HORAIRE_LIBRE','SHIFT_POSTE') NOT NULL DEFAULT 'PERIODES_FIXES',
   description    VARCHAR(255) DEFAULT NULL,
   date_creation  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   UNIQUE KEY uq_service_nom (nom_service)
@@ -43,9 +44,12 @@ CREATE TABLE IF NOT EXISTS utilisateur (
   mot_de_passe    VARCHAR(255) NOT NULL,               -- hash bcrypt
   role            ENUM('ADMIN','RH','CHEF_SERVICE') NOT NULL,
   service_id      INT UNSIGNED DEFAULT NULL,
+  chef_service_unique_id INT UNSIGNED
+    GENERATED ALWAYS AS (CASE WHEN role = 'CHEF_SERVICE' THEN service_id ELSE NULL END) PERSISTENT,
   actif           TINYINT(1) NOT NULL DEFAULT 1,
   date_creation   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   UNIQUE KEY uq_utilisateur_login (login),
+  UNIQUE KEY uq_utilisateur_chef_service (chef_service_unique_id),
   KEY idx_utilisateur_role (role),
   KEY idx_utilisateur_service (service_id),
   CONSTRAINT fk_utilisateur_service FOREIGN KEY (service_id)

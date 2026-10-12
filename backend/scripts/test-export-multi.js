@@ -23,7 +23,7 @@ const fs = require('fs');
 
 const TEMP = process.env.TEMP || '/tmp';
 const MODELE = path.resolve(__dirname, '..', '..', 'document utiliise', 'EMPLOI DU TEMPS ZOMATEL WEEK 37_2026.xlsx');
-const RESIDUS = ['ANYAH', 'AVOTRA', 'AUGUSTIN', 'EDHINO', 'HERMANN', 'JEAN CHRYS', 'RAVAKA', 'ROLAND', 'ZIANI', 'JIMMY', 'MANOELA', 'Stagiaire', 'CUISINE SNACK'];
+const RESIDUS = ['ANYAH', 'AVOTRA', 'AUGUSTIN', 'EDHINO', 'HERMANN', 'JEAN CHRYS', 'RAVAKA', 'ROLAND', 'ZIANI', 'JIMMY', 'MANOELA', 'CUISINE SNACK'];
 const API = 'http://localhost:4000/api';
 
 function onglets(z) {
@@ -129,8 +129,9 @@ function lireCellules(z, cible) {
     else console.log(`barre C5 = "${cellules['C5']}" OK (sans semaine)`);
     // RECAP : données réelles du planning
     emps.forEach((emp, i) => {
-      // Gabarit Sécurité : bloc = 3+N+2 lignes, RECAP sans ligne de titre
-      const r = 5 + 7 * (3 + emps.length + 2) + i;
+      // Gabarit Sécurité : blocs FIXES de 17 lignes (comme le modèle),
+      // lignes 124-125 réservées puis RECAP principal à partir de 126.
+      const r = 5 + 7 * 17 + 2 + i;
       if (cellules['A' + r] !== (emp.matricule || '')) echec(`${nomEntree} RECAP A${r}="${cellules['A' + r]}" attendu "${emp.matricule}"`);
       if (cellules['B' + r] !== emp.nom) echec(`${nomEntree} RECAP B${r}="${cellules['B' + r]}" attendu "${emp.nom}"`);
       const vu = Number(cellules['C' + r]);

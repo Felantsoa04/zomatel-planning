@@ -1,0 +1,16 @@
+@startuml
+skinparam defaultFontName "Times New Roman"
+skinparam defaultFontSize 18
+skinparam shadowing false
+skinparam componentStyle rectangle
+
+rectangle "Client (navigateur web)\nNext.js 14 / React 18" as fe
+rectangle "Serveur applicatif\nNode.js + Express\nAPI REST + JWT" as be
+database "MariaDB\ngestion_plannings_hotel" as db
+
+fe -right-> be : req. HTTP (JSON)\nAuthorization: Bearer <JWT>
+be -right-> db : mysql2\nSQL parametre
+
+fe <-- be : reponses JSON (207 pour grilles)
+be <-- db : resultats de requetes / triggers
+@enduml

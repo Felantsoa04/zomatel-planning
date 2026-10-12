@@ -1,0 +1,49 @@
+# ═════════════════════════ SECTION CORPS (PAGINATION ARABE) ═════════════════════════
+sec2 = doc.add_section(WD_SECTION.NEW_PAGE)
+style_pager(doc.sections[1], 'arabic')
+# restart page numbering at 1 for the new section
+sectPr = doc.sections[1]._sectPr
+pgNumType = OxmlElement('w:pgNumType'); pgNumType.set(qn('w:start'), '1')
+sectPr.append(pgNumType)
+
+# ───────────────────────── INTRODUCTION GENERALE ─────────────────────────
+p = doc.add_paragraph('INTRODUCTION GÉNÉRALE', style='Heading 1'); p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+
+P('Parmi les établissements du secteur de l’hôtellerie-restauration, la qualité de l’accueil offert à la clientèle dépend en grande partie d’une donnée souvent invisible : la bonne répartition du personnel sur les différentes plages de service. Cuisine, salle, réception, étage ou encore détente : chaque service doit être doté chaque jour et pour chaque créneau horaire des effectifs nécessaires, tout en respectant les contraintes individuelles du personnel —repos hebdomadaire, congés, stagiaires sans matricule, références de 44 ou 48 heures par semaine.— Dès lors, la construction du planning hebdomadaire est un exercice aussi délicat qu’essentiel.')
+P('Dans la pratique, cet exercice reste dans de nombreux établissements purement manuel. Un tableur indépendant est rédigé par service, les durées de chaque créneau et les totaux hebdomadaires sont calculés de tête ou au tableur, et les fichiers circulent de main en main ou par messagerie instantanée. Quelques difficultés apparaissent alors régulièrement : erreurs de calcul des heures, conflits d’horaires non détectés, absence de circuit de validation formel, impossibilité de savoir qui a modifié quoi et quand, et quantité d’impressions papier qui doit être redondée dès qu’une correction intervient.')
+P('En se fondant sur ces constats, ce travail pose une hypothèse simple : la digitalisation de la gestion des plannings du personnel, appuyée sur une application web adaptée aux contraintes réelles de l’établissement, permet d’automatiser les calculs, de sécuriser un circuit de validation formel entre les chefs de service et la RH, et de rendre les plannings consultables, traçables et exportables. L’objectif de ce mémoire est d’analyser, concevoir et développer une telle application pour l’établissement ZOMATEL, selon les règles de gestion observées sur le terrain et formalisées dans le cahier des charges.')
+P('Le présent rapport est organisé en trois grandes parties. La première présente le cadre général du stage : l’école, l’établissement d’accueil et le projet lui-même, avec ses objectifs et les moyens mis en œuvre. La deuxième expose l’analyse et la conception : étude de l’existant, choix techniques, règles de gestion, diagrammes UML et modèle de données. La troisième décrit la réalisation : architecture mise en place, configuration, fonctionnalités développées, présentation de l’application, puis une évaluation critique assortie de limites et de perspectives.')
+
+partie('PARTIE 1 : PRÉSENTATION GÉNÉRALE')
+
+chapitre('CHAPITRE 1 : PRÉSENTATION DE L’ÉCOLE')
+section_h('1.1. Historique et rattachement')
+P(f'L’École de Management et d’Innovation Technologique (EMIT) est un établissement de l’Université de Fianarantsoa. {ADOC} ; les éléments suivants sont à ajuster d’après les données officielles de l’école.')
+P('L’EMIT forme des cadres dans les domaines du management de la technologie et de l’informatique, avec plusieurs parcours de licence et de master. Le présent rapport a été réalisé dans le cadre du parcours de licence en informatique, spécialité Développement d’Application Internet et Intranet (DASI), qui forme les étudiants à la conception et la réalisation d’applications web couvrant l’ensemble des couches (interface utilisateur, logique métier, base de données).')
+section_h('1.2. La formation DASI et le stage de troisième année')
+P('La formation DASI cèle plusieurs axes utiles à ce projet :')
+PU(['la programmation orientée objet et les langages du web (JavaScript, PHP, Java) ;',
+    'les bases de données relationnelles et la production de requêtes SQL ;',
+    'l’analyse et la conception informatiques, avec une grande place donnée à la modélisation UML ;',
+    'les méthodes et techniques de gestion de projet informatique.'])
+P('Le stage de troisième année constitue la mise en situation de ces acquis : chaque étudiant réalise, au sein d’une structure d’accueil, un projet informatique complet de la collecte des besoins jusqu’au compte rendu détaillé présenté dans un rapport comme celui-ci.')
+
+chapitre('CHAPITRE 2 : PRÉSENTATION DE L’ENTREPRISE D’ACCUEIL')
+section_h('2.1. Présentation générale')
+P('ZOMATEL est un établissement d’hôtellerie-restauration comportant plusieurs services opérationnels parmi lesquels, du point de vue de la planification du personnel :')
+PU(['Cuisine Snack ;',
+    'Salle Snack ;',
+    'Patisserie & Pizza.',
+    'ainsi que d’autres services internes (réception, étage, détente, administration…).'])
+P('Chaque service dispose de son équipe, de ses horaires de service et de ses plages de répartition. Le personnel est principalement de deux statuts : titulaires, possédant un matricule, et stagiaires, simplement identifiés par leur nom. La création des plannings hebdomadaires se fait, dans les pratiques observées avant le projet, au moyen de fichiers Excel indépendants par service.')
+section_h('2.2. Organisation de la gestion du personnel')
+P(f'Adresse complète, historique, effectif global et détails administratifs : {ADOC}. À partir des observations effectuées pendant le stage, la gestion du personnel fonctionne autour de deux acteurs clés : le chef de chaque service, qui connaît les attributions réelles de son équipe, et le bureau des ressources humaines (RH), qui supervise l’ensemble de l’établissement, contrôle les heures travaillées et prépare les éléments de la paie. Ceci correspond exactement à la structure de rôles retenue pour l’application (cf. Chapitre 5).')
+section_h('2.3. Quelques repères')
+table_caption('Tableau 2.1 — Repères sur l’établissement d’accueil')
+add_table(['Élément', 'Information'],
+ [ ['Dénomination', 'ZOMATEL (établissement d’hôtellerie-restauration)'],
+   ['Activité', 'Hébergement, restauration (snack, salle, patisserie et pizza détente…)'],
+   ['Services planifiés par l’application', 'Cuisine Snack ; Salle Snack ; Patisserie & Pizza (extensible sans modification du modèle de données)'],
+   ['Effectif et coordonnées', f'{ADOC}'],
+   ['Contact', f'{ADOC}'],
+ ], col_widths_cm=[6, 10.5])

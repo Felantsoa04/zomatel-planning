@@ -1260,6 +1260,52 @@ html { scrollbar-gutter: stable; }
 /* Une classe commune (pm-*) pour tous les modèles : SECURITE (shifts ×
    postes), HORAIRE_LIBRE (jours × colonnes horaires). Sobre, pro, imprimable. */
 .pm-conteneur { min-width: 0; }
+.pm-securite-entete {
+  display: flex; flex-direction: column; align-items: center; gap: 5px; margin: 0 0 12px;
+}
+.pm-securite-entete h2 {
+  margin: 0; color: var(--zom-texte); font-size: 18px; font-weight: 800; text-align: center;
+  letter-spacing: 0.08em;
+}
+.pm-securite-semaine {
+  display: inline-flex; align-items: center; border-radius: 999px;
+  padding: 4px 10px; background: var(--zom-rouge); color: #fff;
+  font-size: 11px; font-weight: 800; letter-spacing: 0.06em;
+}
+.pm-securite-table-wrap { max-width: 100%; overflow-x: auto; }
+.pm-securite .pm-table-securite {
+  width: 100%; min-width: 900px; table-layout: fixed; font-size: 11px;
+}
+.pm-securite .pm-table-securite th,
+.pm-securite .pm-table-securite td {
+  padding: 4px 3px; border: 1px solid var(--zom-bordure); text-align: center;
+  overflow-wrap: anywhere;
+}
+.pm-securite .pm-table-securite .pm-securite-col-shift { width: 52px; }
+.pm-securite .pm-table-securite .pm-securite-jours th {
+  padding: 6px 4px; background: var(--zom-creme, #faf7f0);
+  font-size: 12px; font-weight: 800;
+}
+.pm-securite .pm-table-securite .pm-securite-postes th {
+  height: 40px; background: #f3f0e9; font-size: 10px; line-height: 1.2;
+  white-space: normal;
+}
+.pm-securite-shift {
+  background: #faf7f0; font-size: 10px; font-weight: 800; white-space: nowrap;
+}
+.pm-securite .pm-table-securite .pm-case { min-width: 0; height: 39px; }
+.pm-securite .pm-table-securite .pm-case-btn {
+  min-height: 30px; padding: 2px; border-radius: 2px; font-size: 10.5px;
+  line-height: 1.2; overflow-wrap: anywhere;
+}
+.pm-securite .pm-table-securite tbody + tbody tr:first-child th {
+  border-top-width: 2px;
+}
+/* Titre du planning STOCK CONGÉLATEUR (écran « Modifier le planning ») */
+.pm-titre-hl {
+  margin: 0 0 10px; text-align: center; font-size: 15px; font-weight: 800;
+  letter-spacing: 0.05em; text-transform: uppercase; color: var(--zom-texte);
+}
 .pm-toolbar {
   display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 10px;
   font-size: 12.5px; color: var(--zom-texte-2);
@@ -1319,6 +1365,7 @@ html { scrollbar-gutter: stable; }
   .pm-table { font-size: 10px; }
   .pm-table th, .pm-table td { border: 1px solid #999 !important; padding: 3px 5px; }
   .pm-case-btn, .pm-case-vider, .pm-toolbar, .pm-suppr { display: none !important; }
+  .pm-securite .pm-case-btn { display: flex !important; border: 0; color: #000; }
   .pm-case { min-width: 0; }
   .pm-popover, .pm-voile { display: none !important; }
 }
@@ -2148,3 +2195,212 @@ html[data-densite='compact'] .dash-table td { padding: 5px 8px; }
 .bc-pastille { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
 .bc-pastille-principale { background: var(--zom-rouge); }
 .bc-pastille-sec { background: #9c958c; }
+
+/* ===================== STATISTIQUES — HEURES PLANIFIÉES =====================
+   Page /statistiques rénovée : 4 cartes (max / min / total / à contrôler),
+   filtres période + service + statut, tableau détail, graphes employé/service.
+   Palette : rouge Zomatel (accent), blanc (cartes), tons neutres du thème. */
+.stat-heures-filtres {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding: 12px 16px;
+}
+.stat-periode-group {
+  display: inline-flex;
+  border: 1px solid var(--zom-bordure);
+  border-radius: 9px;
+  overflow: hidden;
+  background: var(--zom-fond);
+  flex-shrink: 0;
+}
+.stat-periode-btn {
+  border: none;
+  background: transparent;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--zom-texte-2);
+  padding: 7px 16px;
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+.stat-periode-btn + .stat-periode-btn { border-left: 1px solid var(--zom-bordure); }
+.stat-periode-btn:hover { background: var(--zom-creme); color: var(--zom-rouge); }
+.stat-periode-btn.actif { background: var(--zom-rouge); color: #fff; font-weight: 700; }
+.stat-filtres-champs {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  flex: 1;
+  min-width: 0;
+}
+.stat-filtres-champs select { width: auto; min-width: 130px; flex: 1 1 130px; max-width: 220px; }
+
+/* Ligne "période analysée" (une seule période pour cartes + graphes + tableau) */
+.stat-periode-analyse {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0 0 10px;
+  font-size: 12.5px;
+  color: var(--zom-texte-2);
+}
+.stat-periode-analyse strong { color: var(--zom-texte); }
+
+/* ---------- 4 cartes KPI ---------- */
+.stat-heures-cartes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(215px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.stat-heures-carte {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  padding: 13px 15px;
+  margin-bottom: 0;
+}
+.stat-carte-icone {
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background: var(--zom-creme);
+  color: var(--zom-rouge);
+}
+.stat-carte-max .stat-carte-icone  { background: var(--c-ok-fond);  color: var(--c-ok-texte);  }
+.stat-carte-min .stat-carte-icone  { background: var(--c-info-fond); color: var(--c-info-texte); }
+.stat-carte-controle .stat-carte-icone { background: var(--c-warn-fond); color: var(--c-warn-texte); }
+.stat-carte-corps {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.stat-carte-titre {
+  font-size: 11.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--zom-texte-2);
+}
+.stat-carte-valeur {
+  font-size: 21px;
+  font-weight: 800;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  color: var(--zom-texte);
+}
+.stat-carte-detail {
+  font-size: 12.5px;
+  color: var(--zom-texte);
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.stat-carte-detail.muted-valeur { color: var(--zom-texte-2); }
+.stat-carte-serv { font-size: 11.5px; color: var(--zom-texte-2); }
+
+/* ---------- Graphiques (réutilise .bar-chart SVG du thème) ---------- */
+.stat-obj-cible { stroke: var(--zom-texte-2); stroke-width: 1.5; stroke-dasharray: 4 3; }
+.stat-obj-legende { width: 16px; height: 0; display: inline-block; }
+.stat-graph-legende { justify-content: center; }
+.stat-val-barre { font-weight: 700; fill: var(--zom-texte); }
+.stat-barre-active { opacity: 1; }
+
+/* ---------- Tableau détail ---------- */
+.stat-tableau-entete {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+.stat-tableau-entete h3 { margin: 0; }
+.stat-recherche {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 10px;
+  border: 1px solid var(--zom-bordure);
+  border-radius: 9px;
+  background: var(--zom-creme);
+  color: var(--zom-texte-2);
+  min-width: 240px;
+}
+.stat-recherche input { border: none; background: none; outline: none; flex: 1; font: inherit; font-size: 13px; color: var(--zom-texte); padding: 0; }
+.stat-recherche:focus-within { border-color: var(--zom-rouge); background: #fff; }
+.stat-tableau th, .stat-tableau td { white-space: nowrap; }
+.stat-cell-heures strong { font-weight: 700; }
+.stat-th-btn {
+  border: none;
+  background: none;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  color: inherit;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.stat-lien-employe { color: var(--zom-rouge); text-decoration: none; font-weight: 600; }
+.stat-lien-employe:hover { text-decoration: underline; }
+.stat-ecart-neg { color: var(--c-danger-texte); font-weight: 700; }
+.stat-ecart-pos { color: var(--c-ok-texte); font-weight: 700; }
+
+/* Badges de contrôle (discrets, cohérents avec .badge du thème) */
+.stat-badge-ctl {
+  display: inline-block;
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.stat-badge-conforme   { background: var(--c-ok-fond);    color: var(--c-ok-texte); }
+.stat-badge-insuffisant { background: #fff1e0;            color: #9a3412; }
+.stat-badge-exces      { background: var(--c-info-fond);  color: var(--c-info-texte); }
+.stat-badge-aucun      { background: #f1efe9;             color: #57534e; }
+
+/* ---------- Squelette de chargement du filtre ---------- */
+.sk-stat-technique { display: flex; flex-direction: column; gap: 8px; }
+.sk-stat {
+  height: 12px;
+  border-radius: 6px;
+  background: linear-gradient(90deg, #f3f4f6 25%, #e9ecef 50%, #f3f4f6 75%);
+  background-size: 200% 100%;
+  animation: eps-shimmer 1.4s infinite;
+}
+.sk-stat-titre { height: 18px; width: 45%; }
+.sk-stat-champ { width: 90%; }
+
+/* ---------- Accès d'aide visuel internaute ---------- */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ---------- Responsive (Affiches) ---------- */
+@media (max-width: 720px) {
+  .stat-heures-cartes { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
+  .stat-filtres-champs select { max-width: none; flex: 1 1 46%; }
+  .stat-recherche { min-width: 100%; }
+  .stat-carte-valeur { font-size: 18px; }
+  .stat-heures-filtres { gap: 8px; }
+}

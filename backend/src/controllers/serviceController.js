@@ -1,10 +1,24 @@
 const pool = require('../config/db');
+const { permissionsDe } = require('../utils/permissions');
 
 async function lister(req, res) {
   try {
-    const [services] = await pool.query(
-      'SELECT id_service, nom_service AS nom, type_affichage FROM service ORDER BY nom_service'
-    );
+    const permissions = await permissionsDe(req.user.id_utilisateur);
+    if (req.user.role === 'EMPLOYE') return res.json([]);
+    const params = [];
+    let sql = 'SELECT id_service, nom_service AS nom, type_affichage FROM service';
+    if (req.user.role === 'CHEF_SERVICE'
+        || (req.user.id_service && !permissions.includes('planning.view_all'))) {
+      if (!req.user.id_service) return res.json([]);
+      sql += ' WHERE id_service = ?';
+      params.push(req.user.id_service);
+    } else if (!req.user.id_service
+        && !permissions.includes('planning.view_all')
+        && !permissions.includes('service.manage')) {
+      return res.json([]);
+    }
+    sql += ' ORDER BY nom_service';
+    const [services] = await pool.query(sql, params);
     res.json(services);
   } catch (err) {
     console.error('Erreur liste services:', err);
@@ -32,8 +46,8 @@ async function getById(req, res) {
 async function creer(req, res) {
   const { nom, type_affichage } = req.body;
 
-  if (!nom || !['PERIODES_FIXES', 'HORAIRE_LIBRE'].includes(type_affichage)) {
-    return res.status(400).json({ message: 'Nom et type_affichage (PERIODES_FIXES ou HORAIRE_LIBRE) requis' });
+  if (!nom || !['PERIODES_FIXES', 'HORAIRE_LIBRE', 'SHIFT_POSTE'].includes(type_affichage)) {
+    return res.status(400).json({ message: 'Nom et type_affichage (PERIODES_FIXES, HORAIRE_LIBRE ou SHIFT_POSTE) requis' });
   }
 
   try {
@@ -55,8 +69,8 @@ async function update(req, res) {
   const { id } = req.params;
   const { nom, type_affichage } = req.body;
 
-  if (!nom || !['PERIODES_FIXES', 'HORAIRE_LIBRE'].includes(type_affichage)) {
-    return res.status(400).json({ message: 'Nom et type_affichage (PERIODES_FIXES ou HORAIRE_LIBRE) requis' });
+  if (!nom || !['PERIODES_FIXES', 'HORAIRE_LIBRE', 'SHIFT_POSTE'].includes(type_affichage)) {
+    return res.status(400).json({ message: 'Nom et type_affichage (PERIODES_FIXES, HORAIRE_LIBRE ou SHIFT_POSTE) requis' });
   }
 
   try {

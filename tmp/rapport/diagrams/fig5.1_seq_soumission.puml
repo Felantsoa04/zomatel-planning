@@ -1,0 +1,49 @@
+@startuml
+skinparam defaultFontName "Times New Roman"
+skinparam defaultFontSize 18
+skinparam shadowing false
+actor "Chef de\nservice" as chef
+participant "Frontend\n(Next.js)" as fe
+participant "API backend\n(Express)" as api
+database "MariaDB\ngestion_plannings_hotel" as db
+actor "RH" as rh
+
+== Preparation du planning ==
+chef -> fe : Edite la grille hebdomadaire\n(service, semaine)
+fe -> api : PUT /api/plannings/:id/grille
+api -> db : SELECT planning / statut / modifiable
+db --> api : statut BROUILLON ou REJETE
+api -> db : UPDATE / INSERT affectations\net creneaux_travail (triggers de controle)
+alt cellule refusee
+    db --> api : erreur de trigger\n(chevauchement, hors semaine...)
+    api --> fe : reponse HTTP 207\ndetail par cellule
+    fe --> chef : bandeau / message dans la cellule
+else cellules acceptees
+    db --> api : lignes affectees
+    api --> fe : temps / durees calculees par vues\n(v_duree_jour, v_total_hebdo_employe)
+    fe --> chef : total heures / reference maj
+end
+
+== Soumission a la RH ==
+chef -> fe : clic "Soumettre  la RH"
+fe -> api : PATCH /api/plannings/:id/soumettre
+api -> db : UPDATE planning\nSET statut = 'SOUMIS'
+db --> api : ligne mise  jour
+api -> db : INSERT notification\n(para tous les RH)
+api --> fe : planning SOUMIS
+fe --> chef : statut affich ("soumis")
+
+== Decision RH ==
+rh -> fe : ouvre la file de validation
+fe -> api : GET /api/plannings/validations
+api -> db : SELECT plannings SOUMIS
+db --> api : liste
+api --> fe : liste des demandes
+rh -> fe : valide ou rejette (avec commentaire)
+fe -> api : POST /api/plannings/:id/validation
+api -> db : INSERT validation_rh\nUPDATE planning (VALIDE / REJETE)
+db --> api : ligne affichee
+api -> db : INSERT notification\n(para chef crateur et copies)
+api --> fe : decision enregistre
+fe --> rh : statut / motifs affichs
+@enduml

@@ -1,4 +1,5 @@
 const pool = require('../config/db');
+const { aAccesServicePlanning } = require('../utils/planningAccess');
 const { logAction } = require('../utils/historique');
 
 // POST /api/affectations/:idAffectation/creneaux
@@ -23,7 +24,7 @@ async function upsert(req, res, next) {
       [idAffectation]
     );
     if (!ctx) return res.status(404).json({ message: 'Affectation introuvable.' });
-    if (req.user.role === 'CHEF_SERVICE' && Number(ctx.service_id) !== Number(req.user.id_service)) {
+    if (!aAccesServicePlanning(req, ctx.service_id)) {
       return res.status(403).json({ message: 'Ce planning ne concerne pas votre service.' });
     }
 
@@ -68,7 +69,7 @@ async function remove(req, res, next) {
       [id]
     );
     if (!ctx) return res.status(404).json({ message: 'Creneau introuvable.' });
-    if (req.user.role === 'CHEF_SERVICE' && Number(ctx.service_id) !== Number(req.user.id_service)) {
+    if (!aAccesServicePlanning(req, ctx.service_id)) {
       return res.status(403).json({ message: 'Ce planning ne concerne pas votre service.' });
     }
     await pool.query('DELETE FROM creneau_travail WHERE id_creneau = ?', [id]);

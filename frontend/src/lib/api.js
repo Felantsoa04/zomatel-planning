@@ -5,9 +5,17 @@ import { logout, getToken } from './auth';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
 
+function tokenDeSession(token) {
+  const valeur = token || getToken();
+  if (typeof valeur !== 'string') return null;
+  const normalise = valeur.trim();
+  return normalise && normalise !== 'null' && normalise !== 'undefined' ? normalise : null;
+}
+
 async function request(path, { method = 'GET', body, token } = {}) {
   const headers = { 'Content-Type': 'application/json' };
-  if (token) headers.Authorization = `Bearer ${token}`;
+  const jeton = tokenDeSession(token);
+  if (jeton) headers.Authorization = `Bearer ${jeton}`;
 
   const res = await fetch(`${API_URL}${path}`, {
     method,
@@ -18,7 +26,7 @@ async function request(path, { method = 'GET', body, token } = {}) {
   // 401 hors endpoint de login = token absent, expiré ou invalide (le JWT dure 8 h).
   // On termine proprement la session perimee et on renvoie au login au lieu de
   // laisser la page bloquee avec des erreurs 401 en console.
-  if (res.status === 401 && !path.startsWith('/auth/')) {
+  if (res.status === 401 && path.split('?')[0] !== '/auth/login') {
     logout();
     if (typeof window !== 'undefined') window.location.replace('/login');
     throw new Error('Session expiree, veuillez vous reconnecter.');
@@ -60,14 +68,14 @@ async function reponseFichier(res) {
 // (token explicite, sinon token stocké par l'application).
 // Retourne { blob, nomFichier }.
 async function telecharger(path, token) {
-  const t = token || getToken();
+  const t = tokenDeSession(token);
   const headers = {};
   if (t) headers.Authorization = `Bearer ${t}`;
 
   const res = await fetch(`${API_URL}${path}`, { headers });
 
   // Même traitement de session expirée que request()
-  if (res.status === 401 && !path.startsWith('/auth/')) {
+  if (res.status === 401 && path.split('?')[0] !== '/auth/login') {
     logout();
     if (typeof window !== 'undefined') window.location.replace('/login');
     throw new Error('Session expiree, veuillez vous reconnecter.');
@@ -84,13 +92,13 @@ async function telecharger(path, token) {
 // plusieurs plannings sélectionnés -> un seul classeur Excel). Même
 // authentification et même retour { blob, nomFichier } que telecharger().
 async function telechargerPost(path, body, token) {
-  const t = token || getToken();
+  const t = tokenDeSession(token);
   const headers = { 'Content-Type': 'application/json' };
   if (t) headers.Authorization = `Bearer ${t}`;
 
   const res = await fetch(`${API_URL}${path}`, { method: 'POST', headers, body: JSON.stringify(body || {}) });
 
-  if (res.status === 401 && !path.startsWith('/auth/')) {
+  if (res.status === 401 && path.split('?')[0] !== '/auth/login') {
     logout();
     if (typeof window !== 'undefined') window.location.replace('/login');
     throw new Error('Session expiree, veuillez vous reconnecter.');
@@ -108,7 +116,7 @@ async function telechargerPost(path, body, token) {
 // multipart). Utilise pour la photo de profil (champ "photo", PUT) et pour
 // les pieces jointes du Messenger (champ parametrable, POST).
 async function envoyerFichier(path, fichier, token, { champ = 'photo', methode = 'PUT', champsSup = null } = {}) {
-  const t = token || getToken();
+  const t = tokenDeSession(token);
   const body = new FormData();
   body.append(champ, fichier, fichier.name);
   // Champs textuels additionnels (ex. legende d'une piece jointe Messenger).
@@ -123,7 +131,7 @@ async function envoyerFichier(path, fichier, token, { champ = 'photo', methode =
 
   const res = await fetch(`${API_URL}${path}`, { method: methode, headers, body });
 
-  if (res.status === 401 && !path.startsWith('/auth/')) {
+  if (res.status === 401 && path.split('?')[0] !== '/auth/login') {
     logout();
     if (typeof window !== 'undefined') window.location.replace('/login');
     throw new Error('Session expiree, veuillez vous reconnecter.');

@@ -13,6 +13,7 @@ import AppShell from '@/components/AppShell';
 import Modal from '@/components/Modal';
 import { api } from '@/lib/api';
 import { getToken, getUser } from '@/lib/auth';
+import { usePermissions } from '@/lib/permissions';
 
 // REGLE PROJET : l'Employe ne possede pas de compte et ne se connecte pas.
 // Les seuls roles connectables sont ADMIN, RH et CHEF_SERVICE.
@@ -21,6 +22,46 @@ const ROLES = {
   RH: 'RH',
   CHEF_SERVICE: 'Chef de service',
 };
+
+const GROUPES_PERMISSIONS = [
+  {
+    nom: 'Employés',
+    permissions: [
+      ['employe.manage', 'Ajouter / modifier / désactiver les employés'],
+      ['employe.view', 'Consulter les employés'],
+    ],
+  },
+  {
+    nom: 'Messagerie',
+    permissions: [['messenger.use', 'Utiliser la messagerie interne']],
+  },
+  {
+    nom: 'Plannings',
+    permissions: [
+      ['planning.create', 'Créer un planning'],
+      ['planning.delete', 'Supprimer un planning'],
+      ['planning.export_edt', "Exporter l'emploi du temps Excel (RH)"],
+      ['planning.reopen', 'Rouvrir un planning valide'],
+      ['planning.submit', 'Soumettre un planning à la RH'],
+      ['planning.update', "Modifier la grille d'un planning"],
+      ['planning.validate', 'Valider / refuser un planning'],
+      ['planning.view', 'Consulter les plannings de son périmètre'],
+      ['planning.view_all', 'Consulter tous les plannings'],
+    ],
+  },
+  {
+    nom: 'Services',
+    permissions: [['service.manage', 'Gérer les services']],
+  },
+  {
+    nom: 'Utilisateurs',
+    permissions: [
+      ['user.create', 'Créer un compte utilisateur'],
+      ['user.update', 'Modifier / désactiver / réactiver un compte'],
+      ['user.view', 'Consulter les comptes utilisateurs'],
+    ],
+  },
+];
 
 const FORM_VIDE = {
   nom: '',
@@ -47,6 +88,7 @@ function classeBadgeRole(role) {
 }
 
 export default function UtilisateursPage() {
+  const { autorise } = usePermissions();
   const [users, setUsers] = useState([]);
   const [services, setServices] = useState([]);
   const [catalogue, setCatalogue] = useState([]); // [{ code, nom }]
@@ -72,10 +114,6 @@ export default function UtilisateursPage() {
     const u = getUser();
     if (!t) {
       router.replace('/login');
-      return;
-    }
-    if (!['RH', 'ADMIN'].includes(u?.role)) {
-      router.replace('/dashboard');
       return;
     }
     setUser(u);
@@ -192,9 +230,12 @@ export default function UtilisateursPage() {
         prenom: form.prenom,
         login: form.login,
         role: form.role,
-        id_service: form.id_service ? Number(form.id_service) : null,
         permissions: form.permissions,
       };
+      if (!(mode === 'edit' && form.role === 'CHEF_SERVICE'
+          && editId === user?.id_utilisateur)) {
+        body.id_service = form.id_service ? Number(form.id_service) : null;
+      }
       if (form.mot_de_passe) body.mot_de_passe = form.mot_de_passe;
       if (form.id_employe) body.id_employe = Number(form.id_employe);
 
@@ -238,6 +279,15 @@ export default function UtilisateursPage() {
   const estMoi = (u) => u.id_utilisateur === user.id_utilisateur;
   const toutCocher = () => setChamp('permissions', catalogue.map((p) => p.code));
   const toutDecocher = () => setChamp('permissions', []);
+  const catalogueParCode = new Map(catalogue.map((permission) => [permission.code, permission]));
+  const permissionsGroupees = GROUPES_PERMISSIONS.map((groupe) => ({
+    ...groupe,
+    permissions: groupe.permissions
+      .map(([code, nom]) => ({ ...catalogueParCode.get(code), code, nom }))
+      .filter((permission) => catalogueParCode.has(permission.code)),
+  })).filter((groupe) => groupe.permissions.length > 0);
+  const codesGroupes = new Set(GROUPES_PERMISSIONS.flatMap((groupe) => groupe.permissions.map(([code]) => code)));
+  const permissionsAutres = catalogue.filter((permission) => !codesGroupes.has(permission.code));
 
   return (
 <AppShell>
@@ -249,7 +299,7 @@ export default function UtilisateursPage() {
               Comptes, rôles et permissions (vérifiées côté backend à chaque requête).
             </p>
           </div>
-          {!mode && (
+          {!mode && autorise('user.create') && (
             <button className="btn btn-ajout" onClick={ouvrirAjout}><UserPlus size={15} aria-hidden="true" /> Ajouter un utilisateur</button>
           )}
         </div>
@@ -286,109 +336,138 @@ export default function UtilisateursPage() {
           <Modal
             titre={mode === 'create' ? 'Ajouter un utilisateur' : `Modifier : ${form.nom || ''}`}
             onClose={fermerFormulaire}
-            largeur={720}
+            largeur={900}
+            className="modal-utilisateur"
+            sousTitre={mode === 'create' ? 'Créer un nouveau compte utilisateur' : 'Modifier les informations du compte'}
           >
-            <form onSubmit={handleSubmit}>
-              {/* === Section : Informations du compte === */}
-              <h4>Informations du compte</h4>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
-                <div className="form-row">
-                  <label>Nom</label>
-                  <input value={form.nom} onChange={(e) => setChamp('nom', e.target.value)} required />
-                </div>
-                <div className="form-row">
-                  <label>Prénom</label>
-                  <input value={form.prenom} onChange={(e) => setChamp('prenom', e.target.value)} />
-                </div>
-                <div className="form-row">
-                  <label>Identifiant (login)</label>
-                  <input value={form.login} onChange={(e) => setChamp('login', e.target.value)} required />
-                </div>
-                <div className="form-row">
-                  <label>{mode === 'create' ? 'Mot de passe (6 caractères min.)' : 'Nouveau mot de passe (vide = inchangé)'}</label>
-                  <input
-                    type="password"
-                    value={form.mot_de_passe}
-                    onChange={(e) => setChamp('mot_de_passe', e.target.value)}
-                    required={mode === 'create'}
-                    minLength={6}
-                    autoComplete="new-password"
-                  />
-                </div>
-                <div className="form-row">
-                  <label>Confirmation du mot de passe</label>
-                  <input
-                    type="password"
-                    value={form.confirmation}
-                    onChange={(e) => setChamp('confirmation', e.target.value)}
-                    required={mode === 'create'}
-                    autoComplete="new-password"
-                  />
-                </div>
-              </div>
+            <form className="utilisateur-formulaire" onSubmit={handleSubmit}>
+              {error && <div className="error utilisateur-formulaire-erreur" role="alert">{error}</div>}
 
-              {/* === Section : Rôle === */}
-              <h4>Rôle</h4>
-              <div className="form-row" style={{ maxWidth: 320 }}>
-                <select value={form.role} onChange={(e) => changerRole(e.target.value)}>
-                  {Object.entries(ROLES).map(([code, libelle]) => (
-                    <option key={code} value={code}>{libelle}</option>
-                  ))}
-                </select>
-              </div>
-              <p className="muted" style={{ fontSize: 12 }}>
-                {form.role === 'CHEF_SERVICE'
-                  ? 'Un Chef de service est rattaché à UN seul service : il ne verra que ses employés et ses plannings.'
-                  : form.role === 'RH'
-                    ? 'La RH gère le personnel, les services, la validation des plannings et les comptes.'
-                    : 'L\'Administrateur a un accès global selon les permissions attribuées.'}
-              </p>
+              <div className="utilisateur-formulaire-haut">
+                <section className="utilisateur-formulaire-section" aria-labelledby="utilisateur-informations-titre">
+                  <h4 id="utilisateur-informations-titre">Informations du compte</h4>
+                  <div className="utilisateur-champs">
+                    <label className="utilisateur-champ">
+                      <span>Nom</span>
+                      <input value={form.nom} onChange={(e) => setChamp('nom', e.target.value)} required autoComplete="family-name" />
+                    </label>
+                    <label className="utilisateur-champ">
+                      <span>Prénom</span>
+                      <input value={form.prenom} onChange={(e) => setChamp('prenom', e.target.value)} autoComplete="given-name" />
+                    </label>
+                    <label className="utilisateur-champ">
+                      <span>Identifiant</span>
+                      <input value={form.login} onChange={(e) => setChamp('login', e.target.value)} required autoComplete="username" />
+                    </label>
+                    <label className="utilisateur-champ">
+                      <span>Mot de passe</span>
+                      <input
+                        type="password"
+                        value={form.mot_de_passe}
+                        onChange={(e) => setChamp('mot_de_passe', e.target.value)}
+                        required={mode === 'create'}
+                        minLength={6}
+                        autoComplete="new-password"
+                      />
+                      <small>{mode === 'create' ? '6 caractères min.' : 'Laisser vide pour conserver le mot de passe actuel.'}</small>
+                    </label>
+                    <label className="utilisateur-champ utilisateur-champ-large">
+                      <span>Confirmation du mot de passe</span>
+                      <input
+                        type="password"
+                        value={form.confirmation}
+                        onChange={(e) => setChamp('confirmation', e.target.value)}
+                        required={mode === 'create'}
+                        autoComplete="new-password"
+                      />
+                    </label>
+                  </div>
+                </section>
 
-              {/* === Section : Service === */}
-              <h4>Service</h4>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
-                <div className="form-row">
-                  <label>Service {form.role === 'CHEF_SERVICE' ? '(obligatoire)' : '(facultatif)'}</label>
-                  <select
-                    value={form.id_service}
-                    onChange={(e) => setChamp('id_service', e.target.value)}
-                    required={form.role === 'CHEF_SERVICE'}
-                  >
-                    <option value="">-- aucun --</option>
-                    {services.map((s) => (
-                      <option key={s.id_service} value={s.id_service}>{s.nom}</option>
+                <section className="utilisateur-formulaire-section utilisateur-role-service" aria-labelledby="utilisateur-role-titre">
+                  <h4 id="utilisateur-role-titre">Rôle &amp; service</h4>
+                  <fieldset className="utilisateur-roles">
+                    <legend>Rôle</legend>
+                    {Object.entries(ROLES).map(([code, libelle]) => (
+                      <label className={`utilisateur-role-option${form.role === code ? ' selectionne' : ''}`} key={code}>
+                        <input
+                          type="radio"
+                          name="role-utilisateur"
+                          value={code}
+                          checked={form.role === code}
+                          onChange={() => changerRole(code)}
+                        />
+                        <span>{libelle}</span>
+                      </label>
                     ))}
-                  </select>
-                </div>
-              </div>
-
-              {/* === Section : Permissions === */}
-              <h4>Permissions</h4>
-              <p className="muted" style={{ fontSize: 12 }}>
-                Le rôle ne fait que proposer des permissions par défaut : décochez ou cochez librement.
-                Chaque permission correspond à une fonctionnalité réelle vérifiée côté backend.
-              </p>
-              <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
-                <button type="button" className="btn secondary" onClick={toutCocher}>Tout sélectionner</button>
-                <button type="button" className="btn secondary" onClick={toutDecocher}>Tout désélectionner</button>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 6 }}>
-                {catalogue.map((p) => (
-                  <label key={p.code} style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 13 }}>
-                    <input
-                      type="checkbox"
-                      checked={form.permissions.includes(p.code)}
-                      onChange={() => basculerPermission(p.code)}
-                    />
-                    <span>
-                      <strong>{p.nom}</strong>
-                      <span className="muted"> — {p.code}</span>
-                    </span>
+                  </fieldset>
+                  {form.role === 'CHEF_SERVICE' && (
+                    <p className="utilisateur-role-aide">Un Chef de service est limité à son service.</p>
+                  )}
+                  <label className="utilisateur-champ utilisateur-service-champ">
+                    <span>Service{form.role === 'CHEF_SERVICE' ? ' (obligatoire)' : ''}</span>
+                    <select
+                      value={form.id_service}
+                      onChange={(e) => setChamp('id_service', e.target.value)}
+                      required={form.role === 'CHEF_SERVICE'}
+                      disabled={mode === 'edit' && form.role === 'CHEF_SERVICE'
+                        && editId === user?.id_utilisateur}
+                    >
+                      <option value="">-- aucun --</option>
+                      {services.map((s) => (
+                        <option key={s.id_service} value={s.id_service}>{s.nom}</option>
+                      ))}
+                    </select>
                   </label>
-                ))}
+                </section>
               </div>
 
-              <div style={{ marginTop: 14, display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <section className="utilisateur-permissions" aria-labelledby="utilisateur-permissions-titre">
+                <div className="utilisateur-permissions-entete">
+                  <div>
+                    <h4 id="utilisateur-permissions-titre">Permissions</h4>
+                    <p>Le rôle propose des permissions par défaut. Vous pouvez les modifier.</p>
+                  </div>
+                  <div className="utilisateur-permissions-actions">
+                    <button type="button" className="btn secondary" onClick={toutCocher}>Tout sélectionner</button>
+                    <button type="button" className="btn secondary" onClick={toutDecocher}>Tout désélectionner</button>
+                  </div>
+                </div>
+                <div className="utilisateur-permissions-liste">
+                  {permissionsGroupees.map((groupe) => (
+                    <fieldset className="utilisateur-permission-groupe" key={groupe.nom}>
+                      <legend>{groupe.nom}</legend>
+                      {groupe.permissions.map((permission) => (
+                        <label className="utilisateur-permission-option" key={permission.code}>
+                          <input
+                            type="checkbox"
+                            checked={form.permissions.includes(permission.code)}
+                            onChange={() => basculerPermission(permission.code)}
+                          />
+                          <span>{permission.nom}</span>
+                        </label>
+                      ))}
+                    </fieldset>
+                  ))}
+                  {permissionsAutres.length > 0 && (
+                    <fieldset className="utilisateur-permission-groupe" key="autres">
+                      <legend>Autres permissions</legend>
+                      {permissionsAutres.map((permission) => (
+                        <label className="utilisateur-permission-option" key={permission.code}>
+                          <input
+                            type="checkbox"
+                            checked={form.permissions.includes(permission.code)}
+                            onChange={() => basculerPermission(permission.code)}
+                          />
+                          <span>{permission.nom}</span>
+                        </label>
+                      ))}
+                    </fieldset>
+                  )}
+                </div>
+              </section>
+
+              <div className="utilisateur-formulaire-actions">
                 <button type="button" className="btn secondary" onClick={fermerFormulaire}>
                   Annuler
                 </button>
@@ -440,7 +519,7 @@ export default function UtilisateursPage() {
                     <th>Permissions</th>
                     <th>Statut</th>
                     <th>Créé le</th>
-                    <th>Actions</th>
+                    {autorise('user.update') && <th>Actions</th>}
                   </tr>
                 </thead>
                 <tbody>
@@ -480,11 +559,13 @@ export default function UtilisateursPage() {
                             </span>
                           ) : <span className="muted">—</span>}
                         </td>
-                        <td style={{ whiteSpace: 'nowrap' }}>
-                          <button className="btn-icone" title="Modifier" onClick={() => ouvrirModification(u)}>
-                            <Pencil size={15} aria-hidden="true" />
-                          </button>
-                          {!estMoi(u) && (
+                        {autorise('user.update') && <td style={{ whiteSpace: 'nowrap' }}>
+                          {autorise('user.update') && (
+                            <button className="btn-icone" title="Modifier" onClick={() => ouvrirModification(u)}>
+                              <Pencil size={15} aria-hidden="true" />
+                            </button>
+                          )}
+                          {autorise('user.update') && !estMoi(u) && (
                             <button
                               className="btn-icone"
                               style={{ marginLeft: 6 }}
@@ -494,13 +575,13 @@ export default function UtilisateursPage() {
                               <Power size={15} aria-hidden="true" style={{ color: u.actif ? 'var(--c-danger)' : 'var(--c-ok)' }} />
                             </button>
                           )}
-                        </td>
+                        </td>}
                       </tr>
                     );
                   })}
                   {usersFiltres.length === 0 && (
                     <tr>
-                      <td colSpan={7} className="muted">Aucun utilisateur trouvé.</td>
+                      <td colSpan={autorise('user.update') ? 7 : 6} className="muted">Aucun utilisateur trouvé.</td>
                     </tr>
                   )}
                 </tbody>

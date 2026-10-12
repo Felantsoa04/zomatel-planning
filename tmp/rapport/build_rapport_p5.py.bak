@@ -1,0 +1,59 @@
+chapitre('CHAPITRE 6 : CONCEPTION DÉTAILLÉE')
+section_h('6.1. Architecture de l’application')
+P('L’application est architecturée en trois tiers :')
+PU(['un tier Client : l’interface web Next.js 14 (React 18), rendue par le navigateur, qui consomme l’API REST ;',
+    'un tier Application : un serveur Node.js exécutant l’API Express, chargé de l’authentification (JWT), des permissions, des contrôleurs métier et des services (export Excel, e-mails) ;',
+    'un tier Données : la base MariaDB gestion_plannings_hotel, qui porte le schéma relationnel, les vues de calcul des heures et les triggers de contrainte.'])
+add_figure('fig3.1_arch3tiers.png', 'Figure 3.1 — Architecture trois tiers de l’application', width_cm=11)
+P('Ce découpage répond à deux exigences : la séparation claire des responsabilités (interface / logique métier / données) et l’extensibilité de l’API, qui pourra servir plus tard une application mobile ou des intégrations tierces sans réécrire la logique métier.')
+ssection('6.1.1. Périmètre des rôles (matrice de permissions)')
+P('Conformément au cahier des charges, l’application ne comporte que deux rôles applicatifs : RH et CHEF_SERVICE ; l’employé n’a pas de compte (il est géré comme une fiche), et le rôle ADMIN n’est pas prévu par le système cible.')
+PU(['CHEF_SERVICE : gestion des plannings de son service (grille hebdomadaire), fiches employés de son service, soumission à la RH, récupérations de son équipe ;',
+    'RH : consultation de tous les services, contrôle et validation ou rejet des plannings soumis, gestion des comptes utilisateurs, fiches employés de tous services, consult de l’historique et export des emplois du temps.'])
+P('Les permissions effectives sont vérifiées à chaque requête côté serveur (middleware requirePermission) après relecture du profil complet /api/auth/me, ce qui évite tout contournement par le client.')
+section_h('6.2. Diagramme de séquence de conception')
+P('Le diagramme de séquence système de la figure 5.1 est traduit au niveau de la conception par le chaînage concret suivant : le composant frontend (page /planning/gestion) appelle la route Express concernée ; la route applique d’abord le middleware authRequired (vérification du JWT), puis requirePermission ; le contrôleur consulte la base par le pool mysql2 et exécute les requêtes SQL ; la réponse est renvoyée en JSON, avec un statut HTTP 207 dans le cas d’une sauvegarde de grille dont certaines cellules sont refusées par les triggers — le détail cellule par cellule permet au frontend d’afficher l’erreur au bon endroit.')
+section_h('6.3. Diagramme de classes')
+P('Le diagramme de classes ci-dessous se concentre sur la couche applicative backend (contrôleurs, middlewares et services), le modèle de données relationnel étant détaillé à la section 6.5. Les contrôleurs regroupent les opérations décrites dans les cas d’utilisation, les middlewares sécurisent l’accès, et les services embarquent la logique de spécialité (export Excel, e-mails).')
+add_figure('fig6.4_classe.png', 'Figure 6.4 — Diagramme de classes backend', width_cm=16.5)
+section_h('6.4. Diagramme de paquetages')
+P('Le découpage en paquetages reflète l’organisation réelle des répertoires du projet : côté frontend, le dossier app (App Router) regroupe les pages, le dossier lib les utilitaires transverses (client API, authentification, permissions, données de planning, socket) ; côté backend, les paquetages routes, controllers, middleware, services et socket ; côté données, la base MariaDB avec ses tables, vues et triggers.')
+add_figure('fig6.1_paquetages.png', 'Figure 6.1 — Diagramme de paquetages de l’application', width_cm=16.5)
+section_h('6.5. Diagramme de déploiement')
+P('Le déploiement cible est volontairement léger, adapté à la taille de l’établissement et à son infrastructure existante : les deux serveurs (Next.js et l’API Express) et la base MariaDB tournent sur un serveur local Windows (Laragon). Les postes du personnel de gestion accèdent à l’application depuis leur navigateur.')
+add_figure('fig6.2_deploiement.png', 'Figure 6.2 — Diagramme de déploiement', width_cm=14.5)
+section_h('6.6. Modèle conceptuel des données')
+P('La base gestion_plannings_hotel comporte 16 tables, 4 vues et 9 triggers. Le modèle conceptuel ci-dessous décrit les entités principales et leurs cardinalités. Le tableau 6.1 précise ensuite le rôle de chacune de ces structures.')
+add_figure('fig6.3_mcd.png', 'Figure 6.3 — Modèle conceptuel des données (MCD)', width_cm=16.5)
+table_caption('Tableau 6.1 — Synthèse de la base de données gestion_plannings_hotel')
+add_table(['Table', 'Rôle'],
+ [ ['service', 'Liste des services, avec le format de planning choisi (PERIODES_FIXES, HORAIRE_LIBRE, SHIFT_POSTE)'],
+   ['utilisateur', 'Comptes de connexion ; rôle ; rattachement du chef à un service unique (colonne générée + triggers)'],
+   ['permission / role_permission', 'Matrice de permissions par rôle, revue à chaque requête via /api/auth/me'],
+   ['employe', 'Fiche du personnel : matricule optionnel, nom, statut TITULAIRE/STAGIAIRE, service, référence hebdomadaire'],
+   ['type_horaire', 'Modèles d’horaires réutilisables par service'],
+   ['planning', 'Un planning = un service + une semaine + un statut (BROUILLON, SOUMIS, VALIDE, REJETE)'],
+   ['affectation', 'Statut d’un employé pour un jour du planning (TRAVAIL, REPOS, ABSENCE)'],
+   ['creneau_travail', 'Jusqu’à 3 créneaux par affectation : matin, après-midi, soir, avec heure d’entrée et heure de sortie'],
+   ['conge', 'Congés et indisponibilités communiqués par la RH, avec contrôle de statut (trigger)'],
+   ['recuperation', 'Récupérations saisies par chef ou RH (trigger de contrôle du rôle)'],
+   ['indisponibilite', 'Jours d’indisponibilité ponctuelle d’un employé'],
+   ['validation_rh', 'Décision RH sur un planning soumis (VALIDE/REJETE + commentaire + date)'],
+   ['controle_couverture', 'Résultat du contrôle effectif requis / effectif réel, par jour et par créneau'],
+   ['besoin_couverture', 'Effectifs requis définis par service, par jour et créneau'],
+   ['historique_modification', 'Journal horodaté des actions réalisées sur un planning, avec l’utilisateur à l’origine'],
+   ['jour_ferie', 'Liste des jours fériés'],
+   ['notification', 'Notifications applicatives (soumission, décision), avec état lu / non lu'],
+   ['Vues', 'v_duree_creneau, v_duree_jour, v_total_hebdo_employe (calculs d’heures), v_emploi_du_temps'],
+ ], col_widths_cm=[4.3, 12.3])
+table_caption('Tableau 6.2 — Principales règles métier appliquées par triggers MariaDB')
+add_table(['Règle appliquée en base', 'Trigger'],
+ [ ['Refus des conflits d’horaires (chevauchement de créneaux)', 'trg_creneau_bi / trg_creneau_bu'],
+   ['Interdiction d’un créneau sur un jour de repos / absence / congé', 'trg_creneau_bi / trg_creneau_bu'],
+   ['Affectation bornée à la semaine du planning', 'trg_affectation_bi'],
+   ['Validation d’un planning réservée aux comptes RH', 'trg_validation_rh_bi'],
+   ['Congé validé ou refusé uniquement par un RH, avec traçabilité', 'trg_conge_bi / trg_conge_bu'],
+   ['Récupération saisie par RH, ADMIN ou CHEF_SERVICE', 'trg_recuperation_bi'],
+   ['CHEF_SERVICE toujours rattaché à un service', 'trg_utilisateur_bi / trg_utilisateur_bu'],
+   ['Maximum 3 créneaux (matin / après-midi / soir) par jour', 'trg_creneau_bi'],
+ ], col_widths_cm=[10.2, 6.4])

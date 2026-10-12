@@ -1,0 +1,68 @@
+[] PAGE DE COUVERTURE
+[] PAGE DE GARDE
+[] PAGE DE COUVERTURE (EN NOIR ET BLANC)
+[] CV
+[] REMERCIEMENTS
+[] RESUME/ABSTRACT
+[] LISTE DES FIGURES
+[] LISTE DES TABLEAUX
+[] LISTE DES ABREVIATIONS
+[] GLOSSAIRE
+[] SOMMAIRE (3 NIVEAUX
+[] INTRODUCTION (4 paragraphes : contexte du projet, problématiques, hypothèses, plan)
+[] PARTIE 1 : PRESENTATION GENERALE
+[] CHAPITRE 1 : PRESENTATION DE L’ECOLE
+[] CHAPITRE 2 : PRESENTATION DE L’ENTREPRISE DE STAGE
+[] CHAPITRE 3 : PRESENTATION DU PROJET
+[] 3.1 formulation du projet
+[] 3.2 Justification de l’importance du sujet
+[] 3.3 Objectifs et besoins utilisateurs
+[] 3.4 Moyens nécessaire à la réalisation du projet (Humain, matériel, logiciel)
+[] 3.5 Chronogramme de réalisation du projet (diagramme de Gantt)
+[] 3.6 Résultat attendu
+[] PARTIE 2 : ANALYSE ET CONCEPTION
+[] CHAPITRE 4 : ANALYSE PREALABLE
+[] 4.1 Analyse de l’existant
+[] 4.1.1 Organisation actuelle (diagramme de flux)
+[] 4.1.2 Critique de l’existant
+[] 4.1.3 Moyen existant pour la réalisation du projet (Humain, matériel)
+[] 4.2 Choix de la solution
+[] 4.3 Choix de la méthode de conception/gestion de projet
+[] 4.4 Choix de l’outils de conception
+[] 4.5 Choix du langage de programmation
+[] 4.6 Choix du Framework
+[] 4.7 Choix de l’environnement de développement
+[] 4.8 choix du système de gestion de base de données
+[] CHAPITRE 5 : CONCEPTION DU PROJET
+[] 5.1 Présentation de la méthode de conception
+[] 5.2 Dictionnaire des données
+[] 5.3 Règle de gestion
+[] 5.4 Diagramme de cas d’utilisation
+[] 5.5 Description textuelle des cas d’utilisation
+[] 5.6 Diagramme de séquence système
+[] 5.7 Modèle de domaine
+[] CHAPITRE 6 : CONCEPTION DETAILLEE 
+[] 6.1 Architecture de l’application
+[] 6.2 Diagramme de séquence de conception
+[] 6.3 Diagramme de classe
+[] 6.4 diagramme de paquetage
+[] 6.5 diagramme de déploiement
+[] PARTIE 3 : MISE EN ŒUVRE ET RESULTATS
+[] CHAPITRE 7 : MISE EN ŒUVRE
+[] 7.1 Architecture du système
+[] 7.2 configuration de l’outils de conception
+[] 7.3 génération de la base de données
+[] 7.4 configuration de l’environnement de développement
+[] 7.5 extraits de code des fonctionnalités principales de l’application
+[] CHAPITRE 8 : PRESENTATION DE L’APPLICATION
+[]  (Différents capture d’écran de l’application en suivant une ligne de démonstration montrant toutes les fonctionnalités importantes)
+[] CHAPITRE 9 : EVALUATION ET SUGGESTIONS
+[] 9.1 Evaluation de l’application (comparaison avec des solutions existantes)
+[] 9.2 Contributions académiques et professionnelles
+[] 9.3 Limitations de l'étude et pistes de recherche futures
+[] CONCLUSION
+[] BIBLIOGRAPHIE
+[] WEBOGRAPHIE
+[] GLOSSAIRE
+[] ANNEXES
+[] TABLE DES MATIERES

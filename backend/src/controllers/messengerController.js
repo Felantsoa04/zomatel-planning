@@ -37,7 +37,7 @@ const MIMES_IMAGES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
 const MIMES_VIDEOS = ['video/mp4', 'video/webm', 'video/quicktime'];
 const MIMES_AUDIO = ['audio/webm', 'audio/ogg', 'audio/mpeg', 'audio/mp4', 'audio/wav'];
 const MIMES_FICHIERS = [
-  'application/pdf', 'text/plain', 'text/csv',
+  'application/pdf', 'text/plain',
   'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
   'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
   'application/vnd.ms-powerpoint', 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
@@ -49,7 +49,7 @@ const EXTENSIONS_PJ = {
   'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'image/gif': 'gif',
   'video/mp4': 'mp4', 'video/webm': 'webm', 'video/quicktime': 'mov',
   'audio/webm': 'webm', 'audio/ogg': 'ogg', 'audio/mpeg': 'mp3', 'audio/mp4': 'm4a', 'audio/wav': 'wav',
-  'application/pdf': 'pdf', 'text/plain': 'txt', 'text/csv': 'csv',
+  'application/pdf': 'pdf', 'text/plain': 'txt',
   'application/msword': 'doc', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx',
   'application/vnd.ms-excel': 'xls', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'xlsx',
   'application/vnd.ms-powerpoint': 'ppt', 'application/vnd.openxmlformats-officedocument.presentationml.presentation': 'pptx',

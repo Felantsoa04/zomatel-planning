@@ -50,6 +50,7 @@ async function login(req, res, next) {
       role: user.role,
       id_service: user.service_id,
       id_employe: user.id_employe || null,
+      permissions: await permissionsDe(user.id_utilisateur),
     };
     const token = signToken(payload);
 
@@ -62,13 +63,20 @@ async function login(req, res, next) {
 // GET /api/auth/me
 // Session + photo_profil (lu en base : le JWT n'est pas re-emis, la photo
 // peut changer sans reconnexion).
-async function me(req, res) {
+async function me(req, res, next) {
   try {
     const [[compte]] = await pool.query(
       'SELECT photo_profil FROM utilisateur WHERE id_utilisateur = ?',
       [req.user.id_utilisateur]
     );
-    res.json({ user: { ...req.user, photo_profil: compte ? compte.photo_profil : null } });
+    const permissions = await permissionsDe(req.user.id_utilisateur);
+    res.json({
+      user: {
+        ...req.user,
+        permissions,
+        photo_profil: compte ? compte.photo_profil : null,
+      },
+    });
   } catch (err) {
     next(err);
   }
@@ -116,7 +124,7 @@ async function createUser(req, res, next) {
     }
 
     // Regles metier par role (deja appliquees par les triggers/controleurs)
-    if (roleChoisi === 'CHEF_SERVICE' && !id_service) {
+    if (roleChoisi === 'CHEF_SERVICE' && (!id_service || !Number.isInteger(Number(id_service)))) {
       return res.status(400).json({
         message: 'id_service requis : un chef de service est rattache a UN seul service.',
       });
@@ -127,6 +135,19 @@ async function createUser(req, res, next) {
         [id_service]
       );
       if (!service) return res.status(404).json({ message: 'Service introuvable.' });
+    }
+
+    if (roleChoisi === 'CHEF_SERVICE') {
+      const [[chefExistant]] = await pool.query(
+        `SELECT id_utilisateur FROM utilisateur
+         WHERE role = 'CHEF_SERVICE' AND service_id = ?`,
+        [id_service]
+      );
+      if (chefExistant) {
+        return res.status(409).json({
+          message: 'Un chef de service est déjà associé à ce service.',
+        });
+      }
     }
 
     const [[existant]] = await pool.query(
@@ -157,6 +178,12 @@ async function createUser(req, res, next) {
       message: `Compte ${roleChoisi} cree.`,
     });
   } catch (err) {
+    if (err && err.code === 'ER_DUP_ENTRY'
+        && String(err.message || '').includes('uq_utilisateur_chef_service')) {
+      return res.status(409).json({
+        message: 'Un chef de service est déjà associé à ce service.',
+      });
+    }
     next(err);
   }
 }
@@ -197,7 +224,7 @@ async function updateUser(req, res, next) {
     const { nom, prenom, login, role, id_service, mot_de_passe, actif, permissions } = req.body;
 
     const [[cible]] = await pool.query(
-      'SELECT id_utilisateur FROM utilisateur WHERE id_utilisateur = ?',
+      'SELECT id_utilisateur, role, service_id FROM utilisateur WHERE id_utilisateur = ?',
       [id]
     );
     if (!cible) return res.status(404).json({ message: 'Compte introuvable.' });
@@ -209,12 +236,41 @@ async function updateUser(req, res, next) {
       });
     }
 
-    if (id_service) {
+    const roleEffectif = roleChoisi || cible.role;
+    const serviceEffectif = id_service === undefined ? cible.service_id : id_service;
+    if (req.user.role === 'CHEF_SERVICE'
+        && Number(id) === Number(req.user.id_utilisateur)
+        && id_service !== undefined
+        && Number(id_service) !== Number(cible.service_id)) {
+      return res.status(403).json({
+        message: 'Un chef de service ne peut pas modifier son service.',
+      });
+    }
+    if (roleEffectif === 'CHEF_SERVICE'
+        && (!serviceEffectif || !Number.isInteger(Number(serviceEffectif)))) {
+      return res.status(400).json({
+        message: 'id_service requis : un chef de service est rattache a UN seul service.',
+      });
+    }
+
+    if (serviceEffectif) {
       const [[service]] = await pool.query(
         'SELECT id_service FROM service WHERE id_service = ?',
-        [id_service]
+        [serviceEffectif]
       );
       if (!service) return res.status(404).json({ message: 'Service introuvable.' });
+    }
+    if (roleEffectif === 'CHEF_SERVICE') {
+      const [[chefExistant]] = await pool.query(
+        `SELECT id_utilisateur FROM utilisateur
+         WHERE role = 'CHEF_SERVICE' AND service_id = ? AND id_utilisateur <> ?`,
+        [serviceEffectif, id]
+      );
+      if (chefExistant) {
+        return res.status(409).json({
+          message: 'Un chef de service est déjà associé à ce service.',
+        });
+      }
     }
     if (login) {
       const [[existant]] = await pool.query(
@@ -280,6 +336,12 @@ async function updateUser(req, res, next) {
       permissions: codesFinaux || (await permissionsDe(id)),
     });
   } catch (err) {
+    if (err && err.code === 'ER_DUP_ENTRY'
+        && String(err.message || '').includes('uq_utilisateur_chef_service')) {
+      return res.status(409).json({
+        message: 'Un chef de service est déjà associé à ce service.',
+      });
+    }
     next(err);
   }
 }

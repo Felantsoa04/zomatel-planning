@@ -16,19 +16,21 @@ import { useRouter } from 'next/navigation';
 import { Bell, CheckCheck } from 'lucide-react';
 import { api } from '@/lib/api';
 import { getToken } from '@/lib/auth';
+import { useI18n } from '@/lib/i18n';
 
-function formatDateHeure(str) {
+function formatDateHeure(str, langue) {
   if (!str) return '';
   // mysql2 (dateStrings) renvoie "YYYY-MM-DD HH:MM:SS"
   const d = new Date(String(str).replace(' ', 'T'));
   if (Number.isNaN(d.getTime())) return String(str);
-  return d.toLocaleString('fr-FR', {
+  return d.toLocaleString({ fr: 'fr-FR', mg: 'mg-MG', en: 'en-GB' }[langue], {
     weekday: 'short', day: '2-digit', month: 'short',
-    hour: '2-digit', minute: '2-digit',
+    hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
   });
 }
 
 export default function NotificationBell() {
+  const { langue, t } = useI18n();
   const [ouvert, setOuvert] = useState(false);
   const [nonLues, setNonLues] = useState(0);
   const [notifications, setNotifications] = useState([]);
@@ -113,7 +115,7 @@ export default function NotificationBell() {
 
   return (
     <div className="notif-wrap" ref={wrapRef}>
-      <button className="notif-btn" onClick={basculer} aria-label="Notifications" title="Notifications">
+      <button className="notif-btn" onClick={basculer} aria-label={t('notifications.title')} title={t('notifications.title')}>
         <Bell size={18} aria-hidden="true" />
         {nonLues > 0 && <span className="notif-badge">{nonLues > 99 ? '99+' : nonLues}</span>}
       </button>
@@ -121,19 +123,19 @@ export default function NotificationBell() {
       {ouvert && (
         <div className="notif-dropdown">
           <div className="notif-header">
-            <strong>Notifications</strong>
+            <strong>{t('notifications.title')}</strong>
             {nonLues > 0 && (
               <button className="notif-tout-lu" onClick={toutMarquerLu}>
-                <CheckCheck size={13} aria-hidden="true" /> Tout marquer comme lu
+                <CheckCheck size={13} aria-hidden="true" /> {t('notifications.markAllRead')}
               </button>
             )}
           </div>
 
           <div className="notif-liste">
-            {chargement && <p className="notif-empty">Chargement...</p>}
+            {chargement && <p className="notif-empty">{t('common.loading')}</p>}
 
             {!chargement && notifications.length === 0 && (
-              <p className="notif-empty">Aucune notification</p>
+              <p className="notif-empty">{t('notifications.empty')}</p>
             )}
 
             {!chargement && notifications.map((n) => (
@@ -141,7 +143,7 @@ export default function NotificationBell() {
                 key={n.id_notification}
                 className={`notif-item ${n.lu ? '' : 'notif-non-lue'}`}
                 onClick={() => marquerLue(n)}
-                title={n.id_planning ? 'Ouvrir le planning' : undefined}
+                title={n.id_planning ? t('notifications.openPlan') : undefined}
               >
                 <div className="notif-item-haut">
                   {!n.lu && <span className="notif-dot" aria-hidden="true" />}
@@ -149,8 +151,8 @@ export default function NotificationBell() {
                 </div>
                 {n.message && <div className="notif-message">{n.message}</div>}
                 <div className="notif-date">
-                  {formatDateHeure(n.date_creation)}
-                  {n.id_planning && <span className="notif-lien">Ouvrir →</span>}
+                  {formatDateHeure(n.date_creation, langue)}
+                  {n.id_planning && <span className="notif-lien">{t('notifications.open')} →</span>}
                 </div>
               </button>
             ))}

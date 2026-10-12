@@ -10,7 +10,9 @@
 
 import { useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { LABELS_STATUT, semainesAVenir } from '@/lib/dash';
+import BadgeStatutPlanning from '@/components/BadgeStatutPlanning';
+import { libelleStatut, semainesAVenir } from '@/lib/dash';
+import { useI18n } from '@/lib/i18n';
 
 // Statuts sur lesquels le Chef peut encore agir (modifier/préparer) : un
 // planning SOUMIS ou VALIDE est dans le circuit RH (workflow Chef -> RH,
@@ -19,6 +21,7 @@ const ACTIF_POSSIBLE = ['BROUILLON', 'REJETE'];
 
 export default function SemainesAVenir({ plannings = [], services = [], estChef = false, idServiceChef = null }) {
   const router = useRouter();
+  const { t } = useI18n();
 
   // Les 6 semaines à venir (courante incluse), dynamiques.
   const semaines = useMemo(() => semainesAVenir(6), []);
@@ -73,14 +76,14 @@ export default function SemainesAVenir({ plannings = [], services = [], estChef 
   return (
     <div className="dash-carte">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexWrap: 'wrap', gap: 8, marginBottom: 10 }}>
-        <h3 style={{ margin: 0 }}>Prochaines semaines</h3>
+        <h3 style={{ margin: 0 }}>{t('dashboard.upcoming')}</h3>
         <p className="muted" style={{ margin: 0, fontSize: 12 }}>
-          {totaux.valides} validé(s) · {totaux.aFaire} à préparer · {totaux.aucun} sans planning
+          <BadgeStatutPlanning statut="VALIDE" compteur={totaux.valides} /> · {totaux.aFaire} {t('dashboard.toSubmit').toLowerCase()} · {totaux.aucun} {t('dashboard.noPlansYet').toLowerCase()}
         </p>
       </div>
 
       {servicesAffiches.length === 0 ? (
-        <p className="muted">Aucun service à afficher.</p>
+        <p className="muted">{t('common.noData')}</p>
       ) : (
         <div style={{ overflowX: 'auto' }}>
           <table className="swv-table">
@@ -110,25 +113,32 @@ export default function SemainesAVenir({ plannings = [], services = [], estChef 
                     const cliquable = estChef
                       ? statut === 'AUCUN' || ACTIF_POSSIBLE.includes(statut)
                       : !!p;
-                    const libelle =
-                      statut === 'AUCUN' ? '—' : LABELS_STATUT[statut] || statut;
+                    const titrePlanning = `${t('planning.title')} ${libelleStatut(statut, t)} S${w.numero}/${w.annee}`;
                     return (
                       <td key={`${s.id_service}-${w.annee}-${w.numero}`} className={w.numero === semaines[0].numero ? 'swv-courante' : ''}>
                         {cliquable ? (
-                          <button
-                            type="button"
-                            className={`badge ${statut === 'AUCUN' ? 'swv-aucun' : statut}`}
-                            title={
-                              statut === 'AUCUN'
-                                ? `Créer le planning ${s.nom_service || s.nom} S${w.numero}/${w.annee}`
-                                : `Ouvrir le planning ${LABELS_STATUT[statut] || statut} S${w.numero}/${w.annee}`
-                            }
-                            onClick={() => allerPlanning(s.id_service, w)}
-                          >
-                            {libelle}
-                          </button>
+                          statut === 'AUCUN' ? (
+                            <button
+                              type="button"
+                              className="badge swv-aucun"
+                              title={`${t('planning.title')} · ${s.nom_service || s.nom} S${w.numero}/${w.annee}`}
+                              onClick={() => allerPlanning(s.id_service, w)}
+                            >
+                              —
+                            </button>
+                          ) : (
+                            <BadgeStatutPlanning
+                              as="button"
+                              statut={statut}
+                              title={titrePlanning}
+                              ariaLabel={titrePlanning}
+                              onClick={() => allerPlanning(s.id_service, w)}
+                            />
+                          )
                         ) : (
-                          <span className={`badge ${statut === 'AUCUN' ? 'swv-aucun' : statut}`}>{libelle}</span>
+                          statut === 'AUCUN'
+                            ? <span className="badge swv-aucun">—</span>
+                            : <BadgeStatutPlanning statut={statut} />
                         )}
                       </td>
                     );
@@ -141,8 +151,8 @@ export default function SemainesAVenir({ plannings = [], services = [], estChef 
       )}
       <p className="muted" style={{ fontSize: 12, margin: '10px 0 0' }}>
         {estChef
-          ? 'Cliquez sur une cellule Brouillon/Rejeté (ou « — ») pour préparer le planning de la semaine.'
-          : "État des plannings à venir par service. Cliquez sur un badge pour consulter la grille."}
+          ? t('dashboard.upcoming')
+          : t('dashboard.viewPlans')}
       </p>
     </div>
   );

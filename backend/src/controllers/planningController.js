@@ -6,10 +6,27 @@ const { notifierUtilisateur } = require('../utils/notifier');
 async function create(req, res, next) {
   try {
     const { annee, numero_semaine, date_debut, date_fin } = req.body;
-    const service_id = req.user.id_service;
+    const service_id = req.user.role === 'CHEF_SERVICE'
+      ? req.user.id_service
+      : (req.body.service_id || req.user.id_service);
 
     if (!service_id) {
-      return res.status(400).json({ message: 'Ce compte n\'est rattache a aucun service.' });
+      return res.status(400).json({ message: 'Un service doit être associé au planning.' });
+    }
+    const [[service]] = await pool.query(
+      'SELECT id_service FROM service WHERE id_service = ?',
+      [service_id]
+    );
+    if (!service) return res.status(404).json({ message: 'Service introuvable.' });
+    if (req.user.role === 'CHEF_SERVICE' && Number(service_id) !== Number(req.user.id_service)) {
+      return res.status(403).json({ message: 'Un chef de service ne peut créer un planning que pour son service.' });
+    }
+    if (req.user.id_service && !req.permissions.includes('planning.view_all')
+        && Number(service_id) !== Number(req.user.id_service)) {
+      return res.status(403).json({ message: 'Ce service ne fait pas partie de votre périmètre.' });
+    }
+    if (!req.user.id_service && !req.permissions.includes('planning.view_all')) {
+      return res.status(403).json({ message: 'Aucun service n’est associé à votre compte.' });
     }
     if (!annee || !numero_semaine || !date_debut || !date_fin) {
       return res.status(400).json({ message: 'annee, numero_semaine, date_debut et date_fin requis.' });
@@ -40,6 +57,9 @@ async function create(req, res, next) {
 // GET /api/plannings?id_service=1&annee=2026&statut=VALIDE
 async function list(req, res, next) {
   try {
+    if (req.user.role === 'EMPLOYE') {
+      return res.status(403).json({ message: 'Acces refuse : consultez votre espace personnel.' });
+    }
     const { id_service, annee, statut } = req.query;
     let sql = `SELECT p.id_planning, p.annee, p.numero_semaine,
                       p.date_debut_semaine AS date_debut,
@@ -48,6 +68,14 @@ async function list(req, res, next) {
                       p.service_id AS id_service,
                       s.nom_service AS service_nom,
                       u.nom_utilisateur AS cree_par_nom,
+                      COALESCE(NULLIF(TRIM(CONCAT_WS(' ', u.prenom, u.nom_utilisateur)), ''), u.login) AS chef_service,
+                      (SELECT MAX(h.date_action)
+                       FROM historique_modification h
+                       WHERE h.planning_id = p.id_planning
+                         AND h.action LIKE '%soumission%') AS date_soumission,
+                      (SELECT MAX(v.date_validation)
+                       FROM validation_rh v
+                       WHERE v.planning_id = p.id_planning) AS date_validation,
                       tot.total_heures, tot.nb_employes, tot.nb_manques, tot.nb_exces
                FROM planning p
                JOIN service s ON s.id_service = p.service_id
@@ -70,15 +98,15 @@ async function list(req, res, next) {
                WHERE 1=1`;
     const params = [];
 
-    // Un chef de service ne voit que les plannings de son service,
-    // un employe ne voit AUCUN planning d'equipe (espace personnel uniquement).
-    // [DIAGNOSTIC TEMPORAIRE] - a retirer apres resolution du 403
-    console.log(`[PLANNINGS] role=${req.user.role} service_id=${req.user.id_service} permission=${req.user.role === 'EMPLOYE' ? 'REFUSEE (employe)' : req.user.role === 'CHEF_SERVICE' ? 'service ' + req.user.id_service : 'tous services'}`);
-    if (req.user.role === 'CHEF_SERVICE') {
+    if (req.user.role === 'CHEF_SERVICE' || !req.permissions.includes('planning.view_all')) {
+      if (!req.user.id_service) {
+        return res.status(403).json({ message: 'Aucun service n’est associé à votre compte.' });
+      }
+      if (id_service && Number(id_service) !== Number(req.user.id_service)) {
+        return res.status(403).json({ message: 'Ce service ne fait pas partie de votre périmètre.' });
+      }
       sql += ' AND p.service_id = ?';
       params.push(req.user.id_service);
-    } else if (req.user.role === 'EMPLOYE') {
-      return res.status(403).json({ message: 'Acces refuse : consultez votre espace personnel.' });
     } else if (id_service) {
       sql += ' AND p.service_id = ?';
       params.push(id_service);
@@ -103,6 +131,9 @@ async function list(req, res, next) {
 // GET /api/plannings/:id  -> planning + affectations + creneaux + totaux hebdo
 async function getById(req, res, next) {
   try {
+    if (req.user.role === 'EMPLOYE') {
+      return res.status(403).json({ message: 'Acces refuse : consultez votre espace personnel.' });
+    }
     const { id } = req.params;
 
     const [[planning]] = await pool.query(
@@ -110,7 +141,7 @@ async function getById(req, res, next) {
               p.date_debut_semaine AS date_debut,
               p.date_fin_semaine   AS date_fin,
               p.statut, p.service_id,
-              s.nom_service AS service_nom
+              s.nom_service AS service_nom, s.type_affichage
        FROM planning p JOIN service s ON s.id_service = p.service_id
        WHERE p.id_planning = ?`,
       [id]
@@ -118,11 +149,9 @@ async function getById(req, res, next) {
     if (!planning) return res.status(404).json({ message: 'Planning introuvable.' });
     // Isolation reelle : un chef ne voit que les plannings de SON service,
     // un employe passe par son espace personnel (/api/employes/me/plannings).
-    if (req.user.role === 'CHEF_SERVICE' && Number(planning.service_id) !== Number(req.user.id_service)) {
+    if ((req.user.role === 'CHEF_SERVICE' || !req.permissions.includes('planning.view_all'))
+        && Number(planning.service_id) !== Number(req.user.id_service)) {
       return res.status(403).json({ message: 'Ce planning ne concerne pas votre service.' });
-    }
-    if (req.user.role === 'EMPLOYE') {
-      return res.status(403).json({ message: 'Acces refuse : consultez votre espace personnel.' });
     }
 
     const [affectations] = await pool.query(
@@ -131,7 +160,8 @@ async function getById(req, res, next) {
               a.date_jour  AS jour,
               a.statut     AS statut_jour,
               a.commentaire AS observation,
-              e.nom AS employe_nom, e.matricule, e.statut AS employe_statut
+              e.nom AS employe_nom, e.matricule, e.statut AS employe_statut,
+              e.fonction AS employe_fonction
        FROM affectation a JOIN employe e ON e.id_employe = a.employe_id
        WHERE a.planning_id = ?
        ORDER BY e.nom, a.date_jour`,
@@ -178,6 +208,26 @@ async function getById(req, res, next) {
       [id]
     );
 
+    const debut = planning.date_debut;
+    const fin = planning.date_fin;
+    const [conges] = await pool.query(
+      `SELECT c.employe_id AS id_employe, e.nom AS employe_nom,
+              c.date_debut, c.date_fin, c.type_conge
+       FROM conge c JOIN employe e ON e.id_employe = c.employe_id
+       WHERE c.statut = 'VALIDE'
+         AND c.date_debut <= ? AND c.date_fin >= ?
+         AND e.service_id = ?`,
+      [fin, debut, planning.service_id]
+    );
+    const [indisponibilites] = await pool.query(
+      `SELECT i.employe_id AS id_employe, e.nom AS employe_nom,
+              i.date_debut, i.date_fin, i.type_indispo, i.motif
+       FROM indisponibilite i JOIN employe e ON e.id_employe = i.employe_id
+       WHERE i.date_debut <= ? AND i.date_fin >= ?
+         AND e.service_id = ?`,
+      [fin, debut, planning.service_id]
+    );
+
     // Dernier rejet RH : expose uniquement tant que le planning est REJETE.
     // Apres correction/resoumission, le motif disparait de l'API (il reste
     // conserve dans validation_rh pour la tracabilite).
@@ -198,6 +248,7 @@ async function getById(req, res, next) {
       affectations: affectationsCompletes,
       totaux,
       couverture,
+      contraintes: { conges, indisponibilites },
       dernier_rejet: dernierRejet || null,
     });
   } catch (err) {
@@ -224,35 +275,51 @@ async function soumettre(req, res, next) {
 }
 
 // DELETE /api/plannings/:id
-// CHEF_SERVICE : uniquement SON planning, uniquement BROUILLON ou REJETE
-// (un planning SOUMIS appartient au circuit RH ; un VALIDE est fige).
-// RH / ADMIN : peut supprimer un planning de n'importe quel service.
-// NB : les FK sont en CASCADE (affectations, creneaux, validations, historique)
-// la suppression est donc propre et n'efface aucun employe/service.
+// CHEF_SERVICE : uniquement son service, uniquement BROUILLON ou REJETE.
+// Un planning VALIDE est conserve pour proteger l'historique des decisions RH.
 async function supprimer(req, res, next) {
+  const connection = await pool.getConnection();
   try {
     const { id } = req.params;
-    const [[planning]] = await pool.query(
-      'SELECT id_planning, service_id, statut FROM planning WHERE id_planning = ?',
+    await connection.beginTransaction();
+    const [[planning]] = await connection.query(
+      'SELECT id_planning, service_id, statut FROM planning WHERE id_planning = ? FOR UPDATE',
       [id]
     );
-    if (!planning) return res.status(404).json({ message: 'Planning introuvable.' });
+    if (!planning) {
+      await connection.rollback();
+      return res.status(404).json({ message: 'Planning introuvable.' });
+    }
 
-    if (req.user.role === 'CHEF_SERVICE') {
+    if (req.user.role === 'CHEF_SERVICE' || !req.permissions.includes('planning.view_all')) {
       if (Number(planning.service_id) !== Number(req.user.id_service)) {
+        await connection.rollback();
         return res.status(403).json({ message: 'Ce planning ne concerne pas votre service.' });
       }
+    }
+    if (planning.statut === 'VALIDE') {
+      await connection.rollback();
+      return res.status(409).json({
+        message: 'Un planning VALIDE est conserve dans l’historique et ne peut pas etre supprime.',
+      });
+    }
+    if (req.user.role === 'CHEF_SERVICE') {
       if (!['BROUILLON', 'REJETE'].includes(planning.statut)) {
+        await connection.rollback();
         return res.status(409).json({
           message: "Seuls les plannings BROUILLON ou REJETE peuvent etre supprimes. Un planning SOUMIS est en cours de validation RH (demandez un refus a la RH).",
         });
       }
     }
 
-    await pool.query('DELETE FROM planning WHERE id_planning = ?', [id]);
+    await connection.query('DELETE FROM planning WHERE id_planning = ?', [id]);
+    await connection.commit();
     res.json({ message: 'Planning supprime.' });
   } catch (err) {
+    await connection.rollback();
     next(err);
+  } finally {
+    connection.release();
   }
 }
 
@@ -276,6 +343,11 @@ async function rouvrir(req, res, next) {
     if (!planning) {
       await connection.rollback();
       return res.status(404).json({ message: 'Planning introuvable.' });
+    }
+    if ((req.user.role === 'CHEF_SERVICE' || !req.permissions.includes('planning.view_all'))
+        && Number(planning.service_id) !== Number(req.user.id_service)) {
+      await connection.rollback();
+      return res.status(403).json({ message: 'Ce planning ne concerne pas votre périmètre.' });
     }
     if (planning.statut !== 'VALIDE') {
       await connection.rollback();

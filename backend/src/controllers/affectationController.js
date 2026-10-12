@@ -1,4 +1,5 @@
 const pool = require('../config/db');
+const { aAccesServicePlanning } = require('../utils/planningAccess');
 const { logAction } = require('../utils/historique');
 
 // POST /api/plannings/:idPlanning/affectations
@@ -19,7 +20,7 @@ async function upsert(req, res, next) {
     );
     if (!planning) return res.status(404).json({ message: 'Planning introuvable.' });
     // Isolation reelle : un chef n'affecte que dans les plannings de SON service
-    if (req.user.role === 'CHEF_SERVICE' && Number(planning.service_id) !== Number(req.user.id_service)) {
+    if (!aAccesServicePlanning(req, planning.service_id)) {
       return res.status(403).json({ message: 'Ce planning ne concerne pas votre service.' });
     }
     if (planning.statut === 'VALIDE') {
@@ -65,7 +66,7 @@ async function remove(req, res, next) {
       [id]
     );
     if (!aff) return res.status(404).json({ message: 'Affectation introuvable.' });
-    if (req.user.role === 'CHEF_SERVICE' && Number(aff.service_id) !== Number(req.user.id_service)) {
+    if (!aAccesServicePlanning(req, aff.service_id)) {
       return res.status(403).json({ message: 'Ce planning ne concerne pas votre service.' });
     }
     await pool.query('DELETE FROM affectation WHERE id_affectation = ?', [id]);

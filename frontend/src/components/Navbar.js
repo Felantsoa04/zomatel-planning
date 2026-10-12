@@ -5,8 +5,27 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { getUser, logout } from '@/lib/auth';
 import NotificationBell from '@/components/NotificationBell';
+import { MENU_PRINCIPAL, dashboardDe } from '@/lib/dash';
+import { usePermissions } from '@/lib/permissions';
+import { useI18n } from '@/lib/i18n';
+
+const MENU_CLES_TRADUCTION = {
+  '/dashboard': 'nav.dashboard',
+  '/validations': 'nav.validations',
+  '/planning/gestion': 'nav.planning',
+  '/employees': 'nav.employees',
+  '/service': 'nav.services',
+  '/messagerie': 'nav.messenger',
+  '/statistiques': 'nav.statistics',
+  '/archives': 'nav.archives',
+  '/historique': 'nav.history',
+  '/utilisateurs': 'nav.users',
+  '/parametres': 'nav.settings',
+};
 
 export default function Navbar() {
+  const { permissions } = usePermissions();
+  const { t } = useI18n();
   const [user, setUser] = useState(null);
   const router = useRouter();
 
@@ -32,10 +51,18 @@ export default function Navbar() {
         <span className="brand">Zomatel Planning</span>
         {user && (
           <>
-            <Link href="/dashboard" style={{ marginLeft: 24 }}>Plannings</Link>
-            {user.role === 'CHEF_SERVICE' && <Link href="/planning/gestion">Gestion du planning</Link>}
-            {['RH', 'ADMIN'].includes(user.role) && <Link href="/utilisateurs">Utilisateurs</Link>}
-            <Link href="/employees">Employés</Link>
+            {MENU_PRINCIPAL
+              .map((item) => item.href === '/dashboard'
+                ? { ...item, href: dashboardDe(user.role) }
+                : item)
+              .filter((item) =>
+                (!item.permission || permissions.includes(item.permission))
+                && (!item.permissions || item.permissions.every((code) => permissions.includes(code)))
+                && (!item.permissionsAny || item.permissionsAny.some((code) => permissions.includes(code)))
+              )
+              .map((item) => (
+                <Link key={item.href} href={item.href} style={{ marginLeft: 24 }}>{t(MENU_CLES_TRADUCTION[item.href] || item.label)}</Link>
+              ))}
           </>
         )}
       </div>
@@ -45,7 +72,7 @@ export default function Navbar() {
             {[user.prenom, user.nom].filter(Boolean).join(' ') || user.nom_utilisateur || user.login} &middot; {user.role}
           </span>
           <NotificationBell />
-          <button className="btn secondary" onClick={handleLogout}>Deconnexion</button>
+          <button className="btn secondary" onClick={handleLogout}>{t('nav.logout')}</button>
         </div>
       )}
     </div>

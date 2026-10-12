@@ -9,7 +9,7 @@
 import { useEffect } from 'react';
 import { X } from 'lucide-react';
 
-export default function Modal({ titre, onClose, children, largeur = 520 }) {
+export default function Modal({ titre, sousTitre, onClose, children, largeur = 520, className = '' }) {
   // Echap ferme le modal ; le scroll de la page derriere est neutralise.
   useEffect(() => {
     function surEchap(e) {
@@ -33,9 +33,12 @@ export default function Modal({ titre, onClose, children, largeur = 520 }) {
         e.stopPropagation();
       }}
     >
-      <div className="modal-boite" style={{ maxWidth: largeur }}>
+      <div className={`modal-boite${className ? ` ${className}` : ''}`} style={{ maxWidth: largeur }}>
         <div className="modal-entete">
-          <h3 style={{ margin: 0 }}>{titre}</h3>
+          <div className="modal-entete-texte">
+            <h3 style={{ margin: 0 }}>{titre}</h3>
+            {sousTitre && <p className="modal-sous-titre">{sousTitre}</p>}
+          </div>
           <button type="button" className="modal-fermer" aria-label="Fermer" onClick={onClose}>
             <X size={16} aria-hidden="true" />
           </button>

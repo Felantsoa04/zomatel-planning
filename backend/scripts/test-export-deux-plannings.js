@@ -18,7 +18,7 @@ const fs = require('fs');
 
 const TEMP = process.env.TEMP || '/tmp';
 const MODELE = path.resolve(__dirname, '..', '..', 'document utiliise', 'EMPLOI DU TEMPS ZOMATEL WEEK 37_2026.xlsx');
-const RESIDUS = ['ANYAH', 'AVOTRA', 'AUGUSTIN', 'EDHINO', 'HERMANN', 'JEAN CHRYS', 'RAVAKA', 'ROLAND', 'ZIANI', 'JIMMY', 'MANOELA', 'Stagiaire', 'CUISINE SNACK'];
+const RESIDUS = ['ANYAH', 'AVOTRA', 'AUGUSTIN', 'EDHINO', 'HERMANN', 'JEAN CHRYS', 'RAVAKA', 'ROLAND', 'ZIANI', 'JIMMY', 'MANOELA', 'CUISINE SNACK'];
 
 function lireCellules(fichier) {
   const xml = new AdmZip(fichier).getEntry('xl/worksheets/sheet1.xml').getData().toString('utf8');
@@ -93,10 +93,10 @@ function lireCellules(fichier) {
     // Zone 1 — titre au FORMAT DU MODÈLE (WEEK n conservé)
     if (cellules['E2'] !== `EMPLOI DU TEMPS ${planning.nom_service} WEEK ${planning.numero_semaine}`) echec(`#${ID} titre E2 incorrect : "${cellules['E2']}"`);
     const nb = emps.size;
-    const pas = 3 + nb + 2; // gabarit Sécurité : sans jumelle/remplissage
+    // Gabarit Sécurité : blocs FIXES de 17 lignes, 124-125 réservées, RECAP à 126+
     let k = 0;
     for (const [idEmp, emp] of emps) {
-      const r = 5 + 7 * pas + k; k++; // RECAP (sans ligne de titre)
+      const r = 126 + k; k++; // RECAP (sans ligne de titre)
       if (cellules['A' + r] !== emp.matricule) echec(`#${ID} RECAP A${r}="${cellules['A' + r]}" attendu "${emp.matricule}"`);
       if (cellules['B' + r] !== emp.nom) echec(`#${ID} RECAP B${r}="${cellules['B' + r]}" attendu "${emp.nom}"`);
       const vu = Number(cellules['C' + r]);

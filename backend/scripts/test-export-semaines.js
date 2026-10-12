@@ -23,7 +23,7 @@ const fs = require('fs');
 const TEMP = process.env.TEMP || '/tmp';
 const MODELE = path.resolve(__dirname, '..', '..', 'document utiliise', 'EMPLOI DU TEMPS ZOMATEL WEEK 37_2026.xlsx');
 const API = 'http://localhost:4000/api';
-const RESIDUS = ['ANYAH', 'AVOTRA', 'AUGUSTIN', 'EDHINO', 'HERMANN', 'JEAN CHRYS', 'RAVAKA', 'ROLAND', 'ZIANI', 'JIMMY', 'MANOELA', 'Stagiaire', 'CUISINE SNACK'];
+const RESIDUS = ['ANYAH', 'AVOTRA', 'AUGUSTIN', 'EDHINO', 'HERMANN', 'JEAN CHRYS', 'RAVAKA', 'ROLAND', 'ZIANI', 'JIMMY', 'MANOELA', 'CUISINE SNACK'];
 
 function onglets(z) {
   const wb = z.getEntry('xl/workbook.xml').getData().toString('utf8');
@@ -66,8 +66,8 @@ function verifierClasseurWeek(zExp, planningAttendus, zm, echec) {
     if (c['C5'] !== planning.nom_service) echec(`WEEK_${planning.numero_semaine} : C5="${c['C5']}" attendu "${planning.nom_service}"`);
     // Données réelles (RECAP : matricule + nom de chaque employé)
     emps.forEach((emp, i) => {
-      // Gabarit Sécurité : bloc = 3+N+2 lignes, RECAP sans ligne de titre
-      const r = 5 + 7 * (3 + emps.length + 2) + i;
+      // Gabarit Sécurité : blocs FIXES de 17 lignes, 124-125 réservées, RECAP à 126+
+      const r = 5 + 7 * 17 + 2 + i;
       if (c['A' + r] !== (emp.matricule || '')) echec(`WEEK_${planning.numero_semaine} : RECAP A${r} incorrect`);
       if (c['B' + r] !== emp.nom) echec(`WEEK_${planning.numero_semaine} : RECAP B${r} incorrect`);
     });

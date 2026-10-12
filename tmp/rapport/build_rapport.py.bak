@@ -1,0 +1,169 @@
+"""
+Génération du rapport de stage Zomatel Planning (rapport_stage_zomatel.docx)
+Conforme au canevas EMIT / canevas INFO L3 :
+ - Marges 2,5 cm, corps de texte Times New Roman 12, interligne 1,5, justifié
+ - Partie 18, chapitre 16, section 14, sous-section 13 (S1) / 12 (S2), notes 10
+ - Pagination : chiffres romains minuscules avant l'introduction, chiffres arabes ensuite
+ - Figures légende en dessous, tableaux légende au-dessus, numérotation pseudo-décimale
+ - Bibliographie, Webographie, Annexes, Résumé+Abstract, Listes (figures, tableaux, sigles), TDM
+"""
+import os
+from docx import Document
+from docx.shared import Pt, Cm, RGBColor, Emu, Inches
+from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_LINE_SPACING, WD_BREAK, WD_TAB_ALIGNMENT
+from docx.enum.section import WD_SECTION, WD_ORIENT
+from docx.enum.table import WD_TABLE_ALIGNMENT
+from docx.enum.style import WD_STYLE_TYPE
+from docx.oxml.ns import qn, nsmap
+from docx.oxml import OxmlElement
+import copy
+
+DIAG = os.path.join(os.path.dirname(__file__), "diagrams")
+CAPS = r"C:/laragon/www/zomatel-planning/document utiliise/captures"
+OUT  = r"C:/laragon/www/zomatel-planning/document/rapport_stage_zomatel.docx"
+
+ADOC = "À COMPLÉTER"   # champ à compléter par l'étudiant
+
+# ───────────────────────── helpers ─────────────────────────
+
+def set_cell_bg(cell, color_hex):
+    tcPr = cell._tc.get_or_add_tcPr()
+    shd = OxmlElement('w:shd')
+    shd.set(qn('w:val'), 'clear')
+    shd.set(qn('w:color'), 'auto')
+    shd.set(qn('w:fill'), color_hex)
+    tcPr.append(shd)
+
+def page_number_field(paragraph, numfmt):
+    fldChar1 = OxmlElement('w:fldChar'); fldChar1.set(qn('w:fldCharType'), 'begin')
+    instr = OxmlElement('w:instrText'); instr.set(qn('xml:space'), 'preserve')
+    instr.text = f' PAGE \\* {numfmt} '
+    fldChar2 = OxmlElement('w:fldChar'); fldChar2.set(qn('w:fldCharType'), 'end')
+    run = paragraph.add_run()
+    run._r.append(fldChar1); run._r.append(instr); run._r.append(fldChar2)
+
+def add_toc_field(paragraph):
+    fldChar1 = OxmlElement('w:fldChar'); fldChar1.set(qn('w:fldCharType'), 'begin')
+    instr = OxmlElement('w:instrText'); instr.set(qn('xml:space'), 'preserve')
+    instr.text = 'TOC \\o "1-3" \\h \\z \\u'
+    fldChar2 = OxmlElement('w:fldChar'); fldChar2.set(qn('w:fldCharType'), 'separate')
+    t = OxmlElement('w:t'); t.text = "Table des matières : appuyez sur Ctrl+A puis F9 (ou clic droit > Mettre à jour les champs) pour l'actualiser dans Word."
+    fldChar3 = OxmlElement('w:fldChar'); fldChar3.set(qn('w:fldCharType'), 'end')
+    run = paragraph.add_run()
+    run._r.append(fldChar1); run._r.append(instr); run._r.append(fldChar2)
+    r2 = paragraph.add_run(t.text)
+    r2.font.color.rgb = RGBColor(0x99, 0x99, 0x99)
+
+# ───────────────────────── document ─────────────────────────
+
+doc = Document()
+
+# Styles
+st = doc.styles['Normal']
+st.font.name = 'Times New Roman'; st.font.size = Pt(12)
+st.element.rPr.rFonts.set(qn('w:eastAsia'), 'Times New Roman')
+pf = st.paragraph_format; pf.line_spacing = 1.5; pf.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+pf.space_after = Pt(6)
+
+def style_heading(name, size, bold=True, color=None, outline=None, upper=False):
+    s = doc.styles[name]
+    s.font.name = 'Times New Roman'; s.font.size = Pt(size); s.font.bold = bold
+    s.font.color.rgb = RGBColor(0, 0, 0) if color is None else color
+    s.paragraph_format.line_spacing = 1.5
+    s.paragraph_format.space_before = Pt(12); s.paragraph_format.space_after = Pt(6)
+    s.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.LEFT
+
+style_heading('Heading 1', 18)   # PARTIE
+style_heading('Heading 2', 16)   # CHAPITRE
+style_heading('Heading 3', 14)   # SECTION x.y
+h4 = doc.styles['Heading 4']
+h4.font.size = Pt(13); h4.font.name = 'Times New Roman'; h4.font.bold = True
+h4.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.LEFT
+h4.paragraph_format.line_spacing = 1.5
+h5 = doc.styles['Heading 5']
+h5.font.size = Pt(12); h5.font.name = 'Times New Roman'; h5.font.bold = True
+h5.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.LEFT
+h5.paragraph_format.line_spacing = 1.5
+# legende
+leg = doc.styles.add_style('Legende', WD_STYLE_TYPE.PARAGRAPH)
+leg.font.name = 'Times New Roman'; leg.font.size = Pt(11); leg.font.italic = True
+leg.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.CENTER
+
+# sections : 1=premières pages (romain) ; 2=corps (arabe) ; 3=annexes
+sA = doc.sections[0]
+for sec in doc.sections:
+    sec.page_width = Cm(21); sec.page_height = Cm(29.7)
+    sec.top_margin = Cm(2.5); sec.bottom_margin = Cm(2.5)
+    sec.left_margin = Cm(2.5); sec.right_margin = Cm(2.5)
+
+class Rsec:
+    """mini-API sur la section courante"""
+    def __init__(self, sec):
+        self.sec = sec
+
+def style_pager(section, numfmt, show=True):
+    section.footer.is_linked_to_previous = False
+    p = section.footer.paragraphs[0]
+    p.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+    for r in list(p.runs):
+        r._r.getparent().remove(r._r)
+    if show:
+        page_number_field(p, numfmt)
+    section.header.is_linked_to_previous = False
+    ph = section.header.paragraphs[0]
+    for r in list(ph.runs):
+        r._r.getparent().remove(r._r)
+    rh = ph.add_run('Rapport de stage — Application web de digitalisation de la gestion des plannings du personnel d’un établissement hôtelier')
+    rh.font.name = 'Times New Roman'; rh.font.size = Pt(10); rh.font.italic = True
+    ph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+
+# ───────────────────────── page de couverture ─────────────────────────
+
+pg = doc
+
+def cov_center(text, size, bold=False, italic=False, space_before=0, space_after=6):
+    p = pg.add_paragraph(); p.paragraph_format.space_before = Pt(space_before)
+    p.paragraph_format.space_after = Pt(space_after)
+    r = p.add_run(text)
+    r.font.name = 'Times New Roman'; r.font.size = Pt(size); r.bold = bold; r.italic = italic
+    return p
+
+logo_png = os.path.join(DIAG, 'logos.png')  # optionnel
+
+cov_center('RÉPUBLIQUE DE MADAGASCAR', 14, bold=True)
+cov_center('MINISTÈRE DE L’ENSEIGNEMENT SUPÉRIEUR ET DE LA RECHERCHE SCIENTIFIQUE', 12)
+cov_center('UNIVERSITÉ DE FIANARANTSOA', 14, bold=True)
+cov_center('ÉCOLE DE MANAGEMENT ET D’INNOVATION TECHNOLOGIQUE (EMIT)', 14, bold=True)
+cov_center('Département : Développement d’Application Internet et Intranet (DASI)', 12)
+p = pg.add_paragraph(); p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+r = p.add_run('[Emplacements réservés aux logos : Université de Fianarantsoa — EMIT — Établissement d’accueil]')
+r.font.size = Pt(10); r.italic = True; r.font.color.rgb = RGBColor(0x99,0x99,0x99)
+
+cov_center('', 12, space_after=12)
+cov_center('RAPPORT DE STAGE', 22, bold=True)
+cov_center('En vue de l’obtention du diplôme de Licence en informatique, parcours Développement d’Application Internet et Intranet (DASI)', 13)
+cov_center('', 10)
+cov_center('TITRE DU MÉMOIRE', 14, bold=True)
+cov_center('Conception et développement d’une application web de digitalisation de la gestion des plannings du personnel d’un établissement hôtelier', 16, bold=True)
+cov_center('Cas de l’établissement Zomatel (hôtellerie – restauration)', 12, italic=True)
+cov_center('', 10)
+cov_center('Présenté et soutenu par :', 12)
+cov_center(f'« Nom et prénoms de l’étudiant : {ADOC} »', 12, bold=True)
+cov_center('', 6)
+cov_center(f'Période de stage : {ADOC}   —   Maître de stage (entreprise) : {ADOC}', 11)
+cov_center(f'Établissement d’accueil : ZOMATEL — adresse : {ADOC}', 11)
+cov_center(f'Encadrant pédagogique : {ADOC}', 11)
+cov_center(f'Membres du jury : {ADOC} (président) — {ADOC} (rapporteur)', 11)
+cov_center('', 12)
+cov_center(f'Année universitaire : {ADOC}', 12, bold=True)
+
+# ───────────────────────── helper nouveau paginé ─────────────────────────
+
+def new_section_front(macro=False):
+    s = doc.add_section(WD_SECTION.NEW_PAGE)
+    for sec in doc.sections:
+        pass
+    return s
+
+def page_break():
+    doc.add_paragraph().add_run().add_break(WD_BREAK.PAGE)

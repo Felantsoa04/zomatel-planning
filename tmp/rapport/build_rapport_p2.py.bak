@@ -1,0 +1,239 @@
+# ───────────────────────── helpers contenus ─────────────────────────
+
+def H(cell_style, text, level=None):
+    """add heading with given docx style"""
+    p = doc.add_heading(text, level=0) if level == 0 else doc.add_paragraph(text, style=cell_style)
+    return p
+
+def partie(titre):
+    p = doc.add_paragraph(titre, style='Heading 1')
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    return p
+
+def chapitre(text):
+    p = doc.add_paragraph(text, style='Heading 2')
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    return p
+
+def section_h(text):
+    return doc.add_paragraph(text, style='Heading 3')
+
+def ssection(text):
+    return doc.add_paragraph(text, style='Heading 4')
+
+def sssection(text):
+    return doc.add_paragraph(text, style='Heading 5')
+
+def P(text, align=None, bold=False, size=12, space_after=6, first_indent=None):
+    p = doc.add_paragraph()
+    if align: p.alignment = align
+    r = p.add_run(text)
+    r.bold = bold; r.font.size = Pt(size)
+    p.paragraph_format.space_after = Pt(space_after)
+    if first_indent: p.paragraph_format.first_line_indent = Cm(first_indent)
+    return p
+
+def PU(items):
+    """liste à puces"""
+    for it in items:
+        p = doc.add_paragraph(it, style='List Bullet')
+        p.paragraph_format.line_spacing = 1.5
+        for r in p.runs: r.font.name = 'Times New Roman'; r.font.size = Pt(12)
+
+def Num(items):
+    for it in items:
+        p = doc.add_paragraph(it, style='List Number')
+        p.paragraph_format.line_spacing = 1.5
+        for r in p.runs: r.font.name = 'Times New Roman'; r.font.size = Pt(12)
+
+def table_caption(text):
+    p = doc.add_paragraph(text, style='Legende')
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    p.paragraph_format.space_after = Pt(2)
+    return p
+
+def fig_caption(text):
+    p = doc.add_paragraph(text, style='Legende')
+    p.paragraph_format.space_before = Pt(2)
+    return p
+
+def add_table(header, rows, col_widths_cm=None, font_size=11):
+    t = doc.add_table(rows=1, cols=len(header))
+    t.style = 'Table Grid'
+    t.alignment = WD_TABLE_ALIGNMENT.CENTER
+    hdr = t.rows[0].cells
+    for i, htxt in enumerate(header):
+        hdr[i].text = ''
+        run = hdr[i].paragraphs[0].add_run(htxt)
+        run.bold = True; run.font.size = Pt(font_size); run.font.name = 'Times New Roman'
+        set_cell_bg(hdr[i], 'D9D9D9')
+    for row in rows:
+        cells = t.add_row().cells
+        for i, val in enumerate(row):
+            cells[i].text = ''
+            run = cells[i].paragraphs[0].add_run(str(val))
+            run.font.size = Pt(font_size); run.font.name = 'Times New Roman'
+    if col_widths_cm:
+        for i, w in enumerate(col_widths_cm):
+            for row in t.rows:
+                row.cells[i].width = Cm(w)
+    return t
+
+def add_figure(path, caption, width_cm=15):
+    full = os.path.join(DIAG, path)
+    from PIL import Image
+    im = Image.open(full)
+    w, h = im.size
+    p = doc.add_paragraph(); p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    r = p.add_run()
+    if width_cm:
+        r.add_picture(full, width=Cm(width_cm))
+    fig_caption(caption)
+    return p
+
+# ───────────────────────── pages préliminaires (numérotation romaine) ─────────────────────────
+
+sec1 = Rsec(doc.sections[0])
+style_pager(doc.sections[0], 'lowerRoman')
+
+# --- PAGE DE GARDE (couverture en N&B) ---
+doc.add_page_break()
+cov_center('PAGE DE GARDE', 12, bold=True)
+cov_center('(', 10)
+cov_center('Version noir et blanc, à imprimer recto uniquement — en-tête de page : logos ; contenu identique à la page de couverture.', 11, italic=True)
+cov_center('N.B. : conformément au canevas, la page de garde reprend fidèlement la couverture, en noir et blanc.', 11, italic=True)
+P(f'Signe distinctif / fac-similé de signature facultatif : {ADOC}', align=WD_ALIGN_PARAGRAPH.CENTER)
+
+# --- CV ---
+doc.add_page_break()
+p = doc.add_paragraph('CURRICULUM VITAE', style='Heading 1'); p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+P(f'Photo récente (tenue correcte) : {ADOC}', align=WD_ALIGN_PARAGRAPH.CENTER)
+P(f'Nom et prénoms : {ADOC}', align=WD_ALIGN_PARAGRAPH.LEFT)
+P(f'Né(e) le : {ADOC}  —  à {ADOC}', align=WD_ALIGN_PARAGRAPH.LEFT)
+P(f'Adresse : {ADOC}  —  Téléphone : {ADOC}  —  Courriel : {ADOC}', align=WD_ALIGN_PARAGRAPH.LEFT)
+P('Diplômes et formations :', bold=True)
+Num([f'{ADOC} — année universitaire {ADOC}', f'{ADOC}', f'{ADOC}'])
+P('Expériences et stages :', bold=True)
+Num([f'Stage de {ADOC} — {ADOC}', 'Stage 3e année (Licence DASI) : Établissement ZOMATEL — digitalisation de la gestion des plannings du personnel'])
+P('Compétences :', bold=True)
+PU(['Développement web full stack : JavaScript (Next.js, React), Node.js/Express ;',
+    'Bases de données relationnelles : MariaDB (modélisation, requêtes SQL, triggers et vues) ;',
+    'Analyse et conception : UML, méthode de conception orientée objets ;',
+    'Gestion de versions : Git.'])
+
+# --- REMERCIEMENTS ---
+doc.add_page_break()
+p = doc.add_paragraph('REMERCIEMENTS', style='Heading 1'); p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+P('Avant toute chose, je tiens à exprimer ma profonde gratitude envers tous ceux qui, de près ou de loin, ont contribué au bon déroulement de ce stage et à l’élaboration du présent rapport.')
+P(f'Je remercie sincèrement mon maître de stage au sein de l’établissement ZOMATEL, {ADOC}, pour son accueil, pour la confiance qu’il m’a accordée et pour les multiples explications qui ont permis de cerner au plus près les réalités opérationnelles de la gestion des plannings du personnel de son établissement.')
+P(f'Je remercie également mon encadrant pédagogique, {ADOC}, pour la rigueur de ses consignes, pour la pertinence de ses remarques et pour la disponibilité dont il a fait preuve tout au long de la réalisation de ce travail.')
+P('Mes remerciements s’adressent aussi à l’ensemble du corps enseignant de l’EMIT, département DASI, pour la qualité de la formation reçue, ainsi qu’à l’administration de l’école pour son organisation et son suivi.')
+P('Enfin, je remercie mes camarades de promotion, le personnel des services de l’établissement ZOMATEL que j’ai eu à fréquenter pendant la phase d’analyse (cuisine, salle, réception, administration), ainsi que ma famille, pour leur soutien constant.')
+P(f'(Personnaliser librement les personnes citées : {ADOC}.)', align=WD_ALIGN_PARAGRAPH.RIGHT, size=10)
+
+# --- RÉSUMÉ + ABSTRACT ---
+doc.add_page_break()
+p = doc.add_paragraph('RÉSUMÉ', style='Heading 1'); p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+P('Dans l’hôtellerie-restauration, l’élaboration des plannings hebdomadaires du personnel reste, dans de nombreux établissements, un exercice essentiellement manuel : tableurs indépendants par service, calculs de heures faits de tête, transmissions par messagerie instantanée, et absence de circuit de validation formalisé. Ce fonctionnement engendre des erreurs de totaux, des conflits d’horaires non détectés, une couverture de service parfois insuffisante et une traçabilité quasi nulle des modifications.')
+P('Le présent rapport décrit la conception et le développement d’une application web destinée à digitaliser la gestion des plannings du personnel d’un établissement hôtelier, l’établissement ZOMATEL. L’application, structurée en trois tiers (interface Next.js/React, API REST Node.js/Express, base de données MariaDB), permet à chaque chef de service d’élaborer le planning hebdomadaire de son service dans une grille directement comparable à un tableur, avec calcul automatique des heures travaillées par employé (vues SQL) et comparaison à une référence hebdomadaire individualisée (44 h ou 48 h). Un circuit de validation formalisé relie ensuite le chef de service à la RH : soumission, contrôle, validation ou rejet motivé, avec notifications automatiques et historique horodaté de toutes les actions.')
+P('L’application couvre trois formats de saisie configurables par service (périodes fixes matin/après-midi/soir, horaire libre, shift par poste), la gestion des congés et récupérations, le contrôle de couverture par créneau, l’export des emplois du temps en Excel et une messagerie interne. Les règles de gestion sont appliquées au plus près des données, par des triggers MariaDB, en complément des contrôles réalisés côté serveur et côté client.')
+P('MOTS-CLÉS : planning du personnel ; hôtellerie ; digitalisation ; application web ; Next.js ; Node.js ; MariaDB ; validation RH ; heures de travail.')
+doc.add_page_break()
+p = doc.add_paragraph('ABSTRACT', style='Heading 1'); p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+P('In hotel and restaurant establishments, the weekly scheduling of staff still relies, in many places, on a mostly manual exercise: separate spreadsheets per department, mental calculation of worked hours, ad-hoc transmission through messaging apps, and no formal validation circuit. This leads to inaccurate totals, undetected schedule conflicts, insufficient service coverage and a nearly nonexistent audit trail of changes.')
+P('This report describes the design and development of a web application to digitize the staff scheduling of a hotel establishment, ZOMATEL. Built as a three-tier architecture (a Next.js/React interface, a Node.js/Express REST API and a MariaDB database), the application lets each department manager build the weekly schedule of his department in a spreadsheet-like grid, with automatic computation of worked hours per employee (SQL views) and a comparison against an individual weekly reference (44 h or 48 h). A formal validation workflow then connects the department manager with the HR office: submission, review, approval or rejection with justification, automatic notifications and a time-stamped audit log of every action.')
+P('The application supports three input formats configurable per department (fixed periods morning/afternoon/evening, free-hour grid, shift per station), the management of leave and compensations, coverage control per time slot, Excel exports of schedules and an internal messaging module. Business rules are enforced close to the data, through MariaDB triggers, in addition to server-side and client-side checks.')
+P('KEYWORDS: staff scheduling; hotel industry; digitization; web application; Next.js; Node.js; MariaDB; HR validation; working hours.')
+
+# --- LISTE DES FIGURES / TABLEAUX / SIGLES / GLOSSAIRE ---
+doc.add_page_break()
+p = doc.add_paragraph('LISTE DES FIGURES', style='Heading 1'); p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+figs = [
+ 'Figure 1.1 — Chronogramme de réalisation du projet (diagramme de Gantt).',
+ 'Figure 3.1 — Architecture trois tiers de l’application.',
+ 'Figure 4.1 — Diagramme de flux du processus actuel de gestion des plannings.',
+ 'Figure 4.2 — Diagramme de cas d’utilisation de l’application.',
+ 'Figure 5.1 — Diagramme de séquence système : soumission et validation d’un planning.',
+ 'Figure 5.2 — Diagramme de séquence système : authentification.',
+ 'Figure 5.3 — Modèle de domaine.',
+ 'Figure 6.1 — Diagramme de paquetages de l’application.',
+ 'Figure 6.2 — Diagramme de déploiement.',
+ 'Figure 6.3 — Modèle conceptuel des données (MCD).',
+ 'Figure 6.4 — Diagramme de classes backend.',
+]
+for f in figs:
+    P(f)
+doc.add_page_break()
+p = doc.add_paragraph('LISTE DES TABLEAUX', style='Heading 1'); p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+tbls = [
+ 'Tableau 3.1 — Moyens humains, matériels et logiciels nécessaires au projet.',
+ 'Tableau 3.2 — Résultat attendu (livrables).',
+ 'Tableau 4.1 — Critique de l’existant.',
+ 'Tableau 5.1 — Extrait du dictionnaire de données.',
+ 'Tableau 5.2 — Règles de gestion.',
+ 'Tableau 5.3 — Description textuelle du cas d’utilisation « Soumettre un planning à la RH ».',
+ 'Tableau 5.4 — Description textuelle du cas d’utilisation « Valider ou rejeter un planning soumis ».',
+ 'Tableau 6.1 — Synthèse de la base de données gestion_plannings_hotel.',
+ 'Tableau 6.2 — Principales règles métier appliquées par triggers MariaDB.',
+ 'Tableau 7.1 — Outils et technologies de réalisation.',
+ 'Tableau 9.1 — Comparaison de l’application avec des solutions existantes.',
+]
+for t in tbls:
+    P(t)
+doc.add_page_break()
+p = doc.add_paragraph('LISTE DES SIGLES ET ABRÉVIATIONS', style='Heading 1'); p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+sigles = [
+ ('API', 'Application Programming Interface (interface de programmation applicative)'),
+ ('BROUILLON', 'Premier état d’un planning, librement modifiable par le chef de service'),
+ ('CRF', 'Sigle non utilisé dans le corps du rapport (conservé comme entrée vide)'),
+ ('DASI', 'Développement d’Application Internet et Intranet (parcours de licence)'),
+ ('EMIT', 'École de Management et d’Innovation Technologique'),
+ ('ENUM', 'Type de colonne SQL n’acceptant qu’une liste finie de valeurs'),
+ ('HR / RH', 'Human Resources / Ressources Humaines'),
+ ('HTTP', 'HyperText Transfer Protocol (protocole de transfert du web)'),
+ ('JWT', 'JSON Web Token (jeton d’authentification)'),
+ ('MCD', 'Modèle Conceptuel des Données'),
+ ('MVC', 'Modèle-Vue-Contrôleur (motif d’architecture logicielle)'),
+ ('REST', 'REpresentational State Transfer (style d’architecture d’API web)'),
+ ('RH', 'Ressources Humaines'),
+ ('SDK', 'Software Development Kit'),
+ ('SOUMIS', 'État d’un planning transmis à la RH et en attente de décision'),
+ ('SQL', 'Structured Query Language (langage de requête des bases de données)'),
+ ('UML', 'Unified Modeling Language (langage de modélisation unifié)'),
+ ('VALIDE / REJETE', 'États finals d’un planning après décision de la RH'),
+]
+for sig, det in sigles:
+    p = doc.add_paragraph()
+    r1 = p.add_run(f'{sig} : '); r1.bold = True; r1.font.size = Pt(12)
+    r2 = p.add_run(det); r2.font.size = Pt(12)
+p = doc.add_paragraph()
+r = p.add_run(f'(La liste complète des états d’un planning est donnée dans la règle de gestion n°5 : {ADOC} à ajuster si nécessaire.)')
+r.font.size = Pt(10); r.italic = True
+
+doc.add_page_break()
+p = doc.add_paragraph('GLOSSAIRE', style='Heading 1'); p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+Glossary = [
+ ('Affectation', 'Statut d’un employé pour un jour donné d’un planning (TRAVAIL, REPOS, ABSENCE).'),
+ ('Besoins de couverture', 'Effectifs requis par jour et par créneau pour un service.'),
+ ('Couverture', 'Comparaison entre l’effectif requis et l’effectif réel previsto d’un créneau de service.'),
+ ('Créneau de travail', 'Période horizontale d’une journée (matin, après-midi, soir) avec heure d’entrée et heure de sortie.'),
+ ('Emploi du temps', 'Planning hebdomadaire validé, transformé en support de consultation et d’export Excel.'),
+ ('Grille du planning', 'Vue d’édition directe employé × jour du lundi au dimanche, façon tableur.'),
+ ('Message', 'Contenu textuel ou fichier échangé dans une conversation de la messagerie interne.'),
+ ('Notification', 'Message généré automatiquement par le système pour informer un utilisateur (décision, soumission).'),
+ ('Notification temps réel', 'Notification poussée en direct au client connecté via socket.io.'),
+ ('Permission', 'Droit d’accès associée à un rôle (côté serveur, chaque route vérifie sa permission requis).'),
+ ('Récupération', 'Heure de repos compensé enregistrée par le chef de service ou la RH.'),
+ ('Référence hebdomadaire', 'Volume d’heures de référence d’un employé (44 h ou 48 h) utilisé pour comparaison.'),
+ ('Service', 'Département de l’établissement (Cuisine Snack, Salle Snack, Patisserie & Pizza, ...).'),
+ ('Trigger', 'Programme SQL exécuté automatiquement au moment d’un insert ou d’un update en base.'),
+ ('Vue SQL', 'Requête enregistrée en base, calculant par exemple la durée totale d’un employé.'),
+]
+for term, defn in Glossary:
+    p = doc.add_paragraph()
+    r1 = p.add_run(f'{term} : '); r1.bold = True; r1.font.size = Pt(12)
+    r2 = p.add_run(defn); r2.font.size = Pt(12)
+
+doc.add_page_break()
+p = doc.add_paragraph('TABLE DES MATIÈRES', style='Heading 1'); p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+add_toc_field(doc.add_paragraph())

@@ -1,0 +1,72 @@
+@startuml
+skinparam defaultFontName "Times New Roman"
+skinparam defaultFontSize 18
+skinparam shadowing false
+skinparam actorStyle awesome
+
+left to right direction
+
+actor "Chef de service" as chef
+actor "RH" as rh
+actor "Utilisateur\nconnecte" as user
+
+rectangle "Zomatel Planning" {
+  usecase "Se connecter" as UC1
+  usecase "Consulter son profil\n(personnel)" as UC2
+  usecase "Consulter les services" as UC3
+  usecase "Gerer les fiches employes\n(son service)" as UC4
+  usecase "Gerer les fiches employes\n(tous services)" as UC5
+  usecase "Gerer les comptes\nutilisateurs" as UC6
+  usecase "Creer / modifier un\nplanning de son service" as UC7
+  usecase "Saisir / modifier la grille\nhebdomadaire" as UC8
+  usecase "Verifier un planning\n(heures + couverture)" as UC9
+  usecase "Soumettre un planning\na la RH" as UC10
+  usecase "Valider / rejeter un\nplanning soumis" as UC11
+  usecase "Rouvrir un planning" as UC12
+  usecase "Specifier les besoins\nde couverture" as UC13
+  usecase "Controler la couverture\nd'un planning" as UC14
+  usecase "Gerer les conges\net recuperations" as UC15
+  usecase "Consulter ses plannings\net ses horaires" as UC16
+  usecase "Consulter l'historique\ndes modifications" as UC17
+  usecase "Consulter la messagerie\ninterne" as UC18
+  usecase "Exporter un emploi du\ntemps (Excel)" as UC19
+  usecase "Consulter le dashboard\n(statistiques)" as UC20
+
+  user --> UC1
+  user --> UC2
+  user --> UC18
+
+  chef --> UC3
+  chef --> UC4
+  chef --> UC7
+  chef --> UC8
+  chef --> UC9
+  chef --> UC10
+  chef --> UC13
+  chef --> UC15
+
+  rh --> UC3
+  rh --> UC5
+  rh --> UC6
+  rh --> UC7
+  rh --> UC8
+  rh --> UC9
+  rh --> UC11
+  rh --> UC12
+  rh --> UC13
+  rh --> UC14
+  rh --> UC15
+  rh --> UC17
+  rh --> UC19
+  rh --> UC20
+}
+
+UC10 .> UC1 : <<include>>
+UC11 .> UC10 : <<precede>>
+UC12 .> UC11 : <<precede>>
+UC7 ..> UC8 : <<detail>>
+UC9 ..> UC8 : <<controle>>
+UC11 .> UC17 : <<trace>>
+UC10 .>rh: notification automatique
+UC11 .>chef: notification automatique
+@enduml

@@ -1,0 +1,26 @@
+@startuml
+skinparam defaultFontName "Times New Roman"
+skinparam defaultFontSize 18
+skinparam shadowing false
+actor "Utilisateur" as u
+participant "Page /login\n(Next.js)" as fe
+participant "API backend\n(Express)" as api
+database "MariaDB" as db
+
+u -> fe : saisit login + mot de passe
+fe -> api : POST /api/auth/login
+api -> db : SELECT utilisateur WHERE login
+db --> api : ligne utilisateur (hash bcrypt)
+api -> api : bcrypt.compare(mdp, hash)
+alt mot de passe invalide
+    api --> fe : 401 (message d'erreur)
+    fe --> u : "identifiants incorrects"
+else mot de passe correct
+    api -> api : jwt.sign({ id, role, service })
+    api --> fe : JWT + donnees utilisateur
+    fe -> api : GET /api/auth/me (Authorization : Bearer)
+    api -> api : authRequired verifie le JWT
+    api --> fe : profil + permissions effectives
+    fe --> u : redirection vers le dashboard
+end
+@enduml

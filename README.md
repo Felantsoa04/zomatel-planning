@@ -13,9 +13,9 @@ Application de gestion des plannings hebdomadaires des services hôteliers Zomat
 
 | Rôle | Droits |
 |---|---|
-| `RH` | Crée les services, employés et comptes ; valide ou rejette les plannings ; consulte l'emploi du temps |
-| `CHEF_SERVICE` | Crée les plannings de **son** service, saisit les affectations et créneaux, soumet à la RH |
-| `ADMIN` | Vision globale : gestion des services (suppression), consultation de tous les employés et comptes |
+| `RH` | Permissions par défaut : services, employés, comptes, validation et consultation des plannings |
+| `CHEF_SERVICE` | Permissions par défaut : gestion des employés et plannings de **son** service, soumission à la RH |
+| `ADMIN` | Permissions administratives par défaut ; l'accès global dépend des permissions attribuées |
 | `EMPLOYE` | Consultation personnelle uniquement : son profil, ses horaires, ses plannings |
 
 Workflow d'un planning : `BROUILLON` → (soumission chef) → `SOUMIS` → (RH) → `VALIDE` ou `REJETE`.
@@ -23,7 +23,9 @@ Workflow d'un planning : `BROUILLON` → (soumission chef) → `SOUMIS` → (RH)
 ## Sécurité et permissions (appliquées côté serveur)
 
 - **Toutes** les routes exigent un JWT (`authRequired`) — y compris `/api/services` (trou comblé).
-- **Chef de service** : le paramètre `id_service` du client est **ignoré** — le filtrage utilise `req.user.id_service` (employés, plannings, affectations, créneaux, grille, couverture). Accès à un planning d'un autre service → `403`.
+- **Interface** : la navigation et les actions visibles sont filtrées par les permissions du compte, relues depuis `/api/auth/me` ; le rôle ne propose que les permissions par défaut à la création. Les routes gardent leurs contrôles `requirePermission`.
+- **Export Emploi du temps** : réservé au rôle `RH` et à la permission `planning.export_edt` sur les exports simple et groupé. Sur une base existante, attribuer la permission avec `cd backend && node scripts/migrate-10-planning-export.js`.
+- **Périmètre des données** : le chef reste limité à son service ; un compte sans `planning.view_all` est limité au service qui lui est associé. Le service ne change pas le menu ni les actions.
 - **Employé** : accès limité à son espace personnel via `utilisateur.id_employe` ; aucune liste d'équipe, aucune écriture.
 - **Comptes** (`/api/auth/users`, RH + ADMIN) : création/modification/désactivation limitées au rôle `CHEF_SERVICE` (un chef = un service) ; suppression = désactivation (`actif=0`, aucune donnée effacée) ; le rôle n'est jamais modifiable par API.
 - **Employés** : création par un chef **forcée** dans son service ; transfert inter-service interdit au chef.
@@ -32,9 +34,12 @@ Workflow d'un planning : `BROUILLON` → (soumission chef) → `SOUMIS` → (RH)
 
 Émises automatiquement : soumission d'un planning → **tous les RH** ; décision RH (VALIDE/REJETE, avec motif) → **chef créateur** (+ copies RH/ADMIN). API personnelles : `GET /api/notifications`, `GET /api/notifications/non-lues/count` (badge 🔔), `PATCH /api/notifications/:id/lu`, `PATCH /api/notifications/marquer-tout-lu`. Toujours filtrées par `req.user.id_utilisateur`.
 
-Deux types d'affichage par service :
+Formats de planning configurés sur le service (le nom du service ne détermine pas le modèle) :
 - `PERIODES_FIXES` : matin / après-midi / soir avec entrée–sortie–durée (modèle du fichier Excel `EMPLOI DU TEMPS ZOMATEL`)
 - `HORAIRE_LIBRE` : grille jours × créneaux horaires définis par le chef de service
+- `SHIFT_POSTE` : grille jours × shifts × postes
+
+Sur la base active déjà installée, exécuter une fois `backend/database/09_service_model_types.sql` pour activer le type `SHIFT_POSTE` et convertir les anciens formats configurés implicitement par le nom en configuration explicite.
 
 ## Module « Gestion du planning » (saisie directe en grille)
 
@@ -92,6 +97,14 @@ Vues utiles :
 Comptes de test : `admin`/`admin123`, `rh`/`rh123`, `chef`/`chef123` (chef du service Réception).
 
 Le backend y est connecté via `DB_NAME=gestion_plannings_hotel` dans `backend/.env`.
+
+Pour une base active déjà installée, appliquer une fois la contrainte d'unicité des comptes Chef :
+
+```bash
+mysql -u root -p gestion_plannings_hotel < backend/database/10_one_chef_per_service.sql
+```
+
+Pour une base `zomatel_planning` existante, utiliser `backend/database/10_one_chef_per_service_legacy.sql` à la place. Ces migrations conservent les comptes existants et échouent sans les modifier si plusieurs comptes Chef sont déjà associés au même service ; résoudre alors ces doublons avant de relancer la migration.
 
 ## Ancienne base `zomatel_planning` (compatibilité)
 
@@ -178,9 +191,10 @@ NEXT_PUBLIC_API_URL=http://localhost:4000/api
 3. **Chef de service — planning** :
    - `/planning/new` : choisir lundi → dimanche (n° de semaine ISO calculé automatiquement)
    - `/planning/[id]` : cliquer sur une case employé × jour pour saisir le statut (Travail / Repos / Absence / Congé) et les créneaux (entrée/sortie par période)
-4. **Soumission** : bouton « Soumettre à la RH » (statut devient `SOUMIS`)
-5. **Validation RH** : boutons Valider / Rejeter avec motif (statut `VALIDE`/`REJETE`)
-6. **Emploi du temps** : vue reproduisant le modèle Excel — un bloc par jour (périodes en colonnes, entrée/sortie/durée), totaux par période/jour, bloc RECAP hebdomadaire avec alerte de dépassement, impression PDF via le bouton dédié.
+4. **Soumission** : le chef soumet son planning (statut `SOUMIS`) ; les RH reçoivent une notification.
+5. **Gestion des validations RH** : page `/validations` avec filtres par statut et une liste indiquant service, semaine, chef et date de soumission ; ouvrir un planning pour consulter les horaires, postes, absences et totaux, puis le valider ou le rejeter avec un motif obligatoire.
+6. **Retour au chef** : le motif du rejet reste consultable et le planning `REJETE` peut être corrigé puis resoumis ; l'historique conserve les soumissions et décisions avec leur auteur et leur date.
+7. **Emploi du temps** : seuls les comptes `RH` disposant de `planning.export_edt` peuvent exporter les plannings `VALIDE` en Excel ; l'export multi-plannings conserve le regroupement existant par semaine. L'impression PDF des plannings validés reste disponible.
 
 ## Structure du projet
 

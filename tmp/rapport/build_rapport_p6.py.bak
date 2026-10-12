@@ -1,0 +1,323 @@
+partie('PARTIE 3 : MISE EN ŒUVRE ET RÉSULTATS')
+
+chapitre('CHAPITRE 7 : MISE EN ŒUVRE')
+section_h('7.1. Architecture du système')
+P('L’implémentation reprend exactement l’architecture de conception : deux processus (frontend Next.js sur le port 3000, API Express sur le port 4000) et une base MariaDB. Les échanges internes se font en JSON sur HTTP ; les notifications temps réel (postes connectés) passent par socket.io côté backend et socket.io-client côté frontend. Le stockage des photos de profil et des pièces jointes de la messagerie se fait dans le dossier uploads du backend, servi par multer.')
+ssection('7.1.1. Organisation du backend')
+P('Le backend est organisé par responsabilités :')
+PU(['src/routes : définition des points d’entrée REST par domaine (auth, services, employés, plannings, affectations, créneaux, types d’horaires, récupérations, messagerie, notifications) ;',
+    'src/controllers : logique de traitement par domaine (soumission, validation, grille, couverture, export EDT, statistiques d’heures…) ;',
+    'src/middleware : authRequired (JWT) et requirePermission (permissions par rôle) ;',
+    'src/services : services encapsulés (emploiDuTempsExcel pour l’export, emailService pour l’oubli de mot de passe) ;',
+    'src/socket : notifications temps réel ;',
+    'src/config : configuration centralisée (connexion base, secret JWT).'])
+ssection('7.1.2. Organisation du frontend')
+P('Le frontend suit l’App Router de Next.js : chaque page (dashboard, planning, validations, employees, statistiques, archives, messagerie, paramètres, utilisateurs, profile) est un dossier de src/app ; les composants d’interface sont regroupés dans src/components (grilles du planning, éditeurs par format, navbar, notifications, graphiques du dashboard…) ; les utilitaires transverses sont dans src/lib (client API avec jeton JWT, gestion d’authentification, permissions, i18n).')
+ssection('7.1.3. Authentification et permissions')
+PU(['Toutes les routes exigent un jeton JWT valide (middleware authRequired), y compris /api/services ;',
+    'Le jeton encode l’identité, le rôle et le service de l’utilisateur ; il est vérifié à chaque appel de l’API ;',
+    'Les mots de passe sont stockés hachés (bcrypt), jamais en clair ;',
+    'Les permissions effectives sont relues à partir de /api/auth/me, ce qui permet à la navigation du frontend de n’afficher que les actions autorisées, tout en gardant la décision finale côté serveur (requirePermission) ;',
+    'Le chef de service reste limité à son service : un compte sans la permission planning.view_all ne voit que le service qui lui est associé.'])
+section_h('7.2. Configuration des outils de conception')
+PU(['PlantUML : diagrams en textual-généré, compilés en PNG pour le rapport ;',
+    'Visual Studio Code : extensions JavaScript/React et SQL ;',
+    'Git : gestion de versions, dépôt local du projet ;',
+    'HeidiSQL (fourni avec Laragon) : exploration visuelle de la base MariaDB pendant le développement.'])
+section_h('7.3. Génération de la base de données')
+P('La base gestion_plannings_hotel est créée par exécution de deux scripts SQL fournis dans backend/database :')
+P('mysql -u root -p < backend/database/gestion_plannings_hotel_schema.sql', align=WD_ALIGN_PARAGRAPH.LEFT, size=10)
+P('mysql -u root -p < backend/database/gestion_plannings_hotel_seed.sql', align=WD_ALIGN_PARAGRAPH.LEFT, size=10)
+P('Le script de schéma crée la base, les 16 tables, les 4 vues de calcul et les 9 triggers de contrôle ; le script de jeu de données insère les services, les comptes de démonstration, les employés et quelques plannings d’exemple, dont la structure reprend celle du fichier Excel de référence de l’établissement (ex. : ANYAH, entrée 06:00, sortie 12:00, etc.). Des scripts de migration complémentaires activent des fonctionnalités sur une base existante (09_service_model_types.sql pour les formats SHIFT_POSTE, 10_one_chef_per_service.sql pour l’unicité du chef par service, migrate-10-planning-export.js pour la permission d’export).')
+section_h('7.4. Configuration de l’environnement de développement')
+P('1) dans backend : npm install, puis configuration du fichier .env (connexion MariaDB, secret JWT), puis npm run dev (nodemon) ;')
+P('2) dans frontend : npm install, configuration de l’URL de l’API, puis npm run dev (next dev) ;')
+P('3) base : création par les scripts SQL ci-dessus, accessible via MariaDB 12.3 de Laragon ;')
+P('4) accès : http://localhost:3000 pour l’application, http://localhost:4000 pour l’API.')
+P('Les comptes de démonstration fournis couvrent chaque rôle (admin123, rh123, chef123, employe123 selon README) et permettent de tester le comportement de chaque profil.')
+section_h('7.5. Extraits de code des fonctionnalités principales')
+ssection('7.5.1. Authentification (login) et génération du JWT')
+P('Extrait authentifié de la méthode de connexion (backend/src/controllers/authController.js), abrégé pour le rapport :', size=11)
+
+code_login = '''// Post /api/auth/login
+const user = await db.query(
+  'SELECT * FROM utilisateur WHERE login = ? AND actif = 1 LIMIT 1', [login]);
+if (!user.length || !(await bcrypt.compare(motDePasse, user[0].mot_de_passe)))
+  return res.status(401).json({ message: 'Identifiants invalides' });
+const token = jwt.sign(
+  { id: user[0].id_utilisateur, role: user[0].role, service: user[0].service_id },
+  process.env.JWT_SECRET, { expiresIn: '8h' });
+res.json({ token, utilisateur: sanitize(user[0]) });'''
+
+p = doc.add_paragraph()
+r = p.add_run(code_login)
+r.font.name = 'Consolas'; r.font.size = Pt(10)
+p.paragraph_format.line_spacing = 1.0
+p.paragraph_format.left_indent = Cm(0.75)
+p.paragraph_format.space_before = Pt(4); p.paragraph_format.space_after = Pt(10)
+
+ssection('7.5.2. Sauvegarde de la grille du planning avec réponse 207')
+P('La sauvegarde de grille (planningGrilleController.js) applique ligne par ligne les modifications, et remonte cellule par cellule les refus issus des triggers :', size=11)
+
+code_grille = '''// PUT /api/plannings/:id/grille
+const results = []; let refused = 0;
+for (const cell of cells) {
+  try { await applyCellule(cell); results.push({ cell: cell.ref, ok: true }); }
+  catch (e) {
+    refused++;
+    results.push({ cell: cell.ref, ok: false, error: e.message });
+  }
+}
+if (refused === cells.length) return res.json({ partial: false, results });
+return res.status(207).json({ partial: true, results });'''
+
+p = doc.add_paragraph()
+r = p.add_run(code_grille)
+r.font.name = 'Consolas'; r.font.size = Pt(10)
+p.paragraph_format.line_spacing = 1.0
+p.paragraph_format.left_indent = Cm(0.75)
+p.paragraph_format.space_before = Pt(4); p.paragraph_format.space_after = Pt(10)
+
+ssection('7.5.3. Contrôle en base : trigger d’interdiction de chevauchement')
+P('Extrait de trg_creneau_bi (backend/database/gestion_plannings_hotel_schema.sql), qui refuse l’enregistrement d’un créneau chevauchant un créneau existant du même employé :', size=11)
+
+code_trigger = '''CREATE TRIGGER trg_creneau_bi BEFORE INSERT ON creneau_travail
+FOR EACH ROW BEGIN
+  DECLARE n INT;
+  SELECT COUNT(*) INTO n FROM creneau_travail c JOIN affectation a
+    ON c.affectation_id = a.id_affectation
+   WHERE a.employe_id = (SELECT employe_id FROM affectation
+                          WHERE id_affectation = NEW.affectation_id)
+     AND a.date = (SELECT date FROM affectation
+                    WHERE id_affectation = NEW.affectation_id)
+     AND c.id_creneau <> NEW.id_creneau
+     AND NEW.heure_debut < c.heure_fin
+     AND c.heure_debut < NEW.heure_fin;
+  IF n > 0 THEN
+    SIGNAL SQLSTATE '45000'
+      SET MESSAGE_TEXT = 'Chevauchement de créneaux interdit';
+  END IF;
+END'''
+
+p = doc.add_paragraph()
+r = p.add_run(code_trigger)
+r.font.name = 'Consolas'; r.font.size = Pt(10)
+p.paragraph_format.line_spacing = 1.0
+p.paragraph_format.left_indent = Cm(0.75)
+p.paragraph_format.space_before = Pt(4); p.paragraph_format.space_after = Pt(10)
+
+ssection('7.5.4. Calcul automatique des heures (vues SQL)')
+P('Extrait de v_duree_creneau puis de v_total_hebdo_employe :', size=11)
+
+code_vues = '''CREATE OR REPLACE VIEW v_duree_creneau AS
+SELECT id_creneau,
+       TIMESTAMPDIFF(MINUTE, heure_debut, heure_fin) / 60.0 AS duree
+  FROM creneau_travail;
+
+CREATE OR REPLACE VIEW v_duree_jour AS
+SELECT a.id_affectation, a.planning_id, a.employe_id, a.date,
+       COALESCE(SUM(dc.duree), 0) AS duree_jour
+  FROM affectation a
+  LEFT JOIN creneau_travail c ON c.affectation_id = a.id_affectation
+  LEFT JOIN v_duree_creneau dc ON dc.id_creneau = c.id_creneau
+ GROUP BY a.id_affectation;
+
+CREATE OR REPLACE VIEW v_total_hebdo_employe AS
+SELECT planning_id, employe_id, SUM(duree_jour) AS total_hebdo
+  FROM v_duree_jour GROUP BY planning_id, employe_id;'''
+
+p = doc.add_paragraph()
+r = p.add_run(code_vues)
+r.font.name = 'Consolas'; r.font.size = Pt(10)
+p.paragraph_format.line_spacing = 1.0
+p.paragraph_format.left_indent = Cm(0.75)
+p.paragraph_format.space_before = Pt(4); p.paragraph_format.space_after = Pt(10)
+
+ssection('7.5.5. Export Excel de l’emploi du temps (service)')
+P('L’export (services/emploiDuTempsExcel.js) construit le classeur Excel réservé RH + permission planning.export_edt : une feuille par service, en respectant la structure du fichier historique de l’établissement (créneaux matin / après-midi / soir, durée calculée).', size=11)
+P('Côté frontend, la grille de saisie (components/PlanningEditorShiftPoste.js, PlanningEditorHoraireLibre.js, AffectationsHoraireLibre.js) utilise une structure simple : chaque cellule se modifie par un clic, les totaux hebdomadaires se recalculent à partir de la réponse du serveur (v_total_hebdo_employe), et la comparaison à la référence se traduit par une alerte visuelle de dépassement.', size=11)
+
+chapitre('CHAPITRE 8 : PRÉSENTATION DE L’APPLICATION')
+P('L’interface se parcourt selon une ligne de démonstration : connexion → dashboard → gestion du planning → soumission → validation RH → consultation / export. Les figures ci-dessous illustrent cette logique. Les captures d’écran actualisées sont à insérer à l’emplacement indiqué (cf. ANNEXE pour la démarche).')
+for i, (titre, note) in enumerate([
+ ('Page de connexion', 'Saisie du login et du mot de passe ; redirection vers le dashboard après authentification JWT.'),
+ ('Tableau de bord (dashboard)', 'Vue synthétique : plannings en attente, notifications, accès rapide à la « Gestion du planning » ; statistiques d’heures et graphiques.'),
+ ('Gestion du planning (grille hebdomadaire)', 'Saisie directe façon Excel : service du chef pré-sélectionné, semaine S-2 à S+10, cellules employé × jour (horaire libre ou créneaux fixes), totaux d’heures et alertes de dépassement.'),
+ ('Statuts et soumission', 'Actions « Enregistrer brouillon », « Vérifier le planning », « Soumettre à la RH » ; statut affiché par badge (BROUILLON, SOUMIS…).'),
+ ('Validation RH', 'File des plannings soumis, consultation, validation ou rejet motivé, notification automatique au chef.'),
+ ('Gestion des employés', 'Fiches par service : nom, matricule optionnel, statut TITULAIRE/STAGIAIRE, référence hebdomadaire ; création réservée au rôle autorisé.'),
+ ('Messagerie interne et notifications', 'Conversations, pièces jointes, badge de notifications non lues.'),
+]):
+    ssection(f'8.{i+1}. {titre}')
+P(f'Capture d’écran de l’interface — {ADOC} : insérer ici la capture correspondante (répertoire captures/ ou à générer en phase de finition).', size=10)
+
+chapitre('CHAPITRE 9 : ÉVALUATION ET SUGGESTIONS')
+section_h('9.1. Évaluation de l’application (comparaison avec des solutions existantes)')
+table_caption('Tableau 9.1 — Comparaison de l’application avec des solutions existantes')
+add_table(['Critère', 'Plannings Excel actuels', 'Application Zomatel Planning'],
+ [ ['Calcul des heures', 'Formules de tableur, erreurs fréquentes', 'Automatique par vues SQL, jamais saisi'],
+   ['Circuit de validation', 'Aucun', 'Formalisé (BROUILLON → SOUMIS → VALIDE/REJETE)'],
+   ['Traçabilité des modifications', 'Aucune', 'Historique horodaté de toutes les actions'],
+   ['Conflits d’horaires', 'Détectés visuellement (ou pas)', 'Refus automatique en base (trigger)'],
+   ['Couverture de service', 'Vérification manuelle', 'Comparaison automatique effectif requis / réel'],
+   ['Notifications', 'Par WhatsApp ou déplacement', 'Ciblées et temps réel (socket.io)'],
+   ['Export à la paie', 'Consolidation manuelle', 'Export Excel structuré par service et par semaine'],
+   ['Dépendance réseau/serveur', 'Aucune (fichiers locaux)', 'Nécessite un serveur applicatif et la base installée'],
+ ], col_widths_cm=[4.6, 5.8, 6.2])
+P('Cette comparaison montre que l’application répond point par point aux limites relevées dans l’analyse de l’existant. Elle ne remplace pas la rigueur des responsables : elle rend les contrôles automatiques et l’information partagée.')
+section_h('9.2. Contributions académiques et professionnelles')
+PU(['Académiques : mise en pratique complète d’un cycle de développement (analyse, conception UML, développement client-serveur, tests), apprentissage des vues et triggers MariaDB, exploitation d’une architecture REST sécurisée par JWT ;',
+    'Professionnelles : découverte du fonctionnement concret d’un établissement hôtelier (services, contraintes d’horaires, paie), capacité d’adaptation aux règles de gestion réelles plutôt qu’à un modèle théorique, dialogue avec des utilisateurs non informaticiens.'])
+section_h('9.3. Limitations de l’étude et pistes de recherche futures')
+ssection('9.3.1. Limites')
+PU(['Pas de rôle ADMIN prévu dans le système cible, conformément au cahier des charges ; le rôle reste néanmoins présent dans le schéma de la base (cf. compte de démonstration) ;',
+    'Pas de sous-catégorie d’absence (pas de distinction congé / maladie / congé sans solde) ;',
+    'Pas de contrôle obligatoire d’un volume horaire journalier fixe (pas de règle des 8 h/jour) ;',
+    'Les employés ne disposent pas de compte de connexion et ne peuvent pas demander eux-mêmes une modification ou une récupération ;',
+    'Le déploiement cible reste local (Laragon) ; la mise en production sur un serveur de l’établissement et les sauvegardes restent à organiser ;',
+    'Les captures d’écran finales et les dates exactes du stage restent à compléter dans le présent rapport.'])
+ssection('9.3.2. Perspectives')
+PU(['Portail employé : consultation de son planning et demande de récupération, avec notification au chef de service ;',
+    'Application mobile de consultation ;',
+    'Planification pluri-hebdomadaire (vue mensuelle, prévision des heures sur plusieurs semaines) ;',
+    'Statistiques avancées (heures par service, taux de couverture, tendances) et exports élargis ;',
+    'Intégration avec la paie ;',
+    'Internationalisation complète de l’interface (bases déjà en places via /lib/i18n.js).'])
+
+# ───────────────────────── CONCLUSION ─────────────────────────
+doc.add_page_break()
+p = doc.add_paragraph('CONCLUSION GÉNÉRALE ET PERSPECTIVES', style='Heading 1'); p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+P('Ce stage avait pour objet la digitalisation de la gestion des plannings du personnel de l’établissement ZOMATEL. Partant d’un processus manuel constitué de fichiers Excel indépendants par service, il a abouti à une application web structurée en trois tiers (Next.js 14, API Node.js/Express, base MariaDB) qui couvre le cycle complet : saisie en grille façon tableur, calcul automatique des heures par des vues SQL, contrôles de cohérence en base par des triggers, circuit de validation formel entre chefs de service et RH, notifications automatiques et temps réel, traçabilité horodatée des actions et export Excel des emplois du temps.')
+P('La solution retenue correspond aux règles de gestion observées sur le terrain et formalisées dans le cahier des charges : jalonnement des statuts (BROUILLON, SOUMIS, VALIDE, REJETE), identité simplifiée des employés (nom, matricule optionnel, statut titulaire ou stagiaire), référence hebdomadaire de 44 ou 48 heures avec alerte de dépassement sans blocage, gestion des repos, absences, congés et récupérations, contrôle de couverture par créneau.')
+P('Les points forts de l’application développée sont : l’automatisation complète des calculs (aucun total saisi par l’utilisateur), la fiabilité au plus près des données (triggers MariaDB), la traçabilité de bout en bout, la délimitation claire des responsabilités (un chef = un service), l’ergonomie de saisie comparable à un tableur, et l’extensibilité (nouveaux services et formats de planning sans modification du modèle de données).')
+P('Les difficultés rencontrées lors de la mise en œuvre tiennent essentiellement à trois points : la modélisation des règles de gestion réelles (qui devaient correspondre exactement à la pratique de l’établissement, non au contraire d’un modèle théorique), la mise en cohérence des contrôles entre client, serveur et base (la réponse HTTP 207 refusée cellule par cellule a demandé plusieurs itérations), et la contrainte matérielle de travailler sur un environnement local Windows (Laragon) tout en respectant les contraintes du parc de l’établissement.')
+P('En perspectives, la poursuite de ce travail pourrait porter sur un portail employé (consultation de son planning, demande de récupération), une application mobile, une planification pluri-hebdomadaire, des statistiques avancées et une intégration avec la paie. Plus globalement, ce stage confirme l’intérêt, pour une petite structure, d’une digitalisation ciblée : une application simple, adaptée aux usages réels, et des règles rendues automatiques valent mieux qu’un outil généraliste configuré à moitié.')
+
+# ───────────────────────── BIBLIOGRAPHIE / WEBOGRAPHIE ─────────────────────────
+doc.add_page_break()
+p = doc.add_paragraph('BIBLIOGRAPHIE', style='Heading 1'); p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+biblio = [
+ 'OMG, 2017. OMG Unified Modeling Language (OMG UML), version 2.5.1 [en ligne]. Object Management Group. Disponible sur : <https://www.omg.org/spec/UML/2.5.1> (consulté le 08/10/2026).',
+ 'Node.js Foundation, 2026. Node.js v22 documentation [en ligne]. Disponible sur : <https://nodejs.org/docs/latest-v22.x/api/> (consulté le 05/10/2026).',
+ 'Express, 2026. Express 4.x API Reference [en ligne]. OpenJS Foundation. Disponible sur : <https://expressjs.com/en/4x/api.html> (consulté le 05/10/2026).',
+ 'Next.js, 2026. Next.js 14 documentation [en ligne]. Vercel. Disponible sur : <https://nextjs.org/docs/14> (consulté le 05/10/2026).',
+ 'React, 2026. React 18 documentation [en ligne]. Meta Platforms. Disponible sur : <https://react.dev/> (consulté le 05/10/2026).',
+ 'MariaDB Corporation, 2026. MariaDB Server documentation [en ligne]. Disponible sur : <https://mariadb.com/kb/en/documentation/> (consulté le 05/10/2026).',
+ 'Auth0 Inc., 2024. JSON Web Token (JWT) — RFC 7519 [en ligne]. IETF. Disponible sur : <https://datatracker.ietf.org/doc/html/rfc7519> (consulté le 06/10/2026).',
+ 'Provos N. & Mazières D., 1999. A future-adaptable password scheme. In Proceedings of the 1999 USENIX Annual Technical Conference (FREENIX Track). Monterey : USENIX Association, pp. 81-91.',
+ 'Fielding R., 2000. Architectural styles and the design of network-based software architectures. Th. doct. : Inf. : Irvine : University of California, Irvine, 180 p.',
+]
+for b in biblio:
+    p = doc.add_paragraph(b)
+    p.paragraph_format.left_indent = Cm(1)
+    p.paragraph_format.first_line_indent = Cm(-1)
+    p.paragraph_format.line_spacing = 1.5
+p = doc.add_paragraph()
+r = p.add_run(f'N.B. : les dates de consultation sont à actualiser par l’étudiant au moment de la soutenance ({ADOC}). Les références suivent le modèle demandé par le canevas (Nom, année. Titre en italique. [en ligne]. Disponible sur : <URL> (consulté le …)).')
+r.font.size = Pt(10); r.italic = True
+
+doc.add_page_break()
+p = doc.add_paragraph('WEBOGRAPHIE', style='Heading 1'); p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+webo = [
+ 'Wikipedia, 2026. Planning des ressources humaines [en ligne]. Disponible sur : <https://fr.wikipedia.org/wiki/Planning_des_ressources_humaines> (consulté le 06/10/2026).',
+ 'OpenJS Foundation, 2026. socket.io documentation [en ligne]. Disponible sur : <https://socket.io/docs/v4/> (consulté le 06/10/2026).',
+ 'Vercel, 2026. Next.js App Router documentation [en ligne]. Disponible sur : <https://nextjs.org/docs/app> (consulté le 06/10/2026).',
+ 'MySQL / MariaDB, 2026. CREATE TRIGGER statement [en ligne]. MariaDB Knowledge Base. Disponible sur : <https://mariadb.com/kb/en/create-trigger/> (consulté le 06/10/2026).',
+ 'Laragon, 2026. Laragon documentation [en ligne]. Disponible sur : <https://laragon.org/docs/> (consulté le 06/10/2026).',
+]
+for b in webo:
+    p = doc.add_paragraph(b)
+    p.paragraph_format.left_indent = Cm(1)
+    p.paragraph_format.first_line_indent = Cm(-1)
+    p.paragraph_format.line_spacing = 1.5
+
+# ───────────────────────── GLOSSAIRE (fin) + ANNEXES ─────────────────────────
+doc.add_page_break()
+p = doc.add_paragraph('ANNEXES', style='Heading 1'); p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+P('Les annexes suivantes sont annoncées dans le corps du texte :')
+PU(['Annexe A — Structure complète de la base de données gestion_plannings_hotel (script SQL de schéma).',
+    'Annexe B — Jeu de données de démonstration (extrait du script de seed).',
+    'Annexe C — Extrait du fichier Excel de référence de l’établissement (semaine 37 de 2026, feuille Cuisine Snack).'])
+P('(voir Annexe A ci-dessous), (voir Annexe B ci-dessous) ; le contenu est présenté dans les pages suivantes, paginées en continuation du rapport.')
+
+doc.add_page_break()
+p = doc.add_paragraph('ANNEXE A — STRUCTURE DE LA BASE DE DONNÉES', style='Heading 2'); p.alignment = WD_ALIGN_PARAGRAPH.LEFT
+P('Extrait du script backend/database/gestion_plannings_hotel_schema.sql (tables principales) :')
+code_annexa = '''CREATE TABLE IF NOT EXISTS service (
+  id_service     INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  nom_service    VARCHAR(100) NOT NULL,
+  type_affichage ENUM('PERIODES_FIXES','HORAIRE_LIBRE','SHIFT_POSTE')
+                 NOT NULL DEFAULT 'PERIODES_FIXES',
+  description    VARCHAR(255) DEFAULT NULL,
+  date_creation  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_service_nom (nom_service)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS utilisateur (
+  id_utilisateur  INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  nom_utilisateur VARCHAR(100) NOT NULL,
+  prenom          VARCHAR(100) DEFAULT NULL,
+  login           VARCHAR(100) NOT NULL,
+  mot_de_passe    VARCHAR(255) NOT NULL,               -- hash bcrypt
+  role            ENUM('ADMIN','RH','CHEF_SERVICE') NOT NULL,
+  service_id      INT UNSIGNED DEFAULT NULL,
+  chef_service_unique_id INT UNSIGNED GENERATED ALWAYS AS
+    (CASE WHEN role = 'CHEF_SERVICE' THEN service_id ELSE NULL END) PERSISTENT,
+  actif           TINYINT(1) NOT NULL DEFAULT 1,
+  UNIQUE KEY uq_utilisateur_login (login),
+  UNIQUE KEY uq_utilisateur_chef_service (chef_service_unique_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS employe (
+  id_employe      INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  matricule       VARCHAR(50) DEFAULT NULL,
+  nom             VARCHAR(150) NOT NULL,
+  statut          ENUM('TITULAIRE','STAGIAIRE') NOT NULL DEFAULT 'TITULAIRE',
+  fonction        VARCHAR(100) DEFAULT NULL,
+  service_id      INT UNSIGNED NOT NULL,
+  reference_hebdo DECIMAL(5,2) NOT NULL DEFAULT 44.00,
+  date_entree     DATE DEFAULT NULL,
+  actif           TINYINT(1) NOT NULL DEFAULT 1,
+  CONSTRAINT chk_employe_reference CHECK (reference_hebdo > 0 AND reference_hebdo <= 60)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;'''
+p = doc.add_paragraph()
+r = p.add_run(code_annexa)
+r.font.name = 'Consolas'; r.font.size = Pt(8.5)
+p.paragraph_format.line_spacing = 1.0
+p.paragraph_format.left_indent = Cm(0.6)
+
+doc.add_page_break()
+p = doc.add_paragraph('ANNEXE B — JEU DE DONNÉES DE DÉMONSTRATION (EXTRAIT)', style='Heading 2'); p.alignment = WD_ALIGN_PARAGRAPH.LEFT
+P('Les comptes de démonstration fournis avec la base (script de seed) couvrent chaque rôle :')
+table_caption('Tableau B.1 — Comptes de démonstration')
+add_table(['Login', 'Mot de passe', 'Rôle'],
+ [ ['admin', 'admin123', 'ADMIN'],
+   ['rh', 'rh123', 'RH'],
+   ['chef', 'chef123', 'CHEF_SERVICE (Réception)'],
+   ['employe', 'employe123', 'EMPLOYE (lié à RAMORA)'],
+ ], col_widths_cm=[4, 5, 8])
+P('Jeu d’employés de démonstration (extrait, repris de la pratique de l’établissement) : matricules P477 ANYAH (06:00-12:00), P522 AVOTRA (10:00-14:00 et 18:00-22:00), P543 AUGUSTIN (14:00-18:00 et 18:00-22:00), etc.')
+
+doc.add_page_break()
+p = doc.add_paragraph('ANNEXE C — FICHIER EXCEL DE RÉFÉRENCE (EXTRAIT)', style='Heading 2'); p.alignment = WD_ALIGN_PARAGRAPH.LEFT
+P('Structure du fichier « EMPLOI DU TEMPS ZOMATEL WEEK 37_2026.xlsx », feuille « CUISINE SNACK », dont l’application reprend le modèle (format PERIODES_FIXES) est la suivante, pour chaque employé :')
+table_caption('Tableau C.1 — Structure du fichier de référence (feuille Cuisine Snack)')
+add_table(['Matricule', 'Nom', 'matin entrée', 'matin sortie', 'durée', 'après-midi entrée', 'après-midi sortie', 'durée', 'soir entrée', 'soir sortie'],
+ [ ['P477', 'ANYAH', '06:00', '12:00', '6:00', '12:00', '14:00', '2:00', '', ''],
+   ['P522', 'AVOTRA', '10:00', '14:00', '4:00', '', '', '0:00', '18:00', '22:00'],
+   ['P543', 'AUGUSTIN', '', '', '0:00', '14:00', '18:00', '4:00', '18:00', '22:00'],
+   ['P404', 'EDHINO', '06:00', '12:00', '6:00', '12:00', '14:00', '2:00', '', ''],
+   ['P472', 'HERMANN', '06:00', '12:00', '6:00', '12:00', '14:00', '2:00', '', ''],
+ ], col_widths_cm=[1.6, 1.9, 1.6, 1.6, 1.2, 1.7, 1.6, 1.2, 1.6, 1.6], font_size=9)
+
+# ───────────────────────── RÉSUMÉ DOSSIERS DE COUVERTURE ─────────────────────────
+doc.add_page_break()
+p = doc.add_paragraph('RÉSUMÉ + MOTS-CLÉS (COUVERTURE DE DOS)', style='Heading 1'); p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+P('Conformément au canevas, les versions française et anglaise du résumé et des mots-clés figurent également sur la couverture de dos du rapport imprimé. Elles reprennent, sans en modifier le contenu, le Résumé et l’Abstract figurant en pages préliminaires de ce rapport.')
+P('MOTS-CLÉS : planning du personnel ; hôtellerie ; digitalisation ; application web ; Next.js ; Node.js ; MariaDB ; validation RH ; heures de travail.')
+P('KEYWORDS: staff scheduling; hotel industry; digitization; web application; Next.js; Node.js; MariaDB; HR validation; working hours.')
+
+# save
+os.makedirs(os.path.dirname(OUT), exist_ok=True)
+doc.save(OUT)
+print('OK, saved to', OUT)

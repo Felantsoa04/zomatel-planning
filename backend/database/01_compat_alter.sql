@@ -7,10 +7,10 @@
 USE zomatel_planning;
 
 -- ---------------------------------------------------------------------
--- SERVICE : type d'affichage du planning (periodes fixes ou horaire libre)
+-- SERVICE : type d'affichage du planning, independant du nom du service
 -- ---------------------------------------------------------------------
 ALTER TABLE service
-  ADD COLUMN type_affichage ENUM('PERIODES_FIXES','HORAIRE_LIBRE')
+  ADD COLUMN type_affichage ENUM('PERIODES_FIXES','HORAIRE_LIBRE','SHIFT_POSTE')
     NOT NULL DEFAULT 'PERIODES_FIXES' AFTER nom_service;
 
 -- ---------------------------------------------------------------------

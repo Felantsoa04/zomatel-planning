@@ -1,0 +1,383 @@
+=== PAGE 1 ===
+1 
+ 
+STRUCTURE DU MEMOIRE / RAPPORT DE STAGE 
+ 
+ 
+ 
+A L’ATTENTION DES ETUDIANTS 
+ 
+(2ème et 3ème années en Développement d’Application Internet - Intranet) 
+ 
+ 
+ 
+I- FORME GENERALE 
+ 
+ Marges et numérotation des pages 
+o Les marges par défaut dans Word conviennent parfaitement. Elles sont de 2,5 cm de 
+chaque côté. 
+o Tous les travaux doivent être rendus paginés, reliés et imprimés au RECTO 
+uniquement.  On  utilisera  exclusivement  les  chiffres  romains  en  minuscule  pour  les 
+pages avant l’introduction générale. A partir de l’introduction générale, on utilisera 
+les chiffres arabes. 
+ 
+ 
+ Style et taille des polices 
+o Style 
+ 
+La  police  utilisée  doit  être  la  même  pour  les  différents  niveaux  hiérarchiques  (parties,  chapitres, 
+sections,  sous-sections,  corps  de  texte  et  notes  de  bas  de  pages).  Il  est  à  conseiller  d’utiliser  les 
+polices Times New Roman. On évitera les polices design qui fatiguent l’œil. Il est cependant possible 
+de varier les différents styles de la police à chaque niveau hiérarchique (Gras). 
+ 
+ECOLE DE MANAGEMENT ET D’INNOVATION TECHNOLOGIQUE 
+EMIT 
+Tel : 75.519.59 BP : 1135 
+www.emit.mg 
+=== PAGE 2 ===
+2 
+ 
+POLICE TAILLE 18 Times New Roman 
+EXEMPLE PARTIE 1. CADRE INSTITUTIONNEL 
+ET METHODOLOGIE 
+Police taille 16 Times New Roman 
+Exemple Chapitre 1. Présentation du CUFP 
+Police taille 13 
+Exemple 
+Times New Roman 
+1.1.1. Origine 
+1.1.2. 
+Police taille 12 Times New Roman 
+Exemple 1.1.1.1. 
+1.1.1.2. 
+Police taille 12 
+Exemple 
+Times New Roman 
+a. 
+b. 
+o Taille des polices 
+- Partie 
+ 
+ 
+-  Chapitre 
+ 
+ 
+ 
+- Section 
+Police taille 14 Times New Roman 
+Exemple 1.1. Historique 
+1.2. 
+ 
+- Sous-section 1 
+ 
+ 
+- Sous-section 2 
+ 
+ 
+- Sous-section 3 
+ 
+=== PAGE 3 ===
+3 
+ 
+Police taille 10 Times New Roman 
+Exemple Richard HAJALALAINA : http://mg.viadeo.com/fr/profile/aime- 
+richard.hajalalaina 
+- Corps de texte 
+ 
+Police taille 12 Times New Roman 
+Exemple Lorem Ipsum is simply dummy text of the printing and typesetting 
+industry. Lorem Ipsum has been the industry's standard dummy text 
+ever since the 1500s, when an unknown printer took a galley of type 
+and scrambled it to make a type specimen book. 
+ 
+ 
+- Note de bas de page 
+ 
+ 
+ 
+NB : Les énumérations doivent être introduites. Par exemple : 
+ 
+La liste des sections sont : 
+ 
+- section 1 ; 
+- section 2 ; 
+- section 3. 
+ 
+o Format et interligne des paragraphes 
+ 
+Pour faciliter la lecture, on utilisera un interligne 1.5 dans le corps du texte et dans les notes 
+de bas de pages. De même, on justifiera les paragraphes (alignement à gauche et à droite). 
+ 
+ 
+ 
+o Figures 
+- Les figures peuvent être de nature différente : graphiques, dessins, schémas, 
+photographies, cartes, diagrammes, organigrammes, etc. 
+- On utilisera la numérotation pseudo-décimale par chapitre, selon leur ordre 
+d’apparition. 
+Par exemple : 
+o pour le chapitre 1 : Figure 1.1, Figure 1.2, Figure 1.3, etc. 
+o pour le chapitre 2 : Figure 2.1, Figure 2.2, Figure 2.3, etc. 
+o etc. 
+- Chaque figure doit comporter une légende et placer en dessous de celle-ci. 
+=== PAGE 4 ===
+4 
+ 
+o Tableaux 
+- On utilisera également la numérotation pseudo-décimale par chapitre, selon leur 
+ordre d’apparition. 
+Par exemple : 
+o pour le chapitre 1 : Tableau 1.1, Tableau 1.2, Tableau 1.3, etc. 
+o pour le chapitre 2 : Tableau 2.1, Tableau 2.2, Tableau 2.3, etc. 
+o etc. 
+- Chaque tableau doit comporter une légende et mais placer au-dessus de celui-ci. 
+=== PAGE 5 ===
+5 
+ 
+II- CONTENU 
+ 
+1. Plan général 
+ 
+Couverture 
+Page de garde 
+Curriculum Vitae avec photo récente bien présentée (tenue correcte) 
+Avant-propos 
+Remerciements 
+ 
+Liste des cartes et figures 
+Liste des tableaux 
+Liste des abréviations 
+Glossaire 
+Table des matières 
+Introduction générale 
+Partie I : Présentation générale 
+ 
+Chapitre 1 : Présentation de l’EMIT 
+ 
+Chapitre 2 : Présentation de l’Entreprise d’accueil 
+ 
+Chapitre 3 : Présentation du projet 
+Partie II : Analyse et Conception du projet 
+Chapitre 4 : Méthodes et notations utilisées ou /Architecture cible  
+Chapitre 5 : Analyse du projet et étude de l’existant
+Chapitre 6 : Conception du projet et ou / présentation des architectures 
+Partie III : Réalisation du projet 
+Chapitre 7 : Spécification et présentation des outils utilisés  
+Chapitre 8 : Mise en œuvre et /implémentation ou /réalisation 
+Chapitre 9 : Présentation /de l’application développée ou /de l’Infrastructure cible ou /des optimisations 
+systèmes ou réseaux   
+Conclusion et perspectives 
+Bibliographie 
+Annexes  
+Résumé + mots-clés (versions française et anglaise) sur couverture de dos 
+=== PAGE 6 ===
+6 
+ 
+2. Note explicative 
+Nombre de pages 
+ 2ème année DASI ≥ 50 pages 
+ Licence DASI ≥ 80 pages 
+ Master 1 SIGD ≥ 40 pages 
+ Master 2 SIGD ≥ 100 pages 
+ 
+Couverture 
+ 
+La couverture doit contenir dans l’en-tête, le logo respectif de l’Université de Fianarantsoa (à 
+gauche), de l’EMIT (centre) et de l’Entreprise d’accueil (droite) ; 
+ 
+Ensuite : 
+ 
+- L’Université et l’établissement concerné 
+- Le type de mémoire et le diplôme envisagé 
+- Le titre et sous-titre éventuel du mémoire 
+- Le nom du candidat 
+- Les membres du jury 
+- L’année universitaire 
+ 
+Voici un exemple concret d’une couverture d’un mémoire de fin de cycle au sein de l’EMIT. 
+ 
+ 
+=== PAGE 7 ===
+7 
+ 
+Introduction générale 
+ 
+ Etat des lieux : ouvrages, études déjà effectuées et contexte du sujet 
+ Problématique 
+ Annonce du plan 
+Nombre de pages normalement 1/10 du mémoire 
+ 
+Partie I : Présentation générale 
+ 
+Chapitre 1 : Présentation de l’EMIT 
+ 
+Chapitre 2 : Présentation de l’Entreprise d’accueil 
+ 
+Chapitre  3  :  Présentation  du  projet  :  description  détaillée  du  projet  (origine  du  projet, 
+problématique, conduite de projet, cahier des charges) + Architecture (Système et réseaux)  
+ 
+ 
+ 
+Partie II : Analyse et Conception du projet 
+ 
+Chapitre  4  :  Méthodes  et  notations  utilisées  :  par  exemple,  la  méthode  MERISE  avec  la 
+justification du choix 
+ 
+Chapitre 5  :  Analyse  du  projet  :  analyse  des  besoins,  analyse  de  faisabilité,  analyse  de 
+l’existant, critique de l’existant, proposition des solutions, solution retenue, analyse de l’architecture 
+ 
+Chapitre 6 : Conception du projet : les différents modèles et/ou diagrammes ou /architecture 
+pouvant être proposé et réaliser  
+ 
+ 
+Partie III : Réalisation du projet 
+ 
+Chapitre  7  :  Spécification  des  outils  de  réalisation  :  présentation  et  justification  des  choix 
+(tableau comparatif) 
+ 
+Chapitre 8 : Mise en œuvre et implémentation : détails de l’architecture logicielle et matérielle + 
+module (par exemple, authentification, mise à jour, etc.) + extrait de code commenté + Architecture
+ 
+: Présentation de l’application développée : présentation des différentes 
+interfaces (fonctionnalités importantes avec des données réelles, par exemple : 
+authentification, mise à jour, résultats des requêtes importantes, graphiques représentant les 
+statistiques des données, etc.) 
+ 
+ 
+Conclusion générale et perspectives 
+ 
+- Conclusion  :  rappel  du  projet,  brève  description  de  la  problématique  et  de  la  solution 
+proposée,  avis  (personnel,  de  l’utilisateur,  du  responsable)  sur  la  solution  élaborée,  brève 
+description des points forts de  l’application développée, description des points faibles, 
+difficultés (logicielle et matérielle) rencontrées lors de la mise en œuvre et de 
+L’implémentation ; Citations des point forts réaliser et /ou des optimisations faites.  
+- Perspectives : proposition de nouvelles solutions pour résoudre les problèmes rencontrés 
+Chapitre 9
+=== PAGE 8 ===
+8 
+ 
+Modèle de base pour un OUVRAGE : 
+Nom suivi de l’initiale du Prénom et d’un point, année de parution. Titre en italique. Ville : 
+éditeur. pagination. (Collection) 
+ 
+Exemple : 
+ 
+Audebert C., 2012.La diaspora haïtienne : territoires migratoires et réseaux transnationaux. 
+Rennes : Presses Universitaires de Rennes. 194 p. (Géographie sociale) 
+Modèle de base pour un ouvrage dont l'auteur n'est pas une personne physique : 
+Nom de la collectivité auteur, année de parution. Titre en italique. Ville : éditeur. pagination. 
+Exemple : 
+ 
+Organisation de Coopération et de Développement Economiques, 1996. L'intégration 
+de l'environnement et de l'économie : progrès dans les années 90. Paris : OCDE. 70 p. 
+Modèle de base pour un chapitre dans un ouvrage collectif (partie d'ouvrage) : 
+Nom  suivi de l’initiale du Prénom et  d’un point, année de  parution. Titre  du chapitre.  In 
+Prénom Nom. Titre de l'ouvrage en italique. Ville : éditeur, pagination. (Collection ; n°). 
+Exemple : 
+ 
+Clochard O., 2009. Les ports méditerranéens : un des enjeux des relations euro- 
+maghrébines dans le contrôle des flux migratoires. In Ali Bensaâd (dir.), Le Maghreb à 
+l'épreuve des migrations subsahariennes : immigration sur émigration. Paris : Éditions 
+Karthala, pp.363-379. (Hommes et sociétés). 
+Modèle de base pour un article : 
+Nom suivi de l’initiale du Prénom et d’un point, année de parution. Titre de l'article. Nom 
+de la revue en italique, volume, numéro, pagination. 
+ 
+Exemple : 
+ 
+Ma Mung E., 2009 Le prolétaire, le commerçant et la diaspora. Revue européenne 
+des migrations internationales, vol. 25, n°1, pp.97-118. 
+Bibliographie (Obligatoire, nombre d’ouvrages 2ème année ≥ 10, 3ème année ≥ 20, Master1 ≥ 30, 
+Master2 ≥ 50) 
+ 
+ Forme de citation dans le texte : 
+o Si un auteur : [Nom de l’auteur, année de parution]. Par exemple, … la gestion de la 
+pêcherie de couteaux de Don Hoi Lord [Worrapimphong, 2005] 
+o Si  deux  auteurs  :  [Nom  du  premier  auteur  &  Nom  du  deuxième  auteur,  année  de 
+parution]. Par exemple … dynamiques forestières sur le causse du Larzac [Simon 
+et Etienne 2009] 
+o Si plusieurs auteurs : [Nom du premier auteur et al., année de parution]. Par exemple, 
+… Cette fonction est aussi appelée trajectoire [Zeigler et al., 2000]. 
+ 
+ Syntaxe pour la liste des références bibliographiques: 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+=== PAGE 9 ===
+9 
+ 
+Modèle de base pour une thèse (Doctorat et HDR) : 
+Nom suivi de l’initiale du Prénom et d’un point, année de parution. Titre en italique. Type 
+de diplôme : discipline : lieu de soutenance : établissement de soutenance, pagination. 
+Exemples : 
+ 
+Souchaud S., 2000.La formation d'un espace " Bresiguayen " dans l'Est du Paraguay 
+: migrations pionnières brésiliennes et organisations socio-spatiales dans l'Oriente 
+du Paraguay. Th. doct. : Géogr. : Poitiers : Univ. de Poitiers, 2 vol., 517 p. 
+ 
+Souchaud S.,2002.Pionniers brésiliens au Paraguay. Paris : Karthala, 406 p.(Hommes et 
+sociétés) (issu d'une thèse - Th. doct. : Géogr. : Poitiers : Univ. de Poitiers, 2 vol., 517 p.) 
+ 
+Souchaud S., 2007.Geografía de la migración brasileña en Paraguay. Asunción : Edificio 
+Naciones Unidas ; UNFPA ; ADEPO, 382 p. (Serie investigaciones - Población y desarrollo) 
+- (issu d'une thèse - Th. doct. : Géogr. : Poitiers : Univ. de Poitiers, 2 vol., 517 p.) 
+Modèle de base pour un texte extrait d'un DOCUMENT EN LIGNE (Internet) : catalogage 
+comme ci-dessus - Ajouter [En ligne] après le titre et sous la référence Disponible sur : 
+<adresse électronique> (consulté le + année). Ajouter le DOI s'il est indiqué 
+ 
+à propos du DOI : 
+DOI = Digital Object Identifier (identifiant d'objet numérique) - c'est un code pérenne pour 
+les articles scientifiques, à la manière de l'ISBN pour les livres et de l'ISSN pour les 
+publications en séries (revues). 
+ 
+Exemples : 
+ 
+Ma Mung E., 2009. Le prolétaire, le commerçant et la diaspora [en ligne]. Revue 
+européenne des migrations internationales, vol. 25, n°1, pp.97-118. 
+Disponible sur : <http://remi.revues.org/4884> (consulté le 21/08/2013). DOI : 
+10.4000/remi.4884 
+ 
+Audebert C., Ma Mung, E., 2007. Les migrations internationales : enjeux contemporains et 
+questions nouvelles [en ligne]. Bilbao : Université de Deusto ; HumanitarianNet, 295 p. 
+(Collection Migration). 
+Disponible sur : <http://www.deusto-publicaciones.es/index.php/main/libro/49> (consulté 
+le 21/08/2013) 
+ 
+ 
+ 
+ 
+ 
+Modèle de base pour un mémoire ou rapport (Licence, Master): 
+Nom suivi de l’initiale du Prénom et d’un point, année de parution. Titre en italique. Type 
+de diplôme : discipline : lieu de soutenance : établissement de soutenance, pagination. 
+ 
+Exemple : 
+ 
+Berthomière W., 1992.L'immigration des Juifs de l'Ex-URSS en Israël entre 1989 et 1992. 
+Mém. maîtrise : Géogr. : Poitiers : Univ. Poitiers, 153 p. 
+=== PAGE 10 ===
+10 
+ 
+ 
+ 
+ 
+Annexes 
+ 
+- Les annexes sont paginées en continuation de la pagination du rapport de stage. 
+- Elles peuvent contenir des corpus des résultats d’enquête, des interviews, des données 
+statistiques, des photos, des images, etc. 
+- Toute annexe doit être annoncée dans le texte principal. Par exemple : (voir Annexe A page 
+91). 
+Modèle de base pour une page web : 
+Nom suivi de l’initiale du Prénom et d’un point, année de parution. Titre de la page en 
+italique [en ligne]. Source ou éditeur. Disponible sur <adresse électronique> (consulté le 
++ date). 
+Exemple : 
+ 
+Lassailly-Jacob V., 2013. Ukwimi, un camp de réfugiés mozambicains en Zambie [en ligne]. 
+La recherche à Migrinter. Disponible sur : <http://migrinter.hypotheses.org/1014> (consulté 
+le 21/08/2013) 
