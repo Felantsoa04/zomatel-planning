@@ -76,6 +76,12 @@ async function list(req, res, next) {
                       (SELECT MAX(v.date_validation)
                        FROM validation_rh v
                        WHERE v.planning_id = p.id_planning) AS date_validation,
+                      (SELECT COALESCE(NULLIF(TRIM(CONCAT_WS(' ', vu.prenom, vu.nom_utilisateur)), ''), vu.login)
+                       FROM validation_rh v
+                       JOIN utilisateur vu ON vu.id_utilisateur = v.rh_id
+                       WHERE v.planning_id = p.id_planning AND v.decision = 'VALIDE'
+                       ORDER BY v.date_validation DESC
+                       LIMIT 1) AS valide_par,
                       tot.total_heures, tot.nb_employes, tot.nb_manques, tot.nb_exces
                FROM planning p
                JOIN service s ON s.id_service = p.service_id

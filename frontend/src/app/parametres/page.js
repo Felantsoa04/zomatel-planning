@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
   Bell, BriefcaseBusiness, CalendarDays, Check, ChevronRight, CircleUserRound,
-  Clock3, Hotel, LockKeyhole, LogOut, PanelLeft, Rows3, Rows4,
+  Clock3, Hotel, LockKeyhole, LogOut, PanelLeft,
   Settings, ShieldCheck, UserRound, Users, Languages,
 } from 'lucide-react';
 import AppShell from '@/components/AppShell';
@@ -15,7 +15,6 @@ import { getToken, getUser, logout } from '@/lib/auth';
 import { usePermissions } from '@/lib/permissions';
 import { LANGUES, useI18n } from '@/lib/i18n';
 
-const CLE_DENSITE = 'zomatel:densite-tableaux';
 const CLE_PROFIL_SIDEBAR = 'zomatel:profil-sidebar';
 
 const LIBELLES_ROLE = {
@@ -24,9 +23,8 @@ const LIBELLES_ROLE = {
   CHEF_SERVICE: 'Chef de service',
 };
 
-function appliquerDensite(mode) {
-  if (typeof document !== 'undefined') document.documentElement.dataset.densite = mode;
-}
+// NB : la préférence « Densité des tableaux » a été retirée de l'interface :
+// les tableaux utilisent toujours la présentation standard.
 
 function urlPhoto(chemin) {
   if (!chemin) return null;
@@ -41,7 +39,6 @@ export default function ParametresPage() {
   const { langue, setLangue, t } = useI18n();
   const [user, setUser] = useState(null);
   const [nomService, setNomService] = useState('');
-  const [densite, setDensite] = useState('confort');
   const [profilSidebar, setProfilSidebar] = useState(true);
   const [confirmDeconnexion, setConfirmDeconnexion] = useState(false);
   const router = useRouter();
@@ -55,11 +52,6 @@ export default function ParametresPage() {
     }
     setUser(compte);
 
-    const d = localStorage.getItem(CLE_DENSITE);
-    if (d === 'compact' || d === 'confort') {
-      setDensite(d);
-      appliquerDensite(d);
-    }
     setProfilSidebar(localStorage.getItem(CLE_PROFIL_SIDEBAR) !== '0');
 
     if (compte.id_service) {
@@ -71,16 +63,6 @@ export default function ParametresPage() {
       }).catch(() => setNomService(''));
     }
   }, [router]);
-
-  function choisirDensite(mode) {
-    setDensite(mode);
-    appliquerDensite(mode);
-    try {
-      localStorage.setItem(CLE_DENSITE, mode);
-    } catch {
-      // La préférence reste appliquée pour cette session.
-    }
-  }
 
   function basculerProfilSidebar() {
     const nouveau = !profilSidebar;
@@ -189,7 +171,7 @@ export default function ParametresPage() {
               </a>
             ))}
             <a href="#param-securite"><LockKeyhole size={15} aria-hidden="true" /> {t('settings.security')}</a>
-            <a href="#param-preferences"><Rows3 size={15} aria-hidden="true" /> {t('settings.preferences')}</a>
+            <a href="#param-preferences"><Settings size={15} aria-hidden="true" /> {t('settings.preferences')}</a>
           </nav>
         )}
 
@@ -268,7 +250,7 @@ export default function ParametresPage() {
 
           <section id="param-preferences" className="card parametres-carte parametres-preferences">
             <div className="parametres-titre-section">
-              <Rows3 size={18} aria-hidden="true" />
+              <Settings size={18} aria-hidden="true" />
               <div><h2>{t('settings.preferences')}</h2><p>{t('settings.localPreferences')}</p></div>
             </div>
             <div className="param-ligne">
@@ -279,17 +261,6 @@ export default function ParametresPage() {
                   {LANGUES.map((option) => <option key={option.code} value={option.code}>{option.nom}</option>)}
                 </select>
               </label>
-            </div>
-            <div className="param-ligne">
-              <span>{t('settings.density')}<span className="muted" style={{ display: 'block', fontSize: 12 }}>{t('settings.densityDescription')}</span></span>
-              <span className="parametres-choix">
-                <button type="button" className={`btn secondary ${densite === 'confort' ? 'param-actif' : ''}`} onClick={() => choisirDensite('confort')} aria-pressed={densite === 'confort'}>
-                  {densite === 'confort' ? <Check size={14} aria-hidden="true" /> : <Rows3 size={14} aria-hidden="true" />} {t('settings.comfort')}
-                </button>
-                <button type="button" className={`btn secondary ${densite === 'compact' ? 'param-actif' : ''}`} onClick={() => choisirDensite('compact')} aria-pressed={densite === 'compact'}>
-                  {densite === 'compact' ? <Check size={14} aria-hidden="true" /> : <Rows4 size={14} aria-hidden="true" />} {t('settings.compact')}
-                </button>
-              </span>
             </div>
             <div className="param-ligne">
               <span>{t('settings.sidebarProfile')}<span className="muted" style={{ display: 'block', fontSize: 12 }}>{t('settings.sidebarProfileDescription')}</span></span>

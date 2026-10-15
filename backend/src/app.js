@@ -33,6 +33,12 @@ app.use(morgan('dev'));
 
 app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
 
+// Numérisation (scans RH) : JAMAIS en statique public. Cette garde AVANT
+// express.static force le passage par GET /api/numerisation/:id/fichier
+// (authentifié RH) — les scans papier sont des documents internes.
+app.use('/uploads/numerisation', (req, res) =>
+  res.status(401).json({ message: 'Accès aux scans authentifié uniquement.' }));
+
 // Photos de profil (fichiers statiques, path safe : multer valide le type,
 // les noms sont generes cote serveur). Servies depuis la racine :
 // GET http://localhost:4000/uploads/profiles/<fichier>
@@ -49,6 +55,10 @@ app.use('/api/creneaux', creneauRoutes);
 app.use('/api/types-horaires', typeHoraireRoutes);
 app.use('/api/recuperations', recuperationRoutes);
 app.use('/api/messenger', messengerRoutes);
+// Historique (événements du compte + plannings exportés)
+app.use('/api/historique', require('./routes/historiqueRoutes'));
+// Numérisation des plannings papier (import + OCR + vérification RH)
+app.use('/api/numerisation', require('./routes/numerisationRoutes'));
 app.use('/api/notifications', require('./routes/notificationRoutes'));
 
 app.use((req, res) => res.status(404).json({ message: 'Route introuvable.' }));

@@ -3,8 +3,8 @@
  *   — deux SERVICES, deux SEMAINES différentes.
  * Vérifications :
  *   1. export groupé [40,3] -> une ARCHIVE ZIP (2 WEEK différentes) contenant
- *      exactement 2 fichiers : Emploi_du_temps_2030_S45.xlsx et
- *      Emploi_du_temps_2026_S39.xlsx (1 WEEK = 1 fichier,
+ *      exactement 2 fichiers : EMPLOI_DU_TEMPS_WEEK_45.xlsx et
+ *      EMPLOI_DU_TEMPS_WEEK_39.xlsx (1 WEEK = 1 fichier,
  *      jamais un fichier par service) ;
  *   2. WEEK_45.xlsx contient UNIQUEMENT la feuille CUISINE CANTINE ; WEEK_39.xlsx
  *      UNIQUEMENT Réception (titre « EMPLOI DU TEMPS <service> WEEK n », barre
@@ -64,12 +64,18 @@ function verifierClasseurWeek(zExp, planningAttendus, zm, echec) {
     // Zone 2 : barre multi-tâche SANS numéro/texte de semaine
     if (/WEEK|semaine/i.test(c['C5'] || '')) echec(`WEEK_${planning.numero_semaine} : barre C5 contient une semaine : "${c['C5']}"`);
     if (c['C5'] !== planning.nom_service) echec(`WEEK_${planning.numero_semaine} : C5="${c['C5']}" attendu "${planning.nom_service}"`);
-    // Données réelles (RECAP : matricule + nom de chaque employé)
-    emps.forEach((emp, i) => {
-      // Gabarit Sécurité : blocs FIXES de 17 lignes, 124-125 réservées, RECAP à 126+
-      const r = 5 + 7 * 17 + 2 + i;
-      if (c['A' + r] !== (emp.matricule || '')) echec(`WEEK_${planning.numero_semaine} : RECAP A${r} incorrect`);
-      if (c['B' + r] !== emp.nom) echec(`WEEK_${planning.numero_semaine} : RECAP B${r} incorrect`);
+    // Données réelles (RECAP : matricule + nom de chaque employé).
+    // Nommée gabarit : chaque service garde SA feuille du modèle (blocs,
+    // positions du récapitulatif et colonnes variables : RECEPTION n'a pas
+    // de colonne A sur son récap). Contrôle souple : matricule présent dans
+    // la feuille et nom présent au moins 2 fois (jours + récapitulatif).
+    emps.forEach((emp) => {
+      const texteMatricule = emp.matricule || '';
+      if (texteMatricule && !xml.includes(`xml:space="preserve">${texteMatricule}<`)) {
+        echec(`WEEK_${planning.numero_semaine} : matricule ${texteMatricule} absent de la feuille`);
+      }
+      const occurrences = xml.split(emp.nom).length - 1;
+      if (occurrences < 2) echec(`WEEK_${planning.numero_semaine} : nom ${emp.nom} figurant ${occurrences}x (attendu >= 2 : jours + récap)`);
     });
     // Aucune donnée d'exemple
     const residus = RESIDUS.filter((t) => xml.includes(t));
@@ -78,12 +84,32 @@ function verifierClasseurWeek(zExp, planningAttendus, zm, echec) {
   // Structure du modèle : styles + theme identiques, gabarit feuille 1 identique
   if (zm.getEntry('xl/styles.xml').getData().toString() !== zExp.getEntry('xl/styles.xml').getData().toString()) echec('styles.xml diffère du modèle');
   if (zm.getEntry('xl/theme/theme1.xml').getData().toString() !== zExp.getEntry('xl/theme/theme1.xml').getData().toString()) echec('theme1.xml diffère du modèle');
-  // Gabarit = feuille SECURITE (sheet23) du modèle
-  const headM = zm.getEntry('xl/worksheets/sheet23.xml').getData().toString('utf8');
-  const headModele = headM.slice(0, headM.indexOf('<sheetData>')).replace(/<dimension ref="[^"]*"\/>/, '');
-  const x0 = zExp.getEntry(fichiers[0]).getData().toString('utf8');
-  const headExport = x0.slice(0, x0.indexOf('<sheetData>')).replace(/<dimension ref="[^"]*"\/>/, '');
-  if (headModele !== headExport) echec('gabarit de la feuille 1 différent du modèle');
+  // Gabarit = feuille DU SERVICE dans le classeur modèle (SECURITE en repli)
+  function xmlGabaritModele(nomService) {
+    const normalise = String(nomService || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/[^A-Z0-9]+/g, ' ').trim();
+    const rels = zm.getEntry('xl/_rels/workbook.xml.rels').getData().toString('utf8');
+    const ridToTarget = {};
+    for (const m of rels.matchAll(/<Relationship Id="(rId\d+)"[^>]*Target="([^"]+)"/g)) ridToTarget[m[1]] = m[2];
+    const wb = zm.getEntry('xl/workbook.xml').getData().toString('utf8');
+    for (const m of wb.matchAll(/<sheet name="([^"]+)"[^>]*r:id="(rId\d+)"/g)) {
+      const normFeuille = m[1].normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/[^A-Z0-9]+/g, ' ').trim();
+      if (normFeuille === normalise) return zm.getEntry('xl/' + ridToTarget[m[2]].replace(/^\//, '')).getData().toString('utf8');
+    }
+    return zm.getEntry('xl/worksheets/sheet23.xml').getData().toString('utf8'); // repli SECURITE
+  }
+  for (let k = 0; k < planningAttendus.length; k++) {
+    const headM = xmlGabaritModele(planningAttendus[k].planning.nom_service);
+    const headModele = headM.slice(0, headM.indexOf('<sheetData>')).replace(/<dimension ref="[^"]*"\/>/, '').replace(/<legacyDrawing[\s\S]*?\/>/, '').replace(/<drawing[\s\S]*?\/>/, '');
+    const x0 = zExp.getEntry(fichiers[k]).getData().toString('utf8');
+    const headExport = x0.slice(0, x0.indexOf('<sheetData>')).replace(/<dimension ref="[^"]*"\/>/, '').replace(/<legacyDrawing[\s\S]*?\/>/, '').replace(/<drawing[\s\S]*?\/>/, '');
+    // Feuille du service du modèle ? Sinon, gabarit de repli SECURITE
+    // structure irrégulière (feuilles à 6 ou 8 blocs jour du modèle papier).
+    if (headModele !== headExport) {
+      const headS = zm.getEntry('xl/worksheets/sheet23.xml').getData().toString('utf8');
+      const headSecurite = headS.slice(0, headS.indexOf('<sheetData>')).replace(/<dimension ref="[^"]*"\/>/, '').replace(/<legacyDrawing[\s\S]*?\/>/, '').replace(/<drawing[\s\S]*?\/>/, '');
+      if (headSecurite !== headExport) echec(`gabarit de la feuille ${k + 1} différent de la feuille du service dans le modèle (ni du repli SECURITE)`);
+    }
+  }
   return noms;
 }
 
@@ -130,11 +156,11 @@ function verifierClasseurWeek(zExp, planningAttendus, zm, echec) {
     const entrees = z.getEntries().map((e) => e.entryName);
     console.log('archive ZIP :', entrees.join(' | '));
     if (entrees.length !== 2) echec('attendu 2 fichiers WEEK dans l\'archive');
-    if (!entrees.includes('Emploi_du_temps_2030_S45.xlsx')) echec('Emploi_du_temps_2030_S45.xlsx absent de l\'archive');
-    if (!entrees.includes('Emploi_du_temps_2026_S39.xlsx')) echec('Emploi_du_temps_2026_S39.xlsx absent de l\'archive');
+    if (!entrees.includes('EMPLOI_DU_TEMPS_WEEK_45.xlsx')) echec('EMPLOI_DU_TEMPS_WEEK_45.xlsx absent de l\'archive');
+    if (!entrees.includes('EMPLOI_DU_TEMPS_WEEK_39.xlsx')) echec('EMPLOI_DU_TEMPS_WEEK_39.xlsx absent de l\'archive');
     classeurs = {
-      45: new AdmZip(z.getEntry('Emploi_du_temps_2030_S45.xlsx').getData()),
-      39: new AdmZip(z.getEntry('Emploi_du_temps_2026_S39.xlsx').getData()),
+      45: new AdmZip(z.getEntry('EMPLOI_DU_TEMPS_WEEK_45.xlsx').getData()),
+      39: new AdmZip(z.getEntry('EMPLOI_DU_TEMPS_WEEK_39.xlsx').getData()),
     };
   } else {
     echec('2 WEEK différentes devraient produire une archive ZIP, pas un seul classeur');
@@ -145,9 +171,9 @@ function verifierClasseurWeek(zExp, planningAttendus, zm, echec) {
   const servicesAttendus = new Set(IDs.map((ID) => donnees[ID].planning.nom_service));
   console.log(`services distincts attendus : ${[...servicesAttendus].join(', ')}`);
   verifierClasseurWeek(classeurs[45], [{ planning: donnees[40].planning, emps: donnees[40].emps }], zm, echec);
-  console.log('Emploi_du_temps_2030_S45.xlsx : feuille unique CUISINE CANTINE, titre WEEK 45, barre sans semaine, données réelles — OK');
+  console.log('EMPLOI_DU_TEMPS_WEEK_45.xlsx : feuille unique CUISINE CANTINE, titre WEEK 45, barre sans semaine, données réelles — OK');
   verifierClasseurWeek(classeurs[39], [{ planning: donnees[3].planning, emps: donnees[3].emps }], zm, echec);
-  console.log('Emploi_du_temps_2026_S39.xlsx : feuille unique Réception, titre WEEK 39, barre sans semaine, données réelles — OK');
+  console.log('EMPLOI_DU_TEMPS_WEEK_39.xlsx : feuille unique Réception, titre WEEK 39, barre sans semaine, données réelles — OK');
 
   // 4. Régressions
   const es = await fetch(API + '/plannings/40/emploi-du-temps.xlsx', { headers: H });

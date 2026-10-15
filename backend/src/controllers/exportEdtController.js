@@ -53,6 +53,25 @@ function envoyerFichier(res, sortie, nomFichier, typeMime) {
 
 const nomTemporaire = (ext) => path.join(process.env.TEMP || '/tmp', 'edt-' + Date.now() + '-' + Math.random().toString(36).slice(2) + ext);
 
+/* TRACE HISTORIQUE (exigence « Historique — plannings exportés ») : chaque
+ * export RÉUSSI est enregistré dans la table historique_export (table
+ * dédiée, migration 12) : date, heure, utilisateur, fichier, semaine,
+ * services et plannings exportés, type SIMPLE ou MULTI. La panne d'écriture
+ * du trace ne JAMAIS faire échouer le téléchargement de l'utilisateur. */
+async function tracerExport({ utilisateurId, typeExport, numeroSemaine, annee, nbPlannings, nomFichier, plannings }) {
+  try {
+    await pool.query(
+      `INSERT INTO historique_export
+         (utilisateur_id, type_export, numero_semaine, annee, nb_plannings, nom_fichier, details)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [utilisateurId, typeExport, numeroSemaine, annee, nbPlannings, nomFichier,
+       JSON.stringify(plannings || [])]
+    );
+  } catch (err) {
+    console.error('Tracage export impossible (historique_export) :', err.message);
+  }
+}
+
 /* GET /api/plannings/:id/emploi-du-temps.xlsx — export SIMPLE (historique). */
 async function exporter(req, res, next) {
   try {
@@ -64,6 +83,17 @@ async function exporter(req, res, next) {
     const sortie = nomTemporaire('.xlsx');
 
     await genererEmploiDuTempsExcel({ id_planning: Number(id), sortie });
+    // Export réussi -> trace (Historique) : utilisateur, fichier, semaine,
+    // service, planning (type SIMPLE).
+    tracerExport({
+      utilisateurId: req.user.id_utilisateur,
+      typeExport: 'SIMPLE',
+      numeroSemaine: planning.numero_semaine,
+      annee: planning.annee,
+      nbPlannings: 1,
+      nomFichier,
+      plannings: [{ id_planning: Number(id), service: planning.nom_service, numero_semaine: planning.numero_semaine }],
+    });
     envoyerFichier(res, sortie, nomFichier, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
   } catch (err) {
     next(err);
@@ -139,6 +169,22 @@ async function exporterMulti(req, res, next) {
       const cible = nomTemporaire('.xlsx');
       fs.renameSync(p.fichier, cible);
       fs.rmSync(dossier, { recursive: true, force: true });
+      // Export réussi -> trace : UN fichier = UNE semaine, les services et
+      // plannings regroupés figurent dans la trace (type MULTI dès que
+      // plusieurs plannings sont regroupés dans le même classeur).
+      tracerExport({
+        utilisateurId: req.user.id_utilisateur,
+        typeExport: p.nbPlannings > 1 ? 'MULTI' : 'SIMPLE',
+        numeroSemaine: p.numero_semaine,
+        annee: p.annee,
+        nbPlannings: p.nbPlannings,
+        nomFichier: p.nomFichier,
+        plannings: p.plannings.map((idP, k) => ({
+          id_planning: idP,
+          service: p.onglets[k],
+          numero_semaine: p.numero_semaine,
+        })),
+      });
       envoyerFichier(res, cible, p.nomFichier, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
       return;
     }
@@ -149,7 +195,23 @@ async function exporterMulti(req, res, next) {
     for (const p of produits) archive.addLocalFile(p.fichier);
     archive.writeZip(sortieZip);
     fs.rmSync(dossier, { recursive: true, force: true }); // xlsx internes supprimés
-    const nomZip = `EMPLOI DU TEMPS ${produits.map((p) => `S${p.numero_semaine}`).join('_')}.zip`;
+    const nomZip = `EMPLOI_DU_TEMPS_WEEK_${produits.map((p) => p.numero_semaine).join('_')}.zip`;
+    // Trace : chaque classeur produit est enregistré individuellement.
+    for (const p of produits) {
+      tracerExport({
+        utilisateurId: req.user.id_utilisateur,
+        typeExport: p.nbPlannings > 1 ? 'MULTI' : 'SIMPLE',
+        numeroSemaine: p.numero_semaine,
+        annee: p.annee,
+        nbPlannings: p.nbPlannings,
+        nomFichier: p.nomFichier,
+        plannings: p.plannings.map((idP, k) => ({
+          id_planning: idP,
+          service: p.onglets[k],
+          numero_semaine: p.numero_semaine,
+        })),
+      });
+    }
     envoyerFichier(res, sortieZip, nomZip, 'application/zip');
   } catch (err) {
     next(err);

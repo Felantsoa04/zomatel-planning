@@ -1,14 +1,14 @@
-/* Comparateur de fidélité EXPORT vs MODÈLE (gabarit SECURITE) :
+/* Comparateur de fidélité EXPORT vs MODÈLE (règle gabarit par service) :
  *   1. trouve un planning VALIDÉ réel (READ-ONLY) ;
  *   2. génère l'export via le service ;
- *   3. vérifie cellule par cellule que chaque cellule de l'export porte le
- *      même indice de style (s=) que sa cellule homologue de la feuille
- *      SECURITE du modèle (sheet23 = modèle de tableau du projet) ;
+ *   3. compare cellule par cellule l'export à LA FEUILLE DU SERVICE dans le
+ *      classeur modèle (repli : feuille SECURITE, sheet23) — les lignes
+ *      générées occupent les MÊMES numéros que le gabarit (jour, périodes,
+ *      en-têtes, employés, totaux, fantôme, espacements, récapitulatif) ;
  *   4. rendu texte des deux feuilles (modèle vs export) pour comparaison.
- * Cartographie Sécurité : r2 titre, r4 espace, r5 jour, r6 périodes, r7
- * entêtes, r8..r19 employés (canoniques complètes r16..r19), r20 totaux
- * (SUM) + fantôme N, r21 fantôme N, bloc suivant +17, RECAP r126+ (sans
- * titre, A s3 / B s24 / C s21).
+ * RÈGLE GABARIT PAR SERVICE : chaque service garde SON modèle (RECEPTION
+ * 11 lignes employés/jour, SECURITE 12, ADMINISTRATION 8…). Les feuilles à
+ * structure irrégulière (6 ou 8 blocs) utilisent le repli SECURITE.
  */
 const path = require('path');
 require('dotenv').config({ path: path.resolve(__dirname, '..', '.env') });
@@ -18,7 +18,7 @@ const AdmZip = require('adm-zip');
 
 const MODELE = path.resolve(__dirname, '..', '..', 'document utiliise', 'EMPLOI DU TEMPS ZOMATEL WEEK 37_2026.xlsx');
 const SORTIE = path.join(process.env.TEMP || '/tmp', `edt-fidelite-${Date.now()}.xlsx`);
-const GABARIT = 'xl/worksheets/sheet23.xml'; // feuille SECURITE du modèle
+const GABARIT_REPLI = 'xl/worksheets/sheet23.xml'; // feuille SECURITE du modèle
 
 function lireFeuille(fichier, entree) {
   const xml = new AdmZip(fichier).getEntry(entree).getData().toString('utf8');
@@ -37,6 +37,59 @@ function lireFeuille(fichier, entree) {
     lignes[Number(m[1])] = cells;
   }
   return { xml, lignes };
+}
+
+/* Détermine l'entrée zip du gabarit du service, comme le service d'export :
+ * feuille du modèle de nom normalisé identique, sinon feuille SECURITE. */
+const normalise = (nom) => String(nom || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/[^A-Z0-9]+/g, ' ').trim();
+function entreeGabaritService(z, nomService) {
+  const wb = z.getEntry('xl/workbook.xml').getData().toString('utf8');
+  const rels = z.getEntry('xl/_rels/workbook.xml.rels').getData().toString('utf8');
+  const ridToTarget = {};
+  for (const m of rels.matchAll(/<Relationship Id="(rId\d+)"[^>]*Target="([^"]+)"/g)) ridToTarget[m[1]] = m[2];
+  const cible = normalise(nomService);
+  const candidats = new Set();
+  for (const m of wb.matchAll(/<sheet name="([^"]+)"[^>]*r:id="(rId\d+)"/g)) {
+    const nomFeuille = normalise(m[1]);
+    if (nomFeuille === cible) candidats.add('xl/' + ridToTarget[m[2]].replace(/^\//, ''));
+  }
+  if (candidats.size === 1) return [...candidats][0];
+  return GABARIT_REPLI;
+}
+
+/* Blocs + récapitulatif du gabarit (mêmes règles que le générateur). */
+function structure(gabaritXml) {
+  const blocs = [];
+  for (const m of gabaritXml.matchAll(/<c r="E(\d+)"[^>]*><f>SUM\(E(\d+):E(\d+)\)<\/f>/g)) {
+    blocs.push({
+      ligneJour: Number(m[2]) - 3,
+      empDebut: Number(m[2]),
+      empFin: Number(m[3]),
+      ligneTotaux: Number(m[1]),
+      ligneFantome: Number(m[1]) + 1,
+    });
+  }
+  if (blocs.length !== 7) return null;
+  const dernierFantome = Math.max(...blocs.map((b) => b.ligneFantome));
+  // Récapitulatif : première ligne B(t=s)+C(sans SUM) après le dernier fantôme.
+  const cellulesB = {};
+  const cellulesC = {};
+  for (const m of gabaritXml.matchAll(/<c r="([BC])(\d+)"([^>]*)(?:\/>|>([\s\S]*?)<\/c>)/g)) {
+    (m[1] === 'B' ? cellulesB : cellulesC)[m[2]] = { attrs: m[3], contenue: m[4] || '' };
+  }
+  const dernierFantomeX = dernierFantome;
+  let recapStart = null;
+  for (let r = dernierFantomeX + 1; r < dernierFantomeX + 40; r++) {
+    const b = cellulesB[r];
+    const c = cellulesC[r];
+    if (b && c && /t="s"/.test(b.attrs) && !/<f>SUM\(/.test(c.contenue)) { recapStart = r; break; }
+  }
+  let nbRecap = 0;
+  if (recapStart) {
+    let r = recapStart;
+    while (cellulesB[r] && cellulesC[r] && !/<f>SUM\(/.test(cellulesC[r].contenue)) { nbRecap++; r++; }
+  }
+  return { blocs, recapStart: recapStart || (dernierFantome + 1), nbRecap };
 }
 
 (async () => {
@@ -60,47 +113,36 @@ function lireFeuille(fichier, entree) {
     const res = await genererEmploiDuTempsExcel({ id_planning: cible.id_planning, sortie: SORTIE });
     console.log(`Export généré : ${SORTIE} (${res.nbEmployes} employés)`);
 
-    // 3. Comparaison de fidélité vs feuille SECURITE du modèle
-    const M = lireFeuille(MODELE, GABARIT);
+    // 3. Comparaison de fidélité vs LA FEUILLE DU SERVICE du modèle
+    const entree = entreeGabaritService(new AdmZip(MODELE), cible.nom_service);
+    const M = lireFeuille(MODELE, entree);
     const E = lireFeuille(SORTIE, 'xl/worksheets/sheet1.xml');
+    const st = structure(M.xml);
+    if (!st) { console.log('Gabarit du modèle irrégulier -> export sur repli SECURITE'); return; }
+    const recapFin = st.recapStart + st.nbRecap - 1;
+    console.log(`Gabarit utilisé : ${entree} (employés/jour=${st.blocs[0].empFin - st.blocs[0].empDebut + 1}, récap=${st.recapStart}..${recapFin})`);
 
-    // Cartographie des lignes homologues (gabarit Sécurité, blocs FIXES de
-    // 17 lignes comme le modèle) : jour(r5) + périodes(r6) + entêtes(r7) +
-    // 12 lignes employés (r8..r19) + totaux(r20) + fantôme(r21) ; bloc
-    // suivant +17 lignes. RECAP : 126..137 du modèle.
-    const nb = res.nbEmployes; // nb employés affichés dans le lot (≤ 12)
-    const pasExport = 17;
-    const homologues = [[2, 2, 'titre'], [4, 4, 'espace']];
-    for (let i = 0; i < 7; i++) {
-      const re = 5 + i * pasExport;
-      homologues.push([5, re, 'jour']);
-      homologues.push([6, re + 1, 'periodes']);
-      homologues.push([7, re + 2, 'entetes']);
-      for (let k = 0; k < 12; k++) {
-        homologues.push([8 + k, re + 3 + k, 'employe']);
-      }
-      homologues.push([20, re + 15, 'totaux']);
-      homologues.push([21, re + 16, 'fantome']);
-    }
-    const recapE = 5 + 7 * pasExport + 2; // 124-125 réservées, récap à 126
-    for (let k = 0; k < 12; k++) homologues.push([126 + k, recapE + k, 'recap']);
-
+    // Les lignes générées occupent les MÊMES numéros que le gabarit.
     let ecarts = 0;
-    for (const [rm, re, type] of homologues) {
-      const lm = M.lignes[rm] || {};
-      const le = E.lignes[re] || {};
-      const cols = new Set([...Object.keys(lm), ...Object.keys(le)]);
-      for (const col of cols) {
-        const sm = lm[col] ? lm[col].s : null;
-        const se = le[col] ? le[col].s : null;
-        if (sm !== se) {
+    for (let r = 2; r <= recapFin; r++) {
+      const lm = M.lignes[r] || {};
+      const le = E.lignes[r] || {};
+      // Colonnes du gabarit uniquement (l'export ne recrée jamais de colonne)
+      for (const col of Object.keys(lm)) {
+        const sm = lm[col].s;
+        const se = le[col] ? le[col].s : sm; // absent à l'export = vide, même style non requis
+        if (sm !== se && le[col]) {
           ecarts++;
-          if (ecarts <= 12) console.log(`ÉCART ${type} : modèle ${col}${rm} s=${sm} vs export ${col}${re} s=${se}`);
+          if (ecarts <= 12) console.log(`ÉCART : ligne ${r} modèle ${col} s=${sm} vs export s=${se}`);
         }
+      }
+      // Cellules générées absentes du gabarit (aucune colonne inventée)
+      for (const col of Object.keys(le)) {
+        if (!lm[col]) { le[col] && (ecarts++, ecarts <= 12 && console.log(`ÉCART : colonne supplémentaire ${col}${r} à l'export`)); }
       }
     }
     console.log(ecarts === 0
-      ? 'FIDÉLITÉ : toutes les cellules homologues portent les styles EXACTS du gabarit SECURITE (0 écart).'
+      ? 'FIDÉLITÉ : toutes les cellules homologues portent les styles EXACTS du gabarit du service (0 écart).'
       : `ATTENTION : ${ecarts} écart(s) de style détecté(s).`);
 
     // 4. Rendu texte : modèle (bloc lundi) vs export (bloc lundi)
@@ -116,10 +158,13 @@ function lireFeuille(fichier, entree) {
         console.log(`r${r}: ${txt}`);
       }
     };
-    rendre(M.lignes, 5, 9, 'MODÈLE SECURITE bloc LUNDI');
-    rendre(E.lignes, 5, 5 + 2 + nb + 1, 'EXPORT bloc LUNDI');
-    rendre(M.lignes, 126, 128, 'MODÈLE SECURITE RECAP');
-    rendre(E.lignes, recapE, recapE + 2, 'EXPORT RECAP');
+    const b1 = st.blocs[0];
+    rendre(M.lignes, b1.ligneJour, b1.empDebut + 2, `MODÈLE ${entree} début bloc LUNDI`);
+    rendre(E.lignes, b1.ligneJour, b1.empDebut + 2, 'EXPORT bloc LUNDI');
+    if (st.nbRecap) {
+      rendre(M.lignes, st.recapStart, st.recapStart + 2, 'MODÈLE RECAP');
+      rendre(E.lignes, st.recapStart, st.recapStart + 2, 'EXPORT RECAP');
+    }
 
     console.log('\nOK — comparaison terminée.');
     process.exit(ecarts === 0 ? 0 : 1);

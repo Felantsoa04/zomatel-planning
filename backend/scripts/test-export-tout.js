@@ -1,14 +1,14 @@
 /* TEST — « TOUT EXPORTER » avec la RÈGLE PAR WEEK (READ-ONLY base, %TEMP%) :
  *   POST multi sans liste = TOUS les plannings validés accessibles.
  * En base : #40 CUISINE CANTINE (WEEK 45/2030) et #3 Réception (WEEK 39/2026)
- *   -> 2 WEEK différentes -> UNE ARCHIVE ZIP contenant Emploi_du_temps_2026_S39.xlsx
- *      et Emploi_du_temps_2030_S45.xlsx (1 WEEK = 1 fichier, tous les services).
+ *   -> 2 WEEK différentes -> UNE ARCHIVE ZIP contenant EMPLOI_DU_TEMPS_WEEK_39.xlsx
+ *      et EMPLOI_DU_TEMPS_WEEK_45.xlsx (1 WEEK = 1 fichier, tous les services).
  * Vérifications :
  *   1. POST {} -> ZIP avec exactement un fichier xlsx par semaine présente ;
  *   2. chaque classeur : onglet = service seul, titre « EMPLOI DU TEMPS
  *      <service> WEEK n », barre C5 SANS semaine, données réelles, 0 résidu ;
  *   3. structure du modèle conservée (styles/theme/gabarit) ;
- *   4. liste mono-semaine [40] -> xlsx DIRECT nommé Emploi_du_temps_2030_S45.xlsx ;
+ *   4. liste mono-semaine [40] -> xlsx DIRECT nommé EMPLOI_DU_TEMPS_WEEK_45.xlsx ;
  *   5. régressions : [40,22] -> 403, [] -> 400.
  */
 const path = require('path');
@@ -87,7 +87,7 @@ function cellules(z, fichier) {
     const entrees = z.getEntries().map((e) => e.entryName).sort();
     console.log('archive ZIP :', entrees.join(' | '));
     for (const sem of semaines) {
-      const nom = `Emploi_du_temps_${anneesParSemaine[sem]}_S${sem}.xlsx`;
+      const nom = `EMPLOI_DU_TEMPS_WEEK_${sem}.xlsx`;
       if (!entrees.includes(nom)) { echec(`${nom} absent de l'archive`); continue; }
       classeurs[sem] = new AdmZip(z.getEntry(nom).getData());
     }
@@ -132,7 +132,7 @@ function cellules(z, fichier) {
   else {
     if (!/sheet/.test(e1.headers.get('content-type') || '')) echec('une seule WEEK doit renvoyer un xlsx direct');
     const dispo = (e1.headers.get('content-disposition') || '');
-    const nomAttendu = encodeURIComponent(`Emploi_du_temps_${p40.annee}_S${p40.numero_semaine}.xlsx`);
+    const nomAttendu = encodeURIComponent(`EMPLOI_DU_TEMPS_WEEK_${p40.numero_semaine}.xlsx`);
     if (!dispo.includes(nomAttendu)) echec(`nom de fichier attendu Emploi_du_temps_${p40.annee}_S${p40.numero_semaine}.xlsx, reçu : ${decodeURIComponent(dispo)}`);
     else console.log(`fichier unique direct : Emploi_du_temps_${p40.annee}_S${p40.numero_semaine}.xlsx OK (1 semaine = 1 fichier)`);
   }

@@ -34,7 +34,15 @@ async function login(loginName, motDePasse) {
   const tokenAdmin = await login('admin', 'admin123');
 
   // Compte CHEF_SERVICE de test dédié (créé puis désactivé à la fin).
-  const [services] = await pool.query('SELECT id_service FROM service ORDER BY id_service LIMIT 1');
+  // RÈGLE MÉTIER (migration 10) : un chef PAR service — le service de test
+  // est un service sans chef actif (jamais de conflit avec un chef existant).
+  const [services] = await pool.query(
+    `SELECT s.id_service FROM service s
+     WHERE NOT EXISTS (
+       SELECT 1 FROM utilisateur u
+       WHERE u.service_id = s.id_service AND u.role = 'CHEF_SERVICE' AND u.actif = 1
+     ) ORDER BY s.id_service LIMIT 1`
+  );
   const loginChefTest = 'disc_test_chef_' + Date.now().toString(36);
   const rCreeChef = await fetch(API + '/auth/users', {
     method: 'POST', headers: H(tokenAdmin),

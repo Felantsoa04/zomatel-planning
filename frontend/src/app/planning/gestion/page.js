@@ -7,8 +7,9 @@
 // totaux automatiques par employe, puis Enregistrer brouillon / Verifier / Soumettre.
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { CalendarPlus, Pencil, Trash2 } from 'lucide-react';
+import { CalendarPlus, Pencil, Trash2, Eye } from 'lucide-react';
 import AppShell from '@/components/AppShell';
 import BadgeStatutPlanning from '@/components/BadgeStatutPlanning';
 import RetourButton from '@/components/RetourButton';
@@ -119,6 +120,10 @@ export default function GestionPlanningPage() {
   // porte l'action « Modifier » qui ouvre la grille de CE planning (workflow
   // Modifier -> Enregistrer -> Resoumettre -> Validation RH).
   const [listePlannings, setListePlannings] = useState([]);
+  // PLANNINGS RÉCENTS : derniers plannings du périmètre de l'utilisateur
+  // (RH/admin : services autorisés ; chef : uniquement son service — le
+  // périmètre est appliqué côté serveur par GET /plannings).
+  const [planningsRecents, setPlanningsRecents] = useState([]);
   // Modèle de planning du service courant (multi-modèles) : STANDARD = grille
   // employé × jour historique ; SECURITE / HORAIRE_LIBRE = éditeurs dédiés.
   const [modele, setModele] = useState(MODELE_STANDARD_PAR_DEFAUT);
@@ -302,6 +307,26 @@ export default function GestionPlanningPage() {
     })();
   }, [token, serviceChoisi, grille, permissions]);
 
+  // Derniers plannings du périmètre (source unique GET /plannings existant :
+  // filtre serveur par role — le chef ne récupère que SON service).
+  useEffect(() => {
+    if (!token || !permissions.includes('planning.view')) {
+      setPlanningsRecents([]);
+      return;
+    }
+    (async () => {
+      try {
+        const liste = await api.get('/plannings', token);
+        const tries = (Array.isArray(liste) ? liste : []).sort(
+          (a, b) => (b.annee - a.annee) || (b.numero_semaine - a.numero_semaine)
+        );
+        setPlanningsRecents(tries.slice(0, 6));
+      } catch {
+        setPlanningsRecents([]); // zone informative : jamais bloquante
+      }
+    })();
+  }, [token, permissions, grille]);
+
   // --- Création explicite (modale) -------------------------------------------
   // Période exacte de la semaine sélectionnée, affichée dans la modale avant
   // confirmation (calcul, aucune valeur en dur).
@@ -423,16 +448,16 @@ export default function GestionPlanningPage() {
     };
     for (const c of grille.contraintes?.conges || []) {
       for (const j of jours) {
-        if (j >= c.date_debut && j <= c.date_fin) ajoute(c.id_employe, j, `Conge ${c.type_conge.toLowerCase()} valide par la RH`);
+        if (j >= c.date_debut && j <= c.date_fin) ajoute(c.id_employe, j, `Congé ${c.type_conge.toLowerCase()} validé par la RH`);
       }
     }
     for (const i of grille.contraintes?.indisponibilites || []) {
       for (const j of jours) {
-        if (j >= i.date_debut && j <= i.date_fin) ajoute(i.id_employe, j, `Indisponible (${i.type_indispo.toLowerCase()}) : ${i.motif || 'voir RH'}`);
+        if (j >= i.date_debut && j <= i.date_fin) ajoute(i.id_employe, j, `Indisponible (${i.type_indispo.toLowerCase()}) : ${i.motif || 'à voir avec la RH'}`);
       }
     }
     for (const r of grille.contraintes?.recuperations || []) {
-      ajoute(r.id_employe, r.jour, `Recuperation communiquee par la RH : ${Number(r.nombre_heures)} h${r.motif ? ` (${r.motif})` : ''}`);
+      ajoute(r.id_employe, r.jour, `Récupération communiquée par la RH : ${Number(r.nombre_heures)} h${r.motif ? ` (${r.motif})` : ''}`);
     }
     return map;
   }, [grille]);
@@ -684,10 +709,10 @@ export default function GestionPlanningPage() {
         const nouveaux = {};
         for (const e of echecs) nouveaux[`${e.id_employe}|${e.jour}`] = e.erreur;
         setMessagesCellules((m) => ({ ...m, ...nouveaux }));
-        setMessage(`${reponse.modifiees} cellule(s) enregistree(s), ${echecs.length} refusee(s) par les controles.`);
+        setMessage(`${reponse.modifiees} cellule(s) enregistrée(s), ${echecs.length} refusée(s) par les contrôles.`);
       } else {
         setMessagesCellules({});
-        setMessage('Grille enregistree (brouillon).');
+        setMessage('Grille enregistrée (brouillon).');
       }
       await chargerGrille();
     } catch (err) {
@@ -725,19 +750,19 @@ export default function GestionPlanningPage() {
       }
     }
     if (problemes.length === 0) {
-      setMessage('Aucun probleme detecte : horaires coherents, pas de depassement.');
+      setMessage('Aucun problème détecté : horaires cohérents, pas de dépassement.');
     } else {
-      setMessage(`Points a corriger (${problemes.length}) :\n- ${problemes.join('\n- ')}`);
+      setMessage(`Points à corriger (${problemes.length}) :\n- ${problemes.join('\n- ')}`);
     }
   }
 
   async function soumettre() {
-    if (!confirm('Soumettre ce planning a la RH pour validation ?')) return;
+    if (!confirm('Soumettre ce planning à la RH pour validation ?')) return;
     setEnregistrement(true);
     try {
       await enregistrerSansMessage();
       await api.patch(`/plannings/${planningId}/soumettre`, {}, token);
-      setMessage('Planning soumis a la RH.');
+      setMessage('Planning soumis à la RH.');
       await chargerGrille();
     } catch (err) {
       setErreur(err.message);
@@ -753,8 +778,7 @@ export default function GestionPlanningPage() {
     if (echecs.length > 0) {
       const nouveaux = {};
       for (const e of echecs) nouveaux[`${e.id_employe}|${e.jour}`] = e.erreur;
-      setMessagesCellules((m) => ({ ...m, ...nouveaux }));
-      throw new Error(`${echecs.length} cellule(s) refusee(s) : corrigez avant de soumettre.`);
+      setMessagesCellules((m) => ({ ...m, ...nouveaux }));        throw new Error(`${echecs.length} cellule(s) refusée(s) : corrigez avant de soumettre.`);
     }
   }
 
@@ -831,6 +855,57 @@ export default function GestionPlanningPage() {
             </div>
           )}
         </div>
+
+        {/* PLANNINGS RÉCENTS : derniers plannings du périmètre de l'utilisateur
+            (RH : ses services ; chef : uniquement son service — périmètre
+            appliqué côté serveur). Informations conservées : service,
+            semaine, période, statut et dernière mise à jour. */}
+        {!chargement && planningsRecents.length > 0 && (
+          <div className="card" style={{ overflowX: 'auto', marginBottom: 16 }}>
+            <h3 style={{ marginTop: 0 }}>Plannings récents</h3>
+            <table>
+              <thead>
+                <tr>
+                  <th>Service</th>
+                  <th>Semaine</th>
+                  <th>Période</th>
+                  <th>Statut</th>
+                  <th>Dernière mise à jour</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {planningsRecents.map((p) => (
+                  <tr key={p.id_planning}>
+                    <td>{p.service_nom}</td>
+                    <td><strong>S{p.numero_semaine} · {p.annee}</strong></td>
+                    <td>
+                      {String(p.date_debut || '').slice(0, 10)} → {String(p.date_fin || '').slice(0, 10)}
+                    </td>
+                    <td><BadgeStatutPlanning statut={p.statut} /></td>
+                    <td style={{ whiteSpace: 'nowrap' }}>
+                      {p.date_validation
+                        ? `Validé le ${String(p.date_validation).slice(0, 10)}`
+                        : p.date_soumission
+                          ? `Soumis le ${String(p.date_soumission).slice(0, 10)}`
+                          : '—'}
+                    </td>
+                    <td>
+                      <Link
+                        href={`/planning/${p.id_planning}`}
+                        className="btn-icone"
+                        title={`Consulter le planning ${p.service_nom} S${p.numero_semaine}`}
+                        aria-label={`Consulter le planning ${p.service_nom} semaine ${p.numero_semaine} ${p.annee}`}
+                      >
+                        <Eye size={15} aria-hidden="true" />
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
 
         {/* LISTE DES PLANNINGS DU SERVICE (tous modèles). */}
         {!chargement && listePlannings.length > 0 && (
@@ -1005,15 +1080,14 @@ export default function GestionPlanningPage() {
                               onClick={() => modifiable && ouvrirCellule(emp.id_employe, emp.nom, j)}
                               style={{ cursor: modifiable ? 'pointer' : 'default', minWidth: 120 }}
                             >
-                              {!cel && <span className="muted">—</span>}
-                              {cel && cel.statut_jour === 'TRAVAIL' && (cel.periodes?.length > 0 || cel.entree) && (
-                                <div>
+                              {!cel && <span className="muted">—</span>}                        {cel && cel.statut_jour === 'TRAVAIL' && (cel.periodes?.length > 0 || cel.entree) && (
+                              <div style={{ whiteSpace: 'nowrap' }}>
                                   {(cel.periodes?.length
                                     ? cel.periodes
                                     : [{ entree: cel.entree, sortie: cel.sortie }]
                                   ).map((p, i) => (
-                                    <div key={i} style={{ whiteSpace: 'nowrap' }}>
-                                      {p.entree && p.sortie ? `${p.entree} - ${p.sortie}` : 'Incomplet'}
+                                    <div key={i}>
+                                      {p.entree && p.sortie ? `${p.entree} – ${p.sortie}` : 'Incomplet'}
                                     </div>
                                   ))}
                                 </div>

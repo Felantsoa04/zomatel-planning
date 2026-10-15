@@ -74,16 +74,21 @@ export function dashboardDe(role) {
 // ---------------------------------------------------------------------------
 export const MENU_PRINCIPAL = [
   { href: '/dashboard', label: 'Tableau de bord', icone: 'LayoutDashboard' },
-  { href: '/validations', label: 'Gestion des validations', icone: 'ClipboardCheck', permission: 'planning.validate' },
+  { href: '/validations', label: 'Validation', icone: 'ClipboardCheck', permission: 'planning.validate' },
   { href: '/planning/gestion', label: 'Planning', icone: 'CalendarDays', permissionsAny: ['planning.view', 'planning.create'] },
+  // Numérisation des plannings papier (import + OCR + vérification) : RH
+  // uniquement — filtrée par la permission numerisation.use (menu des autres
+  // rôles inchangé).
+  { href: '/planning/numerisation', label: 'Numérisation papier', icone: 'ScanLine', permission: 'numerisation.use' },
   { href: '/employees', label: 'Employés', icone: 'Users', permission: 'employe.view' },
   { href: '/service', label: 'Services', icone: 'Hotel', permission: 'service.manage' },
   { href: '/messagerie', label: 'Messagerie', icone: 'MessageCircle', permission: 'messenger.use' },
   { href: '/statistiques', label: 'Statistiques', icone: 'BarChart3', permissions: ['planning.view', 'employe.view'] },
   { href: '/archives', label: 'Archives', icone: 'Archive', permission: 'planning.view' },
   { href: '/historique', label: 'Historique', icone: 'History' },
-  { href: '/utilisateurs', label: 'Gestion utilisateurs', icone: 'KeyRound', permission: 'user.view' },
-  { href: '/parametres', label: 'Paramètres', icone: 'Settings' },
+  { href: '/utilisateurs', label: 'Utilisateurs', icone: 'KeyRound', permission: 'user.view' },
+  // NB : Paramètres n'est jamais dans la sidebar — l'accès se fait via le bouton
+  // « Paramètres » de la barre supérieure (DashShell, près du profil).
 ];
 
 // ---------------------------------------------------------------------------

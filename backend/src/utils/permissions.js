@@ -19,6 +19,9 @@ const CATALOGUE = [
   ['planning.validate', 'Valider / refuser un planning',            null],
   ['planning.reopen',   'Rouvrir un planning valide',               null],
   ['planning.export_edt', 'Exporter l’emploi du temps Excel (RH)',   null],
+  // Numérisation des plannings papier (routes numerisationRoutes.js) —
+  // réservée au rôle RH (requireRole('RH') s'ajoute à la permission).
+  ['numerisation.use',    'Numériser les plannings papier (RH)',      null],
   // Employes (routes employeRoutes.js)
   ['employe.view',      'Consulter les employes',                   null],
   ['employe.manage',    'Ajouter / modifier / desactiver les employes', null],
@@ -41,6 +44,7 @@ const DEFAUTS_PAR_ROLE = {
     'planning.view', 'planning.view_all', 'planning.validate', 'planning.reopen', 'planning.export_edt',
     'planning.delete', 'employe.view', 'employe.manage', 'service.manage',
     'user.view', 'user.create', 'user.update', 'messenger.use',
+    'numerisation.use',
   ],
   CHEF_SERVICE: [
     'planning.view', 'planning.create', 'planning.update', 'planning.submit',

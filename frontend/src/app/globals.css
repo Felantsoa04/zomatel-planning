@@ -1967,12 +1967,8 @@ html { scrollbar-gutter: stable; }
 .param-ligne .muted { font-size: 12.5px; }
 .param-actif { border-color: var(--zom-rouge) !important; color: var(--zom-rouge) !important; }
 
-/* Preference de densite des tableaux (Parametres -> Affichage, localStorage).
-   Mode compact : interlignage reduit sur tous les tableaux de l'application. */
-html[data-densite='compact'] table th { padding: 4px 8px; }
-html[data-densite='compact'] table td { padding: 4px 8px; }
-html[data-densite='compact'] .dash-table th { padding: 5px 8px; }
-html[data-densite='compact'] .dash-table td { padding: 5px 8px; }
+/* NB : la préférence « densité des tableaux » a été retirée (Paramètres) :
+   les tableaux utilisent la présentation standard de l'application. */
 
 /* Statistiques : mini-grille de chiffres cles */
 .stat-grille {

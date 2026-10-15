@@ -15,7 +15,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { api } from '@/lib/api';
-import { saveSession, getToken } from '@/lib/auth';
+import { saveSession, getToken, getUser } from '@/lib/auth';
 // NB : la page passe le contenu via children (React) — on le rend ci-dessous.
 // (l'ancien prop « enfants » n'a jamais ete alimente : le <main> restait vide)
 import NotificationBell from '@/components/NotificationBell';
@@ -30,7 +30,7 @@ import { useI18n } from '@/lib/i18n';
 import {
   LogOut, Menu, User, MessageCircle,
   LayoutDashboard, Users, KeyRound, Hotel, CalendarDays,
-  BarChart3, History, Settings, Archive, PanelLeftClose, PanelLeftOpen, ClipboardCheck,
+  BarChart3, History, Settings, Archive, PanelLeftClose, PanelLeftOpen, ClipboardCheck, ScanLine,
 } from 'lucide-react';
 
 // URL absolue de la photo de profil (chemin relatif servi par l'API).
@@ -44,11 +44,12 @@ function urlPhoto(chemin) {
 const CLE_SIDEBAR_REDUITE = 'zomatel:sidebar-reduite'; // '1' = mode reduit
 
 // Resolution des noms d'icones lucide-react du menu partage (lib/dash.js).
-const ICONES = { LayoutDashboard, Users, KeyRound, Hotel, CalendarDays, BarChart3, History, Settings, Archive, MessageCircle, ClipboardCheck };
+const ICONES = { LayoutDashboard, Users, KeyRound, Hotel, CalendarDays, BarChart3, History, Settings, Archive, MessageCircle, ClipboardCheck, ScanLine };
 const MENU_CLES_TRADUCTION = {
   '/dashboard': 'nav.dashboard',
   '/validations': 'nav.validations',
   '/planning/gestion': 'nav.planning',
+  '/planning/numerisation': 'nav.numerisation',
   '/employees': 'nav.employees',
   '/service': 'nav.services',
   '/messagerie': 'nav.messenger',
@@ -56,7 +57,6 @@ const MENU_CLES_TRADUCTION = {
   '/archives': 'nav.archives',
   '/historique': 'nav.history',
   '/utilisateurs': 'nav.users',
-  '/parametres': 'nav.settings',
 };
 
 function groupeDuLien(href) {
@@ -109,8 +109,15 @@ export default function DashShell({ user, children }) {
 
   // Permissions et photo viennent de la session API ; les droits sont relus
   // pour refléter immédiatement les changements faits par un administrateur.
+  // FIX POPS DE FOCUS (cause racine) : l'effet dépend de l'IDENTIFIANT du
+  // compte, pas de la REFÉRENCE de l'objet user. Avant, tout fournisseur qui
+  // recréait l'objet user (même avec les mêmes données) rejouait l'effet :
+  // permissionsChargees -> false -> REMONTAGE des children -> perte de focus
+  // après chaque caractère saisi. La clé stable corrige durablement pour
+  // toute l'application.
   useEffect(() => {
-    if (!user?.id_utilisateur) return;
+    const identifiant = user?.id_utilisateur;
+    if (!identifiant) return;
     setPermissionsChargees(false);
     api.get('/auth/me').then((data) => {
       const compte = data?.user;
@@ -120,12 +127,17 @@ export default function DashShell({ user, children }) {
       setPermissions(compte.permissions);
       setPhotoProfil(compte.photo_profil || null);
       setErreurPermissions('');
-      saveSession(getToken(), { ...user, ...compte });
+      // Fusion de session : on repart de la session ACTUELLE (getUser) et non
+      // de la closure `user` — l'objet est enrichi sans restaurer une version
+      // périmée si le compte a été rechargé entre-temps.
+      const sessionActuelle = getUser() || {};
+      saveSession(getToken(), { ...sessionActuelle, ...compte });
     }).catch((err) => {
       setPermissions([]);
       setErreurPermissions(err.message || 'Impossible de charger les autorisations.');
     }).finally(() => setPermissionsChargees(true));
-  }, [user]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id_utilisateur]);
 
   if (!user) return null;
 
@@ -307,6 +319,20 @@ export default function DashShell({ user, children }) {
           </div>
           <div className="dash-topbar-droite">
             <ThemeToggle />
+            {/* Paramètres : accès principal de l'application, en haut de la
+                page près du profil (l'entrée a été retirée de la sidebar). */}
+            <Link
+              href="/parametres"
+              className={`navbar-profil dash-outil-parametres ${pathname.startsWith('/parametres') ? 'actif' : ''}`}
+              aria-label="Paramètres"
+              title="Paramètres"
+              aria-current={pathname === '/parametres' ? 'page' : undefined}
+            >
+              <Settings size={18} aria-hidden="true" />
+              <span className="navbar-profil-texte">
+                <strong>Paramètres</strong>
+              </span>
+            </Link>
             {/* Messages : element DISTINCT de la cloche (icône + compteur rouge
                 propre, aucun mélange des deux compteurs). */}
             {permissions.includes('messenger.use') && <MessengerBouton />}

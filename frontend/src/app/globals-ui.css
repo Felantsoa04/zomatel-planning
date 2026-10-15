@@ -50,6 +50,30 @@ input, select, textarea, th, td {
 .theme-toggle:active { transform: scale(0.94); }
 .theme-toggle-login { width: 38px; height: 38px; }
 
+/* ---------- ACCÈS PARAMÈTRES DANS LA TOPBAR (près du profil) ---------- */
+.dash-outil-parametres {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  text-decoration: none;
+  color: var(--zom-texte);
+  padding: 5px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--zom-bordure);
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.dash-outil-parametres:hover { background: var(--zom-creme); }
+.dash-outil-parametres.actif {
+  background: var(--zom-creme);
+  border-color: var(--zom-bordure);
+  font-weight: 600;
+}
+.dash-outil-parametres .navbar-profil-texte strong { font-size: 12.5px; }
+@media (max-width: 900px) {
+  .dash-outil-parametres .navbar-profil-texte { display: none; }
+  .dash-outil-parametres { padding: 6px; }
+}
+
 /* ---------- PROFIL COMPACT DANS LA TOPBAR (photo + nom + rôle) ---------- */
 .navbar-profil {
   display: inline-flex;

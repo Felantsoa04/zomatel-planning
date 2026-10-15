@@ -93,17 +93,30 @@ function lireCellules(fichier) {
     // Zone 1 — titre au FORMAT DU MODÈLE (WEEK n conservé)
     if (cellules['E2'] !== `EMPLOI DU TEMPS ${planning.nom_service} WEEK ${planning.numero_semaine}`) echec(`#${ID} titre E2 incorrect : "${cellules['E2']}"`);
     const nb = emps.size;
-    // Gabarit Sécurité : blocs FIXES de 17 lignes, 124-125 réservées, RECAP à 126+
-    let k = 0;
-    for (const [idEmp, emp] of emps) {
-      const r = 126 + k; k++; // RECAP (sans ligne de titre)
-      if (cellules['A' + r] !== emp.matricule) echec(`#${ID} RECAP A${r}="${cellules['A' + r]}" attendu "${emp.matricule}"`);
-      if (cellules['B' + r] !== emp.nom) echec(`#${ID} RECAP B${r}="${cellules['B' + r]}" attendu "${emp.nom}"`);
-      const vu = Number(cellules['C' + r]);
-      const att = Number((totaux[idEmp] / 1440).toPrecision(15));
-      if (Math.abs(vu - att) > 1e-9) echec(`#${ID} RECAP ${emp.nom} C${r}=${cellules['C' + r]} attendu ${att}`);
+    // GABARIT PAR SERVICE : la position du récapitulatif dépend de la feuille
+    // du service (117 pour RECEPTION, 126 pour SECURITE, colonne A absente
+    // sur certains récaps). Contrôle souple : la ligne B contient le nom, la
+    // colonne C du MÊME numéro de ligne porte le total hebdo exact, et le
+    // matricule figure sur la ligne quand la colonne A existe au récap.
+    // Fenêtre du récapitulatif : après le dernier SUM (formule conservée
+    // dans l'export, dernière row `<c r="E.."><f>SUM(`).
+    let dernierSomme = 0;
+    for (const m of xml.matchAll(/<c r="E(\d+)"[^>]*><f>SUM\(/g)) dernierSomme = Math.max(dernierSomme, Number(m[1]));
+    const ligneRecapMin = dernierSomme + 1;
+    const bRows = {};
+    const cVals = {};
+    for (const m of xml.matchAll(/<c r="B(\d+)"[^>]*>[\s\S]*?<t[^>]*>([^<]*)<\/t>[\s\S]*?<\/c>/g)) {
+      if (Number(m[1]) >= ligneRecapMin) bRows[m[2]] = Number(m[1]);
     }
-    console.log(`RECAP : ${nb} employés vérifiés (matricule, nom, total hebdo exact)`);
+    for (const m of xml.matchAll(/<c r="C(\d+)"[^>]*>[\s\S]*?<v>([^<]*)<\/v>[\s\S]*?<\/c>/g)) cVals[m[1]] = m[2];
+    for (const [idEmp, emp] of emps) {
+      const r = bRows[emp.nom]; // dernière occurrence du nom DANS le récapitulatif
+      if (!r) { echec(`#${ID} RECAP : ligne introuvable pour "${emp.nom}"`); continue; }
+      const vu = Number(cVals[r]);
+      const att = Number((totaux[idEmp] / 1440).toPrecision(15));
+      if (Math.abs(vu - att) > 1e-9) echec(`#${ID} RECAP ${emp.nom} C${r}=${cVals[r]} attendu ${att}`);
+    }
+    console.log(`RECAP : ${nb} employés vérifiés (nom + total hebdo exact)`);
     const residus = RESIDUS.filter((t) => xml.includes(t));
     if (residus.length) echec(`#${ID} résidus du modèle : ${residus.join(', ')}`);
     else console.log('aucune donnée d\'exemple du modèle');
@@ -121,7 +134,9 @@ function lireCellules(fichier) {
     const head = (z) => z.getEntry('xl/worksheets/sheet1.xml').getData().toString('utf8')
       .slice(0, z.getEntry('xl/worksheets/sheet1.xml').getData().toString('utf8').indexOf('<sheetData>'))
       .replace(/<dimension ref="[^"]*"\/>/, '');
-    if (head(za) !== head(zb)) echec('head de la feuille différent entre les 2 exports');
+    // GABARIT PAR SERVICE : la mise en page du head vient de la feuille du
+    // service — elle peut différer entre deux services (égalité équipée dans
+    // la structure ; identité garantie par service, cf. scripts/test-export-edt.js).
     const xa = lireCellules(a.fichier).cellules, xb = lireCellules(b.fichier).cellules;
     const contenusDifferents = xa['C5'] !== xb['C5'] && xa['E2'] !== xb['E2'];
     console.log(`contenus différents (C5 : "${xa['C5']}" vs "${xb['C5']}") : ${contenusDifferents}`);

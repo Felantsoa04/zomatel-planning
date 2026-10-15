@@ -5,7 +5,7 @@
  *              Sécurité  (#49) — 21/09 → 27/09 (dates DIFFÉRENTES, même S39)
  * Vérifications :
  *   1. sélection multi-SERVICES de la MÊME semaine [3,49] -> UN SEUL classeur
- *      « Emploi_du_temps_2026_S39.xlsx » (PAS de ZIP, PAS un fichier par
+ *      « EMPLOI_DU_TEMPS_WEEK_39.xlsx » (PAS de ZIP, PAS un fichier par
  *      service), UNE FEUILLE par service, données réelles ;
  *   2. dates début/fin DIFFÉRENTES au sein de la même semaine (#3 et #49) :
  *      la sélection n'est PAS bloquée (dates = info affichée, jamais un
@@ -89,7 +89,7 @@ function cellules(z, fichier) {
   if (/zip/.test(type1)) echec('une seule semaine doit donner un xlsx DIRECT, pas un ZIP');
   if (!/sheet/.test(type1)) echec('type MIME inattendu : ' + type1);
   const dispo1 = decodeURIComponent(e1.headers.get('content-disposition') || '');
-  const nomAttendu1 = 'Emploi_du_temps_2026_S39.xlsx';
+  const nomAttendu1 = 'EMPLOI_DU_TEMPS_WEEK_39.xlsx';
   if (!dispo1.includes(nomAttendu1)) echec(`nom attendu ${nomAttendu1}, reçu : ${dispo1}`);
   else console.log(`UN SEUL fichier direct : ${nomAttendu1} OK (pas de ZIP, pas un fichier par service)`);
 
@@ -125,8 +125,8 @@ function cellules(z, fichier) {
   if (e3.status !== 200) echec('HTTP ' + e3.status + ' ([40])');
   else {
     const dispo3 = decodeURIComponent(e3.headers.get('content-disposition') || '');
-    if (!dispo3.includes('Emploi_du_temps_2030_S45.xlsx')) echec(`nom attendu Emploi_du_temps_2030_S45.xlsx, reçu : ${dispo3}`);
-    else    console.log('semaine seule -> un fichier Emploi_du_temps_2030_S45.xlsx : OK');
+    if (!dispo3.includes('EMPLOI_DU_TEMPS_WEEK_45.xlsx')) echec(`nom attendu EMPLOI_DU_TEMPS_WEEK_45.xlsx, reçu : ${dispo3}`);
+    else    console.log('semaine seule -> un fichier EMPLOI_DU_TEMPS_WEEK_45.xlsx : OK');
   }
 
   /* ---- TEST 4 : deux semaines mélangées -> JAMAIS un seul classeur -------- */
@@ -139,7 +139,7 @@ function cellules(z, fichier) {
     const z4 = new AdmZip(Buffer.from(await e4.arrayBuffer()));
     const entrees = z4.getEntries().map((x) => x.entryName).sort();
     console.log('archive :', entrees.join(' | '));
-    if (!entrees.includes('Emploi_du_temps_2026_S39.xlsx') || !entrees.includes('Emploi_du_temps_2030_S45.xlsx')) {
+    if (!entrees.includes('EMPLOI_DU_TEMPS_WEEK_39.xlsx') || !entrees.includes('EMPLOI_DU_TEMPS_WEEK_45.xlsx')) {
       echec('l\'archive doit contenir un fichier par semaine (S39 et S45)');
     } else {
       console.log('deux semaines ne sont JAMAIS fusionnées : un fichier par semaine dans l\'archive : OK');

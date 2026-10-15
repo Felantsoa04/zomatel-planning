@@ -28,6 +28,16 @@ function periode(p) {
   return `${fmt(p.date_debut)} → ${fmt(p.date_fin)}`;
 }
 
+// "2026-09-27 14:03:00" -> "27/09/2026 à 14:03" (date de validation)
+function formatDateHeure(str) {
+  if (!str) return '—';
+  const d = new Date(String(str).replace(' ', 'T'));
+  if (Number.isNaN(d.getTime())) return String(str);
+  return d.toLocaleString('fr-FR', {
+    day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
+  });
+}
+
 export default function ArchivesPage() {
   const { t } = useI18n();
   const [plannings, setPlannings] = useState([]);
@@ -132,6 +142,8 @@ export default function ArchivesPage() {
                     <th>{t('dashboard.period')}</th>
                     <th>{t('common.status')}</th>
                     <th>{t('planning.totalHours')}</th>
+                    <th>Validé le</th>
+                    <th>Validé par</th>
                     <th></th>
                   </tr>
                 </thead>
@@ -144,6 +156,14 @@ export default function ArchivesPage() {
                       <td><BadgeStatutPlanning statut={p.statut} /></td>
                       <td>
                         {p.total_heures != null ? `${Number(p.total_heures).toFixed(1)} h` : <span className="muted">—</span>}
+                      </td>
+                      <td style={{ whiteSpace: 'nowrap' }}>
+                        {p.date_validation
+                          ? formatDateHeure(p.date_validation)
+                          : <span className="muted">—</span>}
+                      </td>
+                      <td>
+                        {p.valide_par || <span className="muted">—</span>}
                       </td>
                       <td>
                         <Link
